@@ -24,7 +24,13 @@ namespace NuGet.Server.Tests
                 setupRepository(expandedPackageRepository);
             }
 
-            var serverRepository = new ServerPackageRepository(fileSystem, expandedPackageRepository, getSetting);
+            var serverRepository = new ServerPackageRepository(
+                fileSystem,
+                monitorFileSystem: false,
+                innerRepository: expandedPackageRepository, 
+                logger: new Server.Infrastructure.NullLogger(),
+                getSetting: getSetting);
+
             serverRepository.GetPackagesWithDerivedData(); // caches the files
 
             return serverRepository;
@@ -125,7 +131,6 @@ namespace NuGet.Server.Tests
                 Assert.False(packages[0].Listed);
             }
         }
-
 
         [Fact]
         public void ServerPackageRepositoryFindPackageById()

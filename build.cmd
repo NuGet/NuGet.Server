@@ -30,7 +30,7 @@ IF %ERRORLEVEL% NEQ 0 goto error
 
 REM Test
 call :ExecuteCmd tools\nuget.exe install xunit.runner.console -Version 2.0.0 -OutputDirectory packages
-REM call :ExecuteCmd packages\xunit.runner.console.2.0.0\tools\xunit.console.exe test\NuGet.Server.Tests\bin\%config%\NuGet.Server.Tests.dll
+call :ExecuteCmd packages\xunit.runner.console.2.0.0\tools\xunit.console.exe test\NuGet.Server.Tests\bin\%config%\NuGet.Server.Tests.dll
 IF %ERRORLEVEL% NEQ 0 goto error
 
 

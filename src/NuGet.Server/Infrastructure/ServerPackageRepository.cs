@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
@@ -30,18 +29,20 @@ namespace NuGet.Server.Infrastructure
 
         private readonly IFileSystem _fileSystem;
         private readonly ExpandedPackageRepository _expandedPackageRepository;
+        private readonly ILogger _logger;
         private readonly Func<string, bool, bool> _getSetting;
 
         private IDictionary<IPackage, DerivedPackageData> _packages;
-        
+
+        private bool _monitorFileSystem = true;
         private FileSystemWatcher _fileSystemWatcher;
         
-        public ServerPackageRepository(string path, IHashProvider hashProvider)
-            : this(new PhysicalFileSystem(path), hashProvider)
+        public ServerPackageRepository(string path, IHashProvider hashProvider, ILogger logger)
+            : this(new PhysicalFileSystem(path), true, hashProvider, logger)
         {
         }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, IHashProvider hashProvider, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, IHashProvider hashProvider, ILogger logger = null, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -54,12 +55,14 @@ namespace NuGet.Server.Infrastructure
             }
 
             _fileSystem = fileSystem;
+            _monitorFileSystem = monitorFileSystem;
+            _logger = logger ?? new TraceLogger();
             _expandedPackageRepository = new ExpandedPackageRepository(fileSystem, hashProvider);
 
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, ExpandedPackageRepository innerRepository, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, ExpandedPackageRepository innerRepository, ILogger logger = null, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -72,7 +75,9 @@ namespace NuGet.Server.Infrastructure
             }
 
             _fileSystem = fileSystem;
+            _monitorFileSystem = monitorFileSystem;
             _expandedPackageRepository = innerRepository;
+            _logger = logger ?? new TraceLogger();
 
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
@@ -167,7 +172,9 @@ namespace NuGet.Server.Infrastructure
 
         private void AddPackagesFromDropFolder()
         {
-            MonitorFileSystem(true);
+            _logger.Log(LogLevel.Info, "Start adding packages from drop folder.");
+
+            MonitorFileSystem(false);
 
             try
             {
@@ -181,11 +188,19 @@ namespace NuGet.Server.Infrastructure
 
                         _fileSystem.DeleteFile(packageFile);
                     }
-                    catch (IOException)
+                    catch (UnauthorizedAccessException ex)
                     {
                         // The file may be in use (still being copied) - ignore the error
+                        _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
+                    }
+                    catch (IOException ex)
+                    {
+                        // The file may be in use (still being copied) - ignore the error
+                        _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
                     }
                 }
+
+                _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
             }
             finally
             {
@@ -198,16 +213,30 @@ namespace NuGet.Server.Infrastructure
         /// </summary>
         public override void AddPackage(IPackage package)
         {
+            _logger.Log(LogLevel.Info, "Start adding package {0} {1}.", package.Id, package.Version);
+
             if (!AllowOverrideExistingPackageOnPush && FindPackage(package.Id, package.Version) != null)
             {
-                throw new InvalidOperationException(string.Format(NuGetResources.Error_PackageAlreadyExists, package));
+                var message = string.Format(NuGetResources.Error_PackageAlreadyExists, package);
+
+                _logger.Log(LogLevel.Error, message);
+                throw new InvalidOperationException(message);
             }
 
             lock (_syncLock)
             {
-                _expandedPackageRepository.AddPackage(package);
+                MonitorFileSystem(false);
+                try
+                {
+                    _expandedPackageRepository.AddPackage(package);
+                    _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
 
-                InvalidatePackages();
+                    InvalidatePackages();
+                }
+                finally
+                {
+                    MonitorFileSystem(true);
+                }
             }
         }
 
@@ -218,35 +247,51 @@ namespace NuGet.Server.Infrastructure
         {
             if (package != null)
             {
-                lock (_syncLock)
+                MonitorFileSystem(false);
+                try
                 {
-                    if (EnableDelisting)
+                    lock (_syncLock)
                     {
-                        var physicalFileSystem = _fileSystem as PhysicalFileSystem;
-                        if (physicalFileSystem != null)
+                        _logger.Log(LogLevel.Info, "Start removing package {0} {1}.", package.Id, package.Version);
+
+                        if (EnableDelisting)
                         {
-                            var fileName = physicalFileSystem.GetFullPath(
-                                GetPackageFileName(package.Id, package.Version));
-
-                            if (File.Exists(fileName))
+                            var physicalFileSystem = _fileSystem as PhysicalFileSystem;
+                            if (physicalFileSystem != null)
                             {
-                                File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
+                                var fileName = physicalFileSystem.GetFullPath(
+                                    GetPackageFileName(package.Id, package.Version));
 
-                                // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
-                                // Also, no need to flip hidden attribute on these since only the one from the nupkg is queried.
-                            }
-                            else
-                            {
-                                Debug.Fail("unable to find file");
+                                if (File.Exists(fileName))
+                                {
+                                    File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
+
+                                    // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
+                                    // Also, no need to flip hidden attribute on these since only the one from the nupkg is queried.
+
+                                    _logger.Log(LogLevel.Info, "Unlisted package {0} {1}.", package.Id, package.Version);
+                                }
+                                else
+                                {
+                                    _logger.Log(LogLevel.Error,
+                                        "Error removing package {0} {1} - could not find package file {2}", 
+                                            package.Id, package.Version, fileName);
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        _expandedPackageRepository.RemovePackage(package);
-                    }
+                        else
+                        {
+                            _expandedPackageRepository.RemovePackage(package);
 
-                    InvalidatePackages();
+                            _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
+                        }
+
+                        InvalidatePackages();
+                    }
+                }
+                finally
+                {
+                    MonitorFileSystem(true);
                 }
             }
         }
@@ -307,6 +352,7 @@ namespace NuGet.Server.Infrastructure
         /// </summary>
         private IDictionary<IPackage, DerivedPackageData> BuildCache()
         {
+            _logger.Log(LogLevel.Info, "Start building package cache.");
             MonitorFileSystem(false);
 
             try
@@ -396,7 +442,10 @@ namespace NuGet.Server.Infrastructure
                     }
 
                     // Add the package to the cache, it should not exist already
-                    Debug.Assert(cachedPackages.ContainsKey(package) == false, "duplicate package added");
+                    if (cachedPackages.ContainsKey(package))
+                    {
+                        _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
+                    }
                     cachedPackages.AddOrUpdate(package, entry.Item2, (oldPkg, oldData) => oldData);
                 });
 
@@ -411,7 +460,13 @@ namespace NuGet.Server.Infrastructure
                     entry.Item2.IsLatestVersion = true;
                 }
 
+                _logger.Log(LogLevel.Info, "Finished building package cache.");
                 return cachedPackages;
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, "Error while building package cache: {0} {1}", ex.Message, ex.StackTrace);
+                throw;
             }
             finally
             {
@@ -425,13 +480,19 @@ namespace NuGet.Server.Infrastructure
         public void InvalidatePackages()
         {
             lock (_syncLock)
-            { 
+            {
                 _packages = null;
+                _logger.Log(LogLevel.Info, "Invalidated package cache.");
             }
         }
 
         private void MonitorFileSystem(bool monitor)
         {
+            if (_monitorFileSystem)
+            {
+                return;
+            }
+
             if (_fileSystemWatcher != null)
             {
                 _fileSystemWatcher.EnableRaisingEvents = monitor;
@@ -447,13 +508,15 @@ namespace NuGet.Server.Infrastructure
                     StopMonitoringFileSystem();
                 }
             }
+
+            _logger.Log(LogLevel.Verbose, "Monitoring {0} for new packages: {1}", Source, monitor);
         }
         
         // Add the file watcher to monitor changes on disk
         private void StartMonitoringFileSystem()
         {
             // When files are moved around, recreate the package cache
-            if (_fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
+            if (_monitorFileSystem && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
             {
                 // ReSharper disable once UseObjectOrCollectionInitializer
                 _fileSystemWatcher = new FileSystemWatcher(Source);
@@ -466,6 +529,8 @@ namespace NuGet.Server.Infrastructure
                 _fileSystemWatcher.Renamed += FileSystemChanged;
 
                 _fileSystemWatcher.EnableRaisingEvents = true;
+
+                _logger.Log(LogLevel.Verbose, "Created FileSystemWatcher - monitoring {0}.", Source);
             }
         }
 
@@ -481,13 +546,16 @@ namespace NuGet.Server.Infrastructure
                 _fileSystemWatcher.Renamed -= FileSystemChanged;
                 _fileSystemWatcher.Dispose();
                 _fileSystemWatcher = null;
+
+                _logger.Log(LogLevel.Verbose, "Destroyed FileSystemWatcher - no longer monitoring {0}.", Source);
             }
         }
         
         private void FileSystemChanged(object sender, FileSystemEventArgs e)
         {
-            if (e.ChangeType == WatcherChangeTypes.Created 
-                && Path.GetDirectoryName(e.FullPath) == _fileSystemWatcher.Path)
+            _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
+
+            if (Path.GetDirectoryName(e.FullPath) == _fileSystemWatcher.Path)
             {
                 // When a package is dropped into the server packages root folder, add it to the repository.
                 AddPackagesFromDropFolder();

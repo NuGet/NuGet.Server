@@ -72,7 +72,12 @@
     <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageIdComparisonVisitor.cs" />
     <Compile Include="DataServices\ServiceResolver.cs" />
+    <Compile Include="Infrastructure\ConsoleLogger.cs" />
+    <Compile Include="Infrastructure\NullLogger.cs" />
+    <Compile Include="Infrastructure\ILogger.cs" />
+    <Compile Include="Infrastructure\LogLevel.cs" />
     <Compile Include="Infrastructure\SemanticVersionExtensions.cs" />
+    <Compile Include="Infrastructure\TraceLogger.cs" />
     <Compile Include="Publishing\IPackageService.cs" />
     <Compile Include="Publishing\PackageService.cs" />
     <Compile Include="Infrastructure\Helpers.cs" />

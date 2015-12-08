@@ -20,7 +20,7 @@ namespace NuGet.Server.DataServices
         {
             _hashProvider = new CryptoHashProvider(HashAlgorithm);
 
-            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath, _hashProvider);
+            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath,  _hashProvider, new TraceLogger());
 
             _packageService = new PackageService(_packageRepository, new PackageAuthenticationService());
         }
