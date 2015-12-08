@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -5,9 +8,10 @@ using System.Linq;
 using System.Runtime.Versioning;
 using System.Text;
 using Moq;
-using NuGet.Test.Utility;
 
-namespace NuGet.Test
+// ReSharper disable PossibleMultipleEnumeration
+
+namespace NuGet.Server.Tests.Utilities
 {
     public class PackageUtility
     {
@@ -224,7 +228,8 @@ namespace NuGet.Test
             // Create the package's stream
             if (createRealStream)
             {
-                PackageBuilder builder = new PackageBuilder();
+                // ReSharper disable once UseObjectOrCollectionInitializer
+                var builder = new PackageBuilder();
                 builder.Id = id;
                 builder.Version = new SemanticVersion(version);
                 builder.Description = description;
@@ -322,7 +327,7 @@ namespace NuGet.Test
 
         public static Mock<IPackageFile> CreateMockedPackageFile(string directory, string fileName, string content = null)
         {
-            string path = PathFixUtility.FixPath(Path.Combine(directory, fileName));
+            var path = PathFixUtility.FixPath(Path.Combine(directory, fileName));
             content = content ?? path;
             
             var mockFile = new Mock<IPackageFile>();
@@ -330,11 +335,11 @@ namespace NuGet.Test
             mockFile.Setup(m => m.GetStream()).Returns(() => new MemoryStream(Encoding.Default.GetBytes(content)));
 
             string effectivePath;
-            FrameworkName fn = VersionUtility.ParseFrameworkNameFromFilePath(path, out effectivePath);
+            var fn = VersionUtility.ParseFrameworkNameFromFilePath(path, out effectivePath);
             mockFile.Setup(m => m.TargetFramework).Returns(fn);
             mockFile.Setup(m => m.EffectivePath).Returns(effectivePath);
             mockFile.Setup(m => m.SupportedFrameworks).Returns(
-                fn == null ? new FrameworkName[0] : new FrameworkName[] { fn });
+                fn == null ? new FrameworkName[0] : new[] { fn });
             return mockFile;
         }
 
@@ -348,7 +353,7 @@ namespace NuGet.Test
             };
 
             var dependencySet = new PackageDependencySet(VersionUtility.DefaultTargetFramework,
-                new PackageDependency[] {
+                new[] {
                     new PackageDependency("Foo")
                 });
             packageBuilder.DependencySets.Add(dependencySet);

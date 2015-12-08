@@ -1,13 +1,15 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using NuGet;
 using NuGet.Resources;
 
-namespace Server.Test.Utilities
+namespace NuGet.Server.Tests.Utilities
 {
     public static class FileSystemExtensions2
     {
@@ -31,9 +33,9 @@ namespace Server.Test.Utilities
         /// all files with be copied to the <paramref name="rootDir"/>.</param>
         public static void AddFiles(this IFileSystem fileSystem, IEnumerable<IPackageFile> files, string rootDir, bool preserveFilePath)
         {
-            foreach (IPackageFile file in files)
+            foreach (var file in files)
             {
-                string path = Path.Combine(rootDir, preserveFilePath ? file.Path : Path.GetFileName(file.Path));
+                var path = Path.Combine(rootDir, preserveFilePath ? file.Path : Path.GetFileName(file.Path));
                 fileSystem.AddFileWithCheck(path, file.GetStream);
             }
         }
@@ -54,7 +56,7 @@ namespace Server.Test.Utilities
             foreach (var directory in directories)
             {
                 var directoryFiles = directoryLookup.Contains(directory) ? directoryLookup[directory] : Enumerable.Empty<IPackageFile>();
-                string dirPath = Path.Combine(rootDir, directory);
+                var dirPath = Path.Combine(rootDir, directory);
 
                 if (!fileSystem.DirectoryExists(dirPath))
                 {
@@ -63,7 +65,7 @@ namespace Server.Test.Utilities
 
                 foreach (var file in directoryFiles)
                 {
-                    string path = Path.Combine(rootDir, file.Path);
+                    var path = Path.Combine(rootDir, file.Path);
 
                     fileSystem.DeleteFileSafe(path, file.GetStream);
                 }
@@ -154,7 +156,7 @@ namespace Server.Test.Utilities
             fileSystem.DeleteFileSafe(filePath);
 
             // now delete all parent directories if they are empty
-            for (string path = Path.GetDirectoryName(filePath); !String.IsNullOrEmpty(path); path = Path.GetDirectoryName(path))
+            for (var path = Path.GetDirectoryName(filePath); !String.IsNullOrEmpty(path); path = Path.GetDirectoryName(path))
             {
                 if (fileSystem.GetFiles(path, "*.*").Any() || fileSystem.GetDirectories(path).Any())
                 {
@@ -177,7 +179,7 @@ namespace Server.Test.Utilities
             }
             else
             {
-                using (Stream stream = streamFactory())
+                using (var stream = streamFactory())
                 {
                     fileSystem.AddFile(path, stream);
                 }
@@ -208,7 +210,7 @@ namespace Server.Test.Utilities
 
         private static IEnumerable<int> IndexOfAll(string value, char ch)
         {
-            int index = -1;
+            var index = -1;
             do
             {
                 index = value.IndexOf(ch, index + 1);

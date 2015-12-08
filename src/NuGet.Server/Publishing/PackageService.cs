@@ -1,12 +1,13 @@
-﻿using System;
-using System.IO;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System;
 using System.Net;
 using System.Web;
 using System.Web.Routing;
-using NuGet.Server.DataServices;
 using NuGet.Server.Infrastructure;
 
-namespace NuGet.Server
+namespace NuGet.Server.Publishing
 {
     public class PackageService : IPackageService
     {
@@ -26,10 +27,11 @@ namespace NuGet.Server
             var request = context.Request;
 
             // Get the api key from the header
-            string apiKey = request.Headers[ApiKeyHeader];
+            var apiKey = request.Headers[ApiKeyHeader];
 
             // Get the package from the request body
-            Stream stream = request.Files.Count > 0 ? request.Files[0].InputStream : request.InputStream;
+            // ReSharper disable once PossibleNullReferenceException
+            var stream = request.Files.Count > 0 ? request.Files[0].InputStream : request.InputStream;
 
             var package = new ZipPackage(stream);
 
@@ -55,15 +57,15 @@ namespace NuGet.Server
 
         public void DeletePackage(HttpContextBase context)
         {
-            RouteData routeData = GetRouteData(context);
+            var routeData = GetRouteData(context);
 
             // Extract the apiKey, packageId and make sure the version if a valid version string
             // (fail to parse if it's not)
-            string apiKey = context.Request.Headers[ApiKeyHeader];
-            string packageId = routeData.GetRequiredString("packageId");
+            var apiKey = context.Request.Headers[ApiKeyHeader];
+            var packageId = routeData.GetRequiredString("packageId");
             var version = new SemanticVersion(routeData.GetRequiredString("version"));
 
-            IPackage requestedPackage = _serverRepository.FindPackage(packageId, version);
+            var requestedPackage = _serverRepository.FindPackage(packageId, version);
 
             if (requestedPackage == null || ! requestedPackage.Listed)
             {
@@ -78,19 +80,32 @@ namespace NuGet.Server
 
         public void DownloadPackage(HttpContextBase context)
         {
-            RouteData routeData = GetRouteData(context);
+            var routeData = GetRouteData(context);
             // Get the package file name from the route
-            string packageId = routeData.GetRequiredString("packageId");
+            var packageId = routeData.GetRequiredString("packageId");
             var version = new SemanticVersion(routeData.GetRequiredString("version"));
 
-            IPackage requestedPackage = _serverRepository.FindPackage(packageId, version);
+            var requestedPackage = _serverRepository.FindPackage(packageId, version);
 
             if (requestedPackage != null)
             {
-                Package packageMetatada = _serverRepository.GetMetadataPackage(requestedPackage);
-                context.Response.AddHeader("content-disposition", String.Format("attachment; filename={0}", packageMetatada.Path));
-                context.Response.ContentType = "application/zip";
-                context.Response.TransmitFile(packageMetatada.FullPath);
+                var packageMetadata = _serverRepository.GetMetadataPackage(requestedPackage);
+                context.Response.AddHeader("content-disposition", string.Format("attachment; filename={0}", packageMetadata.Path));
+                context.Response.ContentType = "binary/octet-stream";
+
+                if (!string.IsNullOrEmpty(packageMetadata.FullPath))
+                {
+                    // Physical filesystem - send the file as-is
+                    context.Response.TransmitFile(packageMetadata.FullPath);
+                }
+                else
+                {
+                    // Some virtual filesystem - stream it
+                    using (var packageStream = requestedPackage.GetStream())
+                    {
+                        packageStream.CopyTo(context.Response.OutputStream);
+                    }
+                }
             }
             else
             {
@@ -101,7 +116,7 @@ namespace NuGet.Server
 
         private static void WritePackageNotFound(HttpContextBase context, string packageId, SemanticVersion version)
         {
-            WriteStatus(context, HttpStatusCode.NotFound, String.Format("'Package {0} {1}' Not found.", packageId, version));
+            WriteStatus(context, HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", packageId, version));
         }
 
         private bool Authenticate(HttpContextBase context, string apiKey, string packageId)
@@ -119,7 +134,7 @@ namespace NuGet.Server
 
         private static void WriteForbidden(HttpContextBase context, string packageId)
         {
-            WriteStatus(context, HttpStatusCode.Forbidden, String.Format("Access denied for package '{0}'.", packageId));
+            WriteStatus(context, HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", packageId));
         }
 
         private static void WriteStatus(HttpContextBase context, HttpStatusCode statusCode, string body = null)

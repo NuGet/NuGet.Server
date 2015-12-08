@@ -6,8 +6,8 @@
         <description>$description$</description>
         <authors>.NET Foundation</authors>
         <owners>$author$</owners>
-        <licenseUrl>http://nuget.codeplex.com/license</licenseUrl>
-        <projectUrl>http://nuget.codeplex.com</projectUrl>
+        <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/develop/LICENSE.txt</licenseUrl>
+        <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
         <copyright>$copyright$</copyright>
         <frameworkAssemblies>
           <frameworkAssembly assemblyName="System.ServiceModel" />
@@ -16,8 +16,7 @@
           <frameworkAssembly assemblyName="System.Data.Services" />
         </frameworkAssemblies>
         <dependencies>
-            <dependency id="NuGet.Core" version="2.10.1" />
+            <dependency id="NuGet.Core" version="[2.10.1,)" />
         </dependencies>
-        <releaseNotes>The NuGet.Server.dll assembly in this package is now strong-name signed.</releaseNotes>
     </metadata>
 </package>

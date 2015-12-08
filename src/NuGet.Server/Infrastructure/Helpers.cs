@@ -1,44 +1,50 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
-public static class Helpers
+using System;
+
+namespace NuGet.Server.Infrastructure
 {
-    public static string GetRepositoryUrl(Uri currentUrl, string applicationPath)
+    public static class Helpers
     {
-        return GetBaseUrl(currentUrl, applicationPath) + "nuget";
-    }
-
-    public static string GetPushUrl(Uri currentUrl, string applicationPath)
-    {
-        return GetBaseUrl(currentUrl, applicationPath);
-    }
-
-    public static string GetBaseUrl(Uri currentUrl, string applicationPath)
-    {
-        var uriBuilder = new UriBuilder(currentUrl);
-
-        string repositoryUrl = uriBuilder.Scheme + "://" + uriBuilder.Host;
-        if (uriBuilder.Port != 80)
+        public static string GetRepositoryUrl(Uri currentUrl, string applicationPath)
         {
-            repositoryUrl += ":" + uriBuilder.Port;
+            return GetBaseUrl(currentUrl, applicationPath) + "nuget";
         }
 
-        repositoryUrl += applicationPath;
-
-        // ApplicationPath for Virtual Apps don't end with /
-        return EnsureTrailingSlash(repositoryUrl);
-    }
-
-    internal static string EnsureTrailingSlash(string path)
-    {
-        if (String.IsNullOrEmpty(path))
+        public static string GetPushUrl(Uri currentUrl, string applicationPath)
         {
+            return GetBaseUrl(currentUrl, applicationPath);
+        }
+
+        public static string GetBaseUrl(Uri currentUrl, string applicationPath)
+        {
+            var uriBuilder = new UriBuilder(currentUrl);
+
+            var repositoryUrl = uriBuilder.Scheme + "://" + uriBuilder.Host;
+            if (uriBuilder.Port != 80)
+            {
+                repositoryUrl += ":" + uriBuilder.Port;
+            }
+
+            repositoryUrl += applicationPath;
+
+            // ApplicationPath for Virtual Apps don't end with /
+            return EnsureTrailingSlash(repositoryUrl);
+        }
+
+        internal static string EnsureTrailingSlash(string path)
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                return path;
+            }
+
+            if (!path.EndsWith("/"))
+            {
+                return path + "/";
+            }
             return path;
         }
-
-        if (!path.EndsWith("/"))
-        {
-            return path + "/";
-        }
-        return path;
     }
 }

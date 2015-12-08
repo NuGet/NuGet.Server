@@ -1,16 +1,18 @@
-﻿using Moq;
-using NuGet.Server.Infrastructure;
-using NuGet.Test.Mocks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using Moq;
+using NuGet.Server.Infrastructure;
+using NuGet.Server.Tests.Utilities.Mocks;
 using Xunit;
-using Xunit.Extensions;
 
-namespace NuGet.Test.Server.Infrastructure
+namespace NuGet.Server.Tests
 {
     public class ServerPackageRepositoryTest
     {
@@ -32,6 +34,7 @@ namespace NuGet.Test.Server.Infrastructure
             var package2 = CreatePackage("test", "2.0-alpha");
 
             // call to cache the first time
+            // ReSharper disable once RedundantAssignment
             var packages = serverRepository.GetPackagesWithDerivedData();
 
             // Act
@@ -90,16 +93,12 @@ namespace NuGet.Test.Server.Infrastructure
                 };
 
                 CreateDirectory(workingDirectory);
-                var packageFile = CreatePackage("test1", "1.0", workingDirectory);
-
+              
                 var fileSystem = new PhysicalFileSystem(workingDirectory);
                 var serverRepository = new ServerPackageRepository(
-                    new DefaultPackagePathResolver(fileSystem),
                     fileSystem,
-                    settingsFunc)
-                {
-                    HashProvider = GetHashProvider().Object
-                };
+                    GetHashProvider().Object,
+                    settingsFunc);
 
                 var packages = serverRepository.Search("test1", true).ToList();
                 Assert.Equal(1, packages.Count);
@@ -159,8 +158,8 @@ namespace NuGet.Test.Server.Infrastructure
         [InlineData(false)]
         public void ServerPackageRepositoryPersistHashTest(bool enablePersistNupkgHash)
         {
-            const int NbInvalidate = 3;
-            const int NbPackages = 2;
+            const int nbInvalidate = 3;
+            const int nbPackages = 2;
 
             var settings = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
             {
@@ -177,18 +176,18 @@ namespace NuGet.Test.Server.Infrastructure
             var serverRepository = CreateServerPackageRepository(mockProjectSystem, hashProvider.Object, settings);
             // First call.
             var packagesFirstCall = serverRepository.GetPackagesWithDerivedData().OrderBy(p => p.Id + "." + p.Version).ToList();
-            Assert.Equal(NbPackages, packagesFirstCall.Count);
+            Assert.Equal(nbPackages, packagesFirstCall.Count);
 
             // Subsequent calls where we invalidate the cache.
-            for (var j = 0; j < NbInvalidate; j++)
+            for (var j = 0; j < nbInvalidate; j++)
             {
                 // Invalidate cache.
                 serverRepository.InvalidatePackages();
 
                 var packagesSubsequentCall = serverRepository.GetPackagesWithDerivedData().OrderBy(p => p.Id + "." + p.Version).ToList();
-                Assert.Equal(NbPackages, packagesSubsequentCall.Count);
+                Assert.Equal(nbPackages, packagesSubsequentCall.Count);
 
-                for (var i = 0; i < NbPackages; i++)
+                for (var i = 0; i < nbPackages; i++)
                 {
                     // Verify that we're getting the same values for hash and size after invalidating cache (both lists are sorted).
                     Assert.Equal(packagesFirstCall[i].PackageHash, packagesSubsequentCall[i].PackageHash);
@@ -198,12 +197,12 @@ namespace NuGet.Test.Server.Infrastructure
                 // Verify that when and only when hash persisting is turned on, the hash is preserved to disk, 
                 // ensuring the information is preserved when process is recycled.
                 var hashFiles = mockProjectSystem.Object.GetFiles(string.Empty, "*hash", true);
-                Assert.Equal(enablePersistNupkgHash ? NbPackages : 0, hashFiles.Count());
+                Assert.Equal(enablePersistNupkgHash ? nbPackages : 0, hashFiles.Count());
             }
 
             // Verify that hashes are always (re)computed when enablePersistNupkgHash is turned off, and at most once per package otherwise.
             // also verify that Streams are used instead of byte arrays (prone to OOM) to compute hashes.
-            var expectedHashProviderCallCount = enablePersistNupkgHash ? NbPackages : NbPackages * (NbInvalidate + 1);
+            var expectedHashProviderCallCount = enablePersistNupkgHash ? nbPackages : nbPackages * (nbInvalidate + 1);
             hashProvider.Verify(h => h.CalculateHash(It.IsAny<Stream>()), Times.Exactly(expectedHashProviderCallCount));
             hashProvider.Verify(h => h.CalculateHash(It.IsAny<byte[]>()), Times.Never);
         }
@@ -336,7 +335,7 @@ namespace NuGet.Test.Server.Infrastructure
             var packages = serverRepository.GetPackagesWithDerivedData();
 
             // Assert
-            byte[] data = memoryStream.ToArray();
+            var data = memoryStream.ToArray();
             Assert.Equal(data.Length, packages.Single().PackageSize);
             Assert.Equal(data.Select(Invert).ToArray(), Convert.FromBase64String(packages.Single().PackageHash).ToArray());
 
@@ -387,10 +386,10 @@ namespace NuGet.Test.Server.Infrastructure
                     return settings.TryGetValue(key, out ret) ? ret : defaultValue;
                 };
             }
-            return new ServerPackageRepository(new DefaultPackagePathResolver(mockProjectSystem.Object), mockProjectSystem.Object, settingsFunc)
-            {
-                HashProvider = hashProvider ?? GetHashProvider().Object
-            };
+
+            var fileSystem = mockProjectSystem.Object as IFileSystem;
+            return new ServerPackageRepository(fileSystem,
+                hashProvider ?? GetHashProvider().Object, settingsFunc);
         }
 
         private static IPackage CreatePackage(string id, string version)
@@ -406,7 +405,7 @@ namespace NuGet.Test.Server.Infrastructure
 
         private void AddPackage(Mock<MockProjectSystem> mockProjectSystem, string id, string version)
         {
-            string name = String.Format(CultureInfo.InvariantCulture, "{0}.{1}.nupkg", id, version);
+            var name = string.Format(CultureInfo.InvariantCulture, "{0}.{1}.nupkg", id, version);
 
             var package = new PackageBuilder() { Id = id, Version = new SemanticVersion(version), Description = "Description" };
             var mockFile = new Mock<IPackageFile>();
@@ -437,7 +436,7 @@ namespace NuGet.Test.Server.Infrastructure
         public static string CreatePackage(string id, string version, string outputDirectory,
             Action<PackageBuilder> additionalAction = null)
         {
-            PackageBuilder builder = new PackageBuilder()
+            var builder = new PackageBuilder()
             {
                 Id = id,
                 Version = new SemanticVersion(version),
@@ -487,7 +486,7 @@ namespace NuGet.Test.Server.Infrastructure
         /// <summary>
         /// Deletes the specified directory.
         /// </summary>
-        /// <param name="packageDirectory">The directory to be deleted.</param>
+        /// <param name="directory">The directory to be deleted.</param>
         private static void DeleteDirectory(string directory)
         {
             if (Directory.Exists(directory))

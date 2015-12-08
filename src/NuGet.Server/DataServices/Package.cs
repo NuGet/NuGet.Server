@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.Data.Services.Common;
@@ -15,14 +18,14 @@ namespace NuGet.Server.DataServices
     [HasStream]
     public class Package
     {
-        public Package(IPackage package, DerivedPackageData derivedData)
+        public Package(IPackage package, DerivedPackageData derivedPackageData)
         {
             Id = package.Id;
             Version = package.Version.ToString();
-            IsPrerelease = !String.IsNullOrEmpty(package.Version.SpecialVersion);
+            IsPrerelease = !string.IsNullOrEmpty(package.Version.SpecialVersion);
             Title = package.Title;
-            Authors = String.Join(",", package.Authors);
-            Owners = String.Join(",", package.Owners);
+            Authors = string.Join(",", package.Authors);
+            Owners = string.Join(",", package.Owners);
             
             if (package.IconUrl != null)
             {
@@ -42,21 +45,19 @@ namespace NuGet.Server.DataServices
             Summary = package.Summary;
             ReleaseNotes = package.ReleaseNotes;
             Tags = package.Tags;
-            Dependencies = String.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings));
-            PackageHash = derivedData.PackageHash;
-            PackageHashAlgorithm = "SHA512";
-            PackageSize = derivedData.PackageSize;
-            LastUpdated = derivedData.LastUpdated.UtcDateTime;
-            Published = derivedData.Created.UtcDateTime;
-            Path = derivedData.Path;
-            FullPath = derivedData.FullPath;
+            Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings));
+            PackageHash = derivedPackageData.PackageHash;
+            PackageHashAlgorithm = derivedPackageData.PackageHashAlgorithm;
+            PackageSize = derivedPackageData.PackageSize;
+            LastUpdated = derivedPackageData.LastUpdated.UtcDateTime;
+            Published = derivedPackageData.Created.UtcDateTime;
             MinClientVersion = package.MinClientVersion == null ? null : package.MinClientVersion.ToString();
             Listed = package.Listed;
             Language = package.Language;
 
             // set the latest flags based on the derived data
-            IsAbsoluteLatestVersion = derivedData.IsAbsoluteLatestVersion;
-            IsLatestVersion = derivedData.IsLatestVersion;
+            IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion;
+            IsLatestVersion = package.IsLatestVersion;
         }
 
         internal string FullPath
@@ -253,7 +254,7 @@ namespace NuGet.Server.DataServices
                 {
                     // if this Dependency set is empty, we still need to send down one string of the form "::<target framework>",
                     // so that the client can reconstruct an empty group.
-                    return new string[] { String.Format("::{0}", VersionUtility.GetShortFrameworkName(dependencySet.TargetFramework)) };
+                    return new[] { string.Format("::{0}", VersionUtility.GetShortFrameworkName(dependencySet.TargetFramework)) };
                 }
             }
             else
@@ -274,12 +275,12 @@ namespace NuGet.Server.DataServices
                 }
                 else
                 {
-                    return String.Format("{0}:{1}", packageDependency.Id, packageDependency.VersionSpec);
+                    return string.Format("{0}:{1}", packageDependency.Id, packageDependency.VersionSpec);
                 }
             }
             else
             {
-                return String.Format("{0}:{1}:{2}", packageDependency.Id, packageDependency.VersionSpec, VersionUtility.GetShortFrameworkName(targetFramework));
+                return string.Format("{0}:{1}:{2}", packageDependency.Id, packageDependency.VersionSpec, VersionUtility.GetShortFrameworkName(targetFramework));
             }
         }
     }

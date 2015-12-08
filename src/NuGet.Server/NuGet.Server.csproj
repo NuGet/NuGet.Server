@@ -13,6 +13,8 @@
     <IISExpressWindowsAuthentication />
     <IISExpressUseClassicPipelineMode />
     <UseGlobalApplicationHostFile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup>
     <ProjectGuid>{793B20A9-E263-4B54-BB31-305B602087CE}</ProjectGuid>
@@ -25,11 +27,6 @@
     <UseIISExpress>true</UseIISExpress>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Elmah, Version=1.2.14706.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>True</SpecificVersion>
-      <HintPath>..\..\packages\elmah.corelibrary.1.2.2\lib\Elmah.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <Private>True</Private>
@@ -37,10 +34,6 @@
     </Reference>
     <Reference Include="Microsoft.Web.XmlTransform, Version=2.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Web.Xdt.2.1.1\lib\net40\Microsoft.Web.XmlTransform.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Ninject, Version=3.2.0.0, Culture=neutral, PublicKeyToken=c7192dc5380945e7, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Ninject.3.2.2.0\lib\net40\Ninject.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NuGet.Core, Version=2.10.1.766, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -52,6 +45,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data.Services" />
     <Reference Include="System.Data.Services.Client" />
     <Reference Include="System.ServiceModel" />
@@ -70,20 +64,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs">
-      <Link>DataServices\CommonAssemblyInfo.cs</Link>
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="DataServices\DefaultServiceResolver.cs" />
+    <Compile Include="DataServices\IServiceResolver.cs" />
     <Compile Include="DataServices\Package.cs" />
     <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageIdComparisonVisitor.cs" />
+    <Compile Include="DataServices\ServiceResolver.cs" />
+    <Compile Include="Infrastructure\SemanticVersionExtensions.cs" />
     <Compile Include="Publishing\IPackageService.cs" />
     <Compile Include="Publishing\PackageService.cs" />
-    <Compile Include="Infrastructure\Bindings.cs" />
     <Compile Include="Infrastructure\Helpers.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\IServerPackageRepository.cs" />
     <Compile Include="Infrastructure\PackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\ServerPackageRepository.cs" />
-    <Compile Include="Infrastructure\NinjectBootstrapper.cs" />
     <Compile Include="Infrastructure\DerivedPackageData.cs" />
     <Compile Include="DataServices\Packages.svc.cs">
       <DependentUpon>Packages.svc</DependentUpon>
@@ -112,7 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataServices\Routes.cs" />
-    <None Include="Properties\NuGet.Server.nuspec" />
+    <None Include="NuGet.Server.nuspec" />
     <Content Include="DataServices\Routes.cs.pp" />
     <Content Include="web.config.install.xdt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -123,6 +119,7 @@
       <SubType>Designer</SubType>
     </Content>
   </ItemGroup>
+  <ItemGroup />
   <PropertyGroup Condition=" '$(OS)' == 'Windows_NT'">
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
   </PropertyGroup>

@@ -1,16 +1,20 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Server.Test.Utilities;
 
-namespace NuGet.Test.Mocks
+// ReSharper disable DoNotCallOverridableMethodsInConstructor
+
+namespace NuGet.Server.Tests.Utilities.Mocks
 {
     public class MockFileSystem : IFileSystem
     {
         private ILogger _logger;
-        private Dictionary<string, DateTime> _createdTime;
+        private readonly Dictionary<string, DateTime> _createdTime;
 
         public MockFileSystem()
             : this(@"C:\MockFileSystem\")
@@ -126,14 +130,14 @@ namespace NuGet.Test.Mocks
                 return files.Where(f => f.Equals(Path.Combine(path, filter), StringComparison.OrdinalIgnoreCase));
             }
 
-            Regex matcher = GetFilterRegex(filter);
+            var matcher = GetFilterRegex(filter);
             var retValue = files.Where(f => matcher.IsMatch(f)).ToList();
             return retValue;
         }
 
         private static Regex GetFilterRegex(string wildcard)
         {
-            string pattern = '^' + String.Join(@"\.", wildcard.Split('.').Select(GetPattern)) + '$';
+            var pattern = '^' + String.Join(@"\.", wildcard.Split('.').Select(GetPattern)) + '$';
             return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
         }
 
@@ -182,7 +186,7 @@ namespace NuGet.Test.Mocks
             path = NormalizePath(path);
             Paths[path] = () => Stream.Null;
             
-            Action<Stream> streamClose = (stream) => {
+            Action<Stream> streamClose = stream => {
                 stream.Seek(0, SeekOrigin.Begin);
                 AddFile(path, stream);
             };
@@ -198,7 +202,7 @@ namespace NuGet.Test.Mocks
         public virtual bool DirectoryExists(string path)
         {
             path = NormalizePath(path);
-            string pathPrefix = PathUtility.EnsureTrailingSlash(path);
+            var pathPrefix = PathUtility.EnsureTrailingSlash(path);
             return Paths.Keys
                         .Any(file => file.Equals(path, StringComparison.OrdinalIgnoreCase) ||
                                      file.StartsWith(pathPrefix, StringComparison.OrdinalIgnoreCase));
@@ -241,7 +245,7 @@ namespace NuGet.Test.Mocks
             path = NormalizePath(path);
             var ms = new MemoryStream((int)stream.Length);
             stream.CopyTo(ms);
-            byte[] buffer = ms.ToArray();
+            var buffer = ms.ToArray();
             Paths[path] = () => new MemoryStream(buffer);
             _createdTime[path] = DateTime.UtcNow;
         }
@@ -256,7 +260,7 @@ namespace NuGet.Test.Mocks
             path = NormalizePath(path);
             var ms = new MemoryStream();
             writeToStream(ms);
-            byte[] buffer = ms.ToArray();
+            var buffer = ms.ToArray();
             Paths[path] = () => new MemoryStream(buffer);
             _createdTime[path] = DateTime.UtcNow;
         }

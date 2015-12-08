@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Configuration;
 using System.Web;
@@ -9,7 +12,7 @@ namespace NuGet.Server.Infrastructure
 {
     public class PackageUtility
     {
-        private static Lazy<string> _packagePhysicalPath = new Lazy<string>(ResolvePackagePath);
+        private static readonly Lazy<string> _packagePhysicalPath = new Lazy<string>(ResolvePackagePath);
 
         public static string PackagePhysicalPath
         {
@@ -23,16 +26,16 @@ namespace NuGet.Server.Infrastructure
         {
             var routesValues = new RouteValueDictionary { 
                 { "packageId", package.Id },
-                { "version", package.Version.ToString() } 
+                { "version", package.Version } 
             };
 
             var context = HttpContext.Current;
 
-            RouteBase route = RouteTable.Routes["DownloadPackage"];
+            var route = RouteTable.Routes["DownloadPackage"];
 
             var vpd = route.GetVirtualPath(context.Request.RequestContext, routesValues);
 
-            string applicationPath = Helpers.EnsureTrailingSlash(context.Request.ApplicationPath);
+            var applicationPath = Helpers.EnsureTrailingSlash(context.Request.ApplicationPath);
 
             return applicationPath + vpd.VirtualPath;
         }
@@ -41,7 +44,7 @@ namespace NuGet.Server.Infrastructure
         {
             // The packagesPath could be an absolute path (rooted and use as is)
             // or a virtual path (and use as a virtual path)
-            string path = ConfigurationManager.AppSettings["packagesPath"];
+            var path = ConfigurationManager.AppSettings["packagesPath"];
 
             if (String.IsNullOrEmpty(path))
             {

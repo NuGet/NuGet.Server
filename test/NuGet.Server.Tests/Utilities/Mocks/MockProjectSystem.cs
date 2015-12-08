@@ -1,16 +1,19 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Versioning;
 
-namespace NuGet.Test.Mocks
+namespace NuGet.Server.Tests.Utilities.Mocks
 {
     public class MockProjectSystem : MockFileSystem, IProjectSystem
     {
         private FrameworkName _frameworkName;
-        private HashSet<string> _topImports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private HashSet<string> _bottomImports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private HashSet<string> _excludedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _topImports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _bottomImports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _excludedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string _projectName;
 
         public MockProjectSystem()

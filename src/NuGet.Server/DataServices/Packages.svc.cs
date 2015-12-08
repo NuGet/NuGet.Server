@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.Data.Services;
@@ -7,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.ServiceModel.Web;
 using System.Web;
-using Ninject;
 using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server.DataServices
@@ -22,7 +24,7 @@ namespace NuGet.Server.DataServices
             {
                 // It's bad to use the container directly but we aren't in the loop when this 
                 // class is created
-                return NinjectBootstrapper.Kernel.Get<IServerPackageRepository>();
+                return ServiceResolver.Resolve<IServerPackageRepository>();
             }
         }
 
@@ -68,7 +70,7 @@ namespace NuGet.Server.DataServices
                             : HttpContext.Current.Request.Url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
 
             // the URI need to ends with a '/' to be correctly merged so we add it to the application if it 
-            string downloadUrl = PackageUtility.GetPackageDownloadUrl(package);
+            var downloadUrl = PackageUtility.GetPackageDownloadUrl(package);
             return new Uri(new Uri(rootUrl), downloadUrl);
         }
 
@@ -112,7 +114,7 @@ namespace NuGet.Server.DataServices
         [WebGet]
         public IQueryable<Package> Search(string searchTerm, string targetFramework, bool includePrerelease, bool? includeDelisted)
         {
-            IEnumerable<string> targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+            var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
 
             return Repository.Search(searchTerm, targetFrameworks, includePrerelease)
                 .Select(Repository.GetMetadataPackage)
@@ -153,13 +155,13 @@ namespace NuGet.Server.DataServices
             }
 
             var packagesToUpdate = new List<IPackageMetadata>();
-            for (int i = 0; i < idValues.Length; i++)
+            for (var i = 0; i < idValues.Length; i++)
             {
                 packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = new SemanticVersion(versionValues[i]) });
             }
 
             var versionConstraintsList = new IVersionSpec[versionConstraintValues.Length];
-            for (int i = 0; i < versionConstraintsList.Length; i++)
+            for (var i = 0; i < versionConstraintsList.Length; i++)
             {
                 if (!String.IsNullOrEmpty(versionConstraintValues[i]))
                 {
