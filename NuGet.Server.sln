@@ -11,9 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		NuGet.ruleset = NuGet.ruleset
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "src\Server\Server.csproj", "{793B20A9-E263-4B54-BB31-305B602087CE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server", "src\NuGet.Server\NuGet.Server.csproj", "{793B20A9-E263-4B54-BB31-305B602087CE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server.Test", "test\Server.Test\Server.Test.csproj", "{92D18050-3867-4E39-B305-9F9870F66F5E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.Tests", "test\NuGet.Server.Tests\NuGet.Server.Tests.csproj", "{92D18050-3867-4E39-B305-9F9870F66F5E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

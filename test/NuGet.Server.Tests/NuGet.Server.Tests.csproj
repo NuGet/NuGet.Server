@@ -5,8 +5,8 @@
     <ProjectGuid>{92D18050-3867-4E39-B305-9F9870F66F5E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Server.Test</RootNamespace>
-    <AssemblyName>Server.Test</AssemblyName>
+    <RootNamespace>NuGet.Server.Tests</RootNamespace>
+    <AssemblyName>NuGet.Server.Tests</AssemblyName>
     <ProjectTypeGuids>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
   </PropertyGroup>
   <ItemGroup>
@@ -58,9 +58,9 @@
     <Compile Include="Utilities\PathFixUtility.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Server\Server.csproj">
+    <ProjectReference Include="..\..\src\NuGet.Server\NuGet.Server.csproj">
       <Project>{793B20A9-E263-4B54-BB31-305B602087CE}</Project>
-      <Name>Server</Name>
+      <Name>NuGet.Server</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
