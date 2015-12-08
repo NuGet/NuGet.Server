@@ -16,7 +16,7 @@
           <frameworkAssembly assemblyName="System.Data.Services" />
         </frameworkAssemblies>
         <dependencies>
-            <dependency id="NuGet.Core" version="$version$" />
+            <dependency id="NuGet.Core" version="2.10.1" />
         </dependencies>
         <releaseNotes>The NuGet.Server.dll assembly in this package is now strong-name signed.</releaseNotes>
     </metadata>
