@@ -56,8 +56,8 @@ namespace NuGet.Server.DataServices
             Language = package.Language;
 
             // set the latest flags based on the derived data
-            IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion;
-            IsLatestVersion = package.IsLatestVersion;
+            IsAbsoluteLatestVersion = derivedPackageData.IsAbsoluteLatestVersion;
+            IsLatestVersion = derivedPackageData.IsLatestVersion;
         }
 
         internal string FullPath

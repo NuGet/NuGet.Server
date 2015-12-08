@@ -2,88 +2,93 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using Moq;
 using NuGet.Server.Infrastructure;
-using NuGet.Server.Tests.Utilities.Mocks;
+using NuGet.Server.Tests.Infrastructure;
 using Xunit;
 
 namespace NuGet.Server.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        private const string EnablePersistNupkgHash = "enablePersistNupkgHash";
+        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        {
+            var fileSystem = new PhysicalFileSystem(path);
+            var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
+
+            if (setupRepository != null)
+            {
+                setupRepository(expandedPackageRepository);
+            }
+
+            var serverRepository = new ServerPackageRepository(fileSystem, expandedPackageRepository, getSetting);
+            serverRepository.GetPackagesWithDerivedData(); // caches the files
+
+            return serverRepository;
+        }
 
         [Fact]
         public void ServerPackageRepositoryRemovePackage()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.11"));
+                    repository.AddPackage(CreatePackage("test", "1.9"));
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "1.11");
-            AddPackage(mockProjectSystem, "test", "1.9");
-            AddPackage(mockProjectSystem, "test", "2.0-alpha");
+                // Act
+                serverRepository.RemovePackage(CreateMockPackage("test", "1.11"));
+                serverRepository.RemovePackage(CreateMockPackage("test", "2.0-alpha"));
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
+                // Assert
+                Assert.Equal(1, packages.Count());
+                Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal("1.9", packages.First(p => p.IsLatestVersion).Version);
 
-            var package = CreatePackage("test", "1.11");
-            var package2 = CreatePackage("test", "2.0-alpha");
-
-            // call to cache the first time
-            // ReSharper disable once RedundantAssignment
-            var packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Act
-            serverRepository.RemovePackage(package);
-            serverRepository.RemovePackage(package2);
-            packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Assert
-            Assert.Equal(1, packages.Count());
-            Assert.Equal(1, packages.Where(p => p.IsLatestVersion).Count());
-            Assert.Equal("1.9", packages.Where(p => p.IsLatestVersion).First().Version);
-
-            Assert.Equal(1, packages.Where(p => p.IsAbsoluteLatestVersion).Count());
-            Assert.Equal("1.9", packages.Where(p => p.IsAbsoluteLatestVersion).First().Version);
+                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
+                Assert.Equal("1.9", packages.First(p => p.IsAbsoluteLatestVersion).Version);
+            }
         }
 
         [Fact]
         public void ServerPackageRepositorySearch()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.0"));
+                    repository.AddPackage(CreatePackage("test2", "1.0"));
+                    repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test4", "2.0"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "1.0");
-            AddPackage(mockProjectSystem, "test2", "1.0");
-            AddPackage(mockProjectSystem, "test3", "1.0-alpha");
-            AddPackage(mockProjectSystem, "test4", "2.0");
+                // Act
+                var valid = serverRepository.Search("test3", true);
+                var invalid = serverRepository.Search("test3", false);
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var valid = serverRepository.Search("test3", true);
-            var invalid = serverRepository.Search("test3", false);
-
-            // Assert
-            Assert.Equal("test3", valid.First().Id);
-            Assert.Equal(0, invalid.Count());
+                // Assert
+                Assert.Equal("test3", valid.First().Id);
+                Assert.Equal(0, invalid.Count());
+            }
         }
 
         [Fact]
         public void ServerPackageRepositorySearchUnlisted()
-        {   
-            var tempPath = Path.GetTempPath();
-            var workingDirectory = Path.Combine(tempPath, Guid.NewGuid().ToString());
-
-            try
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                // create the server repo, from a directory containing a package.
-                Func<string, bool, bool> settingsFunc = (key, defaultValue) =>
+                Func<string, bool, bool> getSetting = (key, defaultValue) =>
                 {
                     if (key == "enableDelisting")
                     {
@@ -92,41 +97,32 @@ namespace NuGet.Server.Tests
                     return defaultValue;
                 };
 
-                CreateDirectory(workingDirectory);
-              
-                var fileSystem = new PhysicalFileSystem(workingDirectory);
-                var serverRepository = new ServerPackageRepository(
-                    fileSystem,
-                    GetHashProvider().Object,
-                    settingsFunc);
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0"));
+                }, getSetting);
 
+                // Assert base setup
                 var packages = serverRepository.Search("test1", true).ToList();
                 Assert.Equal(1, packages.Count);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
 
-                // delist the package
+                // Delist the package
                 serverRepository.RemovePackage("test1", new SemanticVersion("1.0"));
 
-                // verify that the package is not returned by search
-                packages = serverRepository.Search("test1", true).ToList();
+                // Verify that the package is not returned by search
+                packages = serverRepository.Search("test1", allowPrereleaseVersions: true).ToList();
                 Assert.Equal(0, packages.Count);
 
                 // Act: search with includeDelisted=true
-                packages = serverRepository.Search(
-                    "test1", 
-                    targetFrameworks: Enumerable.Empty<string>(),
-                    allowPrereleaseVersions: true).ToList();
+                packages = serverRepository.GetPackages().ToList();
 
-                // Verify
+                // Assert
                 Assert.Equal(1, packages.Count);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
-            }
-            finally
-            {
-                // Cleanup
-                DeleteDirectory(workingDirectory);
+                Assert.False(packages[0].Listed);
             }
         }
 
@@ -134,265 +130,196 @@ namespace NuGet.Server.Tests
         [Fact]
         public void ServerPackageRepositoryFindPackageById()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
-
-            AddPackage(mockProjectSystem, "test", "1.0");
-            AddPackage(mockProjectSystem, "test2", "1.0");
-            AddPackage(mockProjectSystem, "test3", "1.0-alpha");
-            AddPackage(mockProjectSystem, "test4", "2.0");
-
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var valid = serverRepository.FindPackagesById("test");
-            var invalid = serverRepository.FindPackagesById("bad");
-
-            // Assert
-            Assert.Equal("test", valid.First().Id);
-            Assert.Equal(0, invalid.Count());
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void ServerPackageRepositoryPersistHashTest(bool enablePersistNupkgHash)
-        {
-            const int nbInvalidate = 3;
-            const int nbPackages = 2;
-
-            var settings = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
+            using (var temporaryDirectory = new TemporaryDirectory())
             {
-               { EnablePersistNupkgHash, enablePersistNupkgHash }
-            };
-
-            // Arrange.
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
-            var hashProvider = GetHashProvider();
-
-            AddPackage(mockProjectSystem, "test", "1.11");
-            AddPackage(mockProjectSystem, "test", "1.3");
-
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem, hashProvider.Object, settings);
-            // First call.
-            var packagesFirstCall = serverRepository.GetPackagesWithDerivedData().OrderBy(p => p.Id + "." + p.Version).ToList();
-            Assert.Equal(nbPackages, packagesFirstCall.Count);
-
-            // Subsequent calls where we invalidate the cache.
-            for (var j = 0; j < nbInvalidate; j++)
-            {
-                // Invalidate cache.
-                serverRepository.InvalidatePackages();
-
-                var packagesSubsequentCall = serverRepository.GetPackagesWithDerivedData().OrderBy(p => p.Id + "." + p.Version).ToList();
-                Assert.Equal(nbPackages, packagesSubsequentCall.Count);
-
-                for (var i = 0; i < nbPackages; i++)
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
                 {
-                    // Verify that we're getting the same values for hash and size after invalidating cache (both lists are sorted).
-                    Assert.Equal(packagesFirstCall[i].PackageHash, packagesSubsequentCall[i].PackageHash);
-                    Assert.Equal(packagesFirstCall[i].PackageSize, packagesSubsequentCall[i].PackageSize);
-                }
+                    repository.AddPackage(CreatePackage("test", "1.0"));
+                    repository.AddPackage(CreatePackage("test2", "1.0"));
+                    repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test4", "2.0"));
+                });
 
-                // Verify that when and only when hash persisting is turned on, the hash is preserved to disk, 
-                // ensuring the information is preserved when process is recycled.
-                var hashFiles = mockProjectSystem.Object.GetFiles(string.Empty, "*hash", true);
-                Assert.Equal(enablePersistNupkgHash ? nbPackages : 0, hashFiles.Count());
+                // Act
+                var valid = serverRepository.FindPackagesById("test");
+                var invalid = serverRepository.FindPackagesById("bad");
+
+                // Assert
+                Assert.Equal("test", valid.First().Id);
+                Assert.Equal(0, invalid.Count());
             }
-
-            // Verify that hashes are always (re)computed when enablePersistNupkgHash is turned off, and at most once per package otherwise.
-            // also verify that Streams are used instead of byte arrays (prone to OOM) to compute hashes.
-            var expectedHashProviderCallCount = enablePersistNupkgHash ? nbPackages : nbPackages * (nbInvalidate + 1);
-            hashProvider.Verify(h => h.CalculateHash(It.IsAny<Stream>()), Times.Exactly(expectedHashProviderCallCount));
-            hashProvider.Verify(h => h.CalculateHash(It.IsAny<byte[]>()), Times.Never);
         }
 
         [Fact]
         public void ServerPackageRepositoryFindPackage()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.0"));
+                    repository.AddPackage(CreatePackage("test2", "1.0"));
+                    repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test4", "2.0"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "1.0");
-            AddPackage(mockProjectSystem, "test2", "1.0");
-            AddPackage(mockProjectSystem, "test3", "1.0-alpha");
-            AddPackage(mockProjectSystem, "test4", "2.0");
+                // Act
+                var valid = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
+                var invalid = serverRepository.FindPackage("bad", new SemanticVersion("1.0"));
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var valid = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
-            var invalid = serverRepository.FindPackage("bad", new SemanticVersion("1.0"));
-
-            // Assert
-            Assert.Equal("test", valid.Id);
-            Assert.Null(invalid);
+                // Assert
+                Assert.Equal("test", valid.Id);
+                Assert.Null(invalid);
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryMultipleIds()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "0.9"));
+                    repository.AddPackage(CreatePackage("test", "1.0"));
+                    repository.AddPackage(CreatePackage("test2", "1.0"));
+                    repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test4", "2.0"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "0.9");
-            AddPackage(mockProjectSystem, "test", "1.0");
-            AddPackage(mockProjectSystem, "test2", "1.0");
-            AddPackage(mockProjectSystem, "test3", "1.0-alpha");
-            AddPackage(mockProjectSystem, "test4", "2.0");
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Assert
-            Assert.Equal(4, packages.Where(p => p.IsAbsoluteLatestVersion).Count());
-            Assert.Equal(3, packages.Where(p => p.IsLatestVersion).Count());
-            Assert.Equal(1, packages.Where(p => !p.IsAbsoluteLatestVersion).Count());
-            Assert.Equal(2, packages.Where(p => !p.IsLatestVersion).Count());
+                // Assert
+                Assert.Equal(4, packages.Count(p => p.IsAbsoluteLatestVersion));
+                Assert.Equal(3, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal(1, packages.Count(p => !p.IsAbsoluteLatestVersion));
+                Assert.Equal(2, packages.Count(p => !p.IsLatestVersion));
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryIsAbsoluteLatest()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.1-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.2-beta"));
+                    repository.AddPackage(CreatePackage("test", "2.3"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "2.0-alpha");
-            AddPackage(mockProjectSystem, "test", "2.1-alpha");
-            AddPackage(mockProjectSystem, "test", "2.2-beta");
-            AddPackage(mockProjectSystem, "test", "2.3");
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Assert
-            Assert.Equal(1, packages.Where(p => p.IsAbsoluteLatestVersion).Count());
-            Assert.Equal("2.3", packages.Where(p => p.IsAbsoluteLatestVersion).First().Version);
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
+                Assert.Equal("2.3", packages.First(p => p.IsAbsoluteLatestVersion).Version);
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryIsLatestOnlyPreRel()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.1-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.2-beta"));
+                });
+                
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            AddPackage(mockProjectSystem, "test", "2.0-alpha");
-            AddPackage(mockProjectSystem, "test", "2.1-alpha");
-            AddPackage(mockProjectSystem, "test", "2.2-beta");
-
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Assert
-            Assert.Equal(0, packages.Where(p => p.IsLatestVersion).Count());
+                // Assert
+                Assert.Equal(0, packages.Count(p => p.IsLatestVersion));
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryIsLatest()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.11"));
+                    repository.AddPackage(CreatePackage("test", "1.9"));
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                });
 
-            AddPackage(mockProjectSystem, "test", "1.11");
-            AddPackage(mockProjectSystem, "test", "1.9");
-            AddPackage(mockProjectSystem, "test", "2.0-alpha");
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            // Act
-            var packages = serverRepository.GetPackagesWithDerivedData();
-
-            // Assert
-            Assert.Equal(1, packages.Where(p => p.IsLatestVersion).Count());
-            Assert.Equal("1.11", packages.Where(p => p.IsLatestVersion).First().Version);
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version);
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryReadsDerivedData()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
-            var package = new PackageBuilder() { Id = "Test", Version = new SemanticVersion("1.0"), Description = "Description" };
-            var mockFile = new Mock<IPackageFile>();
-            mockFile.Setup(m => m.Path).Returns("foo");
-            mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
-            package.Files.Add(mockFile.Object);
-            package.Authors.Add("Test Author");
-            var memoryStream = new MemoryStream();
-            package.Save(memoryStream);
-            memoryStream.Seek(0, SeekOrigin.Begin);
-            mockProjectSystem.Object.AddFile("foo.nupkg");
-            mockProjectSystem.Setup(c => c.OpenFile(It.IsAny<string>())).Returns(() => new MemoryStream(memoryStream.ToArray()));
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var package = CreatePackage("test", "1.0");
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(package);
+                });
 
-            // Act
-            var packages = serverRepository.GetPackagesWithDerivedData();
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
 
-            // Assert
-            var data = memoryStream.ToArray();
-            Assert.Equal(data.Length, packages.Single().PackageSize);
-            Assert.Equal(data.Select(Invert).ToArray(), Convert.FromBase64String(packages.Single().PackageHash).ToArray());
-
-            //CollectionAssert.AreEquivalent(data.Select(Invert).ToArray(), Convert.FromBase64String(packages.Single().PackageHash));
-            Assert.Equal(data.Length, packages.Single().PackageSize);
+                // Assert
+                Assert.Equal(package.GetStream().Length, packages.Single().PackageSize);
+            }
         }
 
         [Fact]
         public void ServerPackageRepositoryEmptyRepo()
         {
-            // Arrange
-            var mockProjectSystem = new Mock<MockProjectSystem>() { CallBase = true };
-
-            var serverRepository = CreateServerPackageRepository(mockProjectSystem);
-
-            var package = CreatePackage("test", "1.0");
-
-            // Act
-            var findPackage = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
-            var findPackagesById = serverRepository.FindPackagesById("test");
-            var getMetadataPackage = serverRepository.GetMetadataPackage(package);
-            var getPackages = serverRepository.GetPackages().ToList();
-            var getPackagesWithDerivedData = serverRepository.GetPackagesWithDerivedData().ToList();
-            var getUpdates = serverRepository.GetUpdates(Enumerable.Empty<IPackageName>(), true, true, Enumerable.Empty<FrameworkName>(), Enumerable.Empty<IVersionSpec>());
-            var search = serverRepository.Search("test", true).ToList();
-            var source = serverRepository.Source;
-
-            // Assert
-            Assert.Null(findPackage);
-            Assert.Empty(findPackagesById);
-            Assert.Null(getMetadataPackage);
-            Assert.Empty(getPackages);
-            Assert.Null(getMetadataPackage);
-            Assert.Empty(getPackagesWithDerivedData);
-            Assert.Empty(getUpdates);
-            Assert.Empty(search);
-            Assert.NotEmpty(source);
-        }
-
-        private static ServerPackageRepository CreateServerPackageRepository(Mock<MockProjectSystem> mockProjectSystem, IHashProvider hashProvider = null, IDictionary<string, bool> settings = null)
-        {
-            Func<string, bool, bool> settingsFunc = null;
-            if (settings != null)
+            using (var temporaryDirectory = new TemporaryDirectory())
             {
-                settingsFunc = (key, defaultValue) =>
-                {
-                    bool ret;
-                    return settings.TryGetValue(key, out ret) ? ret : defaultValue;
-                };
+                // Arrange
+                var package = CreatePackage("test", "1.0");
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
+
+                // Act
+                var findPackage = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
+                var findPackagesById = serverRepository.FindPackagesById("test");
+                var getMetadataPackage = serverRepository.GetMetadataPackage(package);
+                var getPackages = serverRepository.GetPackages().ToList();
+                var getPackagesWithDerivedData = serverRepository.GetPackagesWithDerivedData().ToList();
+                var getUpdates = serverRepository.GetUpdates(Enumerable.Empty<IPackageName>(), true, true, Enumerable.Empty<FrameworkName>(), Enumerable.Empty<IVersionSpec>());
+                var search = serverRepository.Search("test", true).ToList();
+                var source = serverRepository.Source;
+
+                // Assert
+                Assert.Null(findPackage);
+                Assert.Empty(findPackagesById);
+                Assert.Null(getMetadataPackage);
+                Assert.Empty(getPackages);
+                Assert.Null(getMetadataPackage);
+                Assert.Empty(getPackagesWithDerivedData);
+                Assert.Empty(getUpdates);
+                Assert.Empty(search);
+                Assert.NotEmpty(source);
             }
-
-            var fileSystem = mockProjectSystem.Object as IFileSystem;
-            return new ServerPackageRepository(fileSystem,
-                hashProvider ?? GetHashProvider().Object, settingsFunc);
         }
-
-        private static IPackage CreatePackage(string id, string version)
+        
+        private static IPackage CreateMockPackage(string id, string version)
         {
             var package = new Mock<IPackage>();
             package.Setup(p => p.Id).Returns(id);
@@ -403,96 +330,26 @@ namespace NuGet.Server.Tests
             return package.Object;
         }
 
-        private void AddPackage(Mock<MockProjectSystem> mockProjectSystem, string id, string version)
+        private IPackage CreatePackage(string id, string version)
         {
-            var name = string.Format(CultureInfo.InvariantCulture, "{0}.{1}.nupkg", id, version);
-
-            var package = new PackageBuilder() { Id = id, Version = new SemanticVersion(version), Description = "Description" };
-            var mockFile = new Mock<IPackageFile>();
-            mockFile.Setup(m => m.Path).Returns(name);
-            mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
-            package.Files.Add(mockFile.Object);
-            package.Authors.Add("Test Author");
-            var memoryStream = new MemoryStream();
-            package.Save(memoryStream);
-            memoryStream.Seek(0, SeekOrigin.Begin);
-            mockProjectSystem.Object.AddFile(name, memoryStream);
-        }
-
-        private static Mock<IHashProvider> GetHashProvider()
-        {
-            var hashProvider = new Mock<IHashProvider>();
-            hashProvider.Setup(c => c.CalculateHash(It.IsAny<byte[]>())).Returns((byte[] value) => value.Select(Invert).ToArray());
-            hashProvider.Setup(c => c.CalculateHash(It.IsAny<Stream>())).Returns((Stream value) => value.ReadAllBytes().Select(Invert).ToArray());
-
-            return hashProvider;
-        }
-
-        private static byte Invert(byte value)
-        {
-            return (byte)~value;
-        }
-
-        public static string CreatePackage(string id, string version, string outputDirectory,
-            Action<PackageBuilder> additionalAction = null)
-        {
-            var builder = new PackageBuilder()
+            var package = new PackageBuilder
             {
                 Id = id,
                 Version = new SemanticVersion(version),
-                Description = "Descriptions",
+                Description = "Description",
+                Authors = { "Test Author" }
             };
-            builder.Authors.Add("test");
-            builder.Files.Add(CreatePackageFile(@"content\test1.txt"));
-            if (additionalAction != null)
-            {
-                additionalAction(builder);
-            }
 
-            var packageFileName = Path.Combine(outputDirectory, id + "." + version + ".nupkg");
-            using (var stream = new FileStream(packageFileName, FileMode.CreateNew))
-            {
-                builder.Save(stream);
-            }
+            var mockFile = new Mock<IPackageFile>();
+            mockFile.Setup(m => m.Path).Returns("foo");
+            mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
+            package.Files.Add(mockFile.Object);
 
-            return packageFileName;
-        }
+            var packageStream = new MemoryStream();
+            package.Save(packageStream);
+            packageStream.Seek(0, SeekOrigin.Begin);
 
-        private static IPackageFile CreatePackageFile(string name)
-        {
-            var file = new Mock<IPackageFile>();
-            file.SetupGet(f => f.Path).Returns(name);
-            file.Setup(f => f.GetStream()).Returns(new MemoryStream());
-
-            string effectivePath;
-            var fx = VersionUtility.ParseFrameworkNameFromFilePath(name, out effectivePath);
-            file.SetupGet(f => f.EffectivePath).Returns(effectivePath);
-            file.SetupGet(f => f.TargetFramework).Returns(fx);
-
-            return file.Object;
-        }
-
-        /// <summary>
-        /// Creates the specified directory. If it exists, it's first deleted before 
-        /// it's created. Thus, the directory is guaranteed to be empty.
-        /// </summary>
-        /// <param name="directory">The directory to be created.</param>
-        private static void CreateDirectory(string directory)
-        {
-            DeleteDirectory(directory);
-            Directory.CreateDirectory(directory);
-        }
-
-        /// <summary>
-        /// Deletes the specified directory.
-        /// </summary>
-        /// <param name="directory">The directory to be deleted.</param>
-        private static void DeleteDirectory(string directory)
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
+            return new ZipPackage(packageStream);
         }
     }
 }

@@ -41,7 +41,7 @@ namespace NuGet.Server.Infrastructure
         {
         }
 
-        public ServerPackageRepository(IFileSystem fileSystem, IHashProvider hashProvider, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, IHashProvider hashProvider, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -55,6 +55,24 @@ namespace NuGet.Server.Infrastructure
 
             _fileSystem = fileSystem;
             _expandedPackageRepository = new ExpandedPackageRepository(fileSystem, hashProvider);
+
+            _getSetting = getSetting ?? GetBooleanAppSetting;
+        }
+
+        internal ServerPackageRepository(IFileSystem fileSystem, ExpandedPackageRepository innerRepository, Func<string, bool, bool> getSetting = null)
+        {
+            if (fileSystem == null)
+            {
+                throw new ArgumentNullException("fileSystem");
+            }
+
+            if (innerRepository == null)
+            {
+                throw new ArgumentNullException("innerRepository");
+            }
+
+            _fileSystem = fileSystem;
+            _expandedPackageRepository = innerRepository;
 
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
@@ -149,7 +167,7 @@ namespace NuGet.Server.Infrastructure
 
         private void AddPackagesFromDropFolder()
         {
-            _fileSystemWatcher.EnableRaisingEvents = false;
+            MonitorFileSystem(true);
 
             try
             {
@@ -171,7 +189,7 @@ namespace NuGet.Server.Infrastructure
             }
             finally
             {
-                _fileSystemWatcher.EnableRaisingEvents = true;
+                MonitorFileSystem(true);
             }
         }
 
@@ -271,7 +289,7 @@ namespace NuGet.Server.Infrastructure
                             if (_fileSystemWatcher == null)
                             {
                                 // first time we come here, attach the file system watcher and scan the drop folder 
-                                StartMonitoringFileSystem();
+                                MonitorFileSystem(true);
                                 AddPackagesFromDropFolder();
                             }
 
@@ -289,7 +307,7 @@ namespace NuGet.Server.Infrastructure
         /// </summary>
         private IDictionary<IPackage, DerivedPackageData> BuildCache()
         {
-            _fileSystemWatcher.EnableRaisingEvents = false;
+            MonitorFileSystem(false);
 
             try
             {
@@ -397,7 +415,7 @@ namespace NuGet.Server.Infrastructure
             }
             finally
             {
-                _fileSystemWatcher.EnableRaisingEvents = true;
+                MonitorFileSystem(true);
             }
         }
 
@@ -409,6 +427,25 @@ namespace NuGet.Server.Infrastructure
             lock (_syncLock)
             { 
                 _packages = null;
+            }
+        }
+
+        private void MonitorFileSystem(bool monitor)
+        {
+            if (_fileSystemWatcher != null)
+            {
+                _fileSystemWatcher.EnableRaisingEvents = monitor;
+            }
+            else
+            {
+                if (monitor)
+                {
+                    StartMonitoringFileSystem();
+                }
+                else
+                {
+                    StopMonitoringFileSystem();
+                }
             }
         }
         

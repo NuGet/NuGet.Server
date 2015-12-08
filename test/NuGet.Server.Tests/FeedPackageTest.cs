@@ -20,10 +20,14 @@ namespace NuGet.Server.Tests
                                              "AssemblyReferences", "FrameworkAssemblies", "DependencySets", "PackageAssemblyReferences", "LicenseNames",
                                              "LicenseNameCollection", "LicenseReportUrl"
             };
-            var feedPackageProperties = new HashSet<string>(typeof(DataServices.Package).GetProperties().Select(p => p.Name), StringComparer.Ordinal);
-            var dataServiceProperties = typeof(DataServicePackage).GetProperties()
-                                                                  .Select(p => p.Name)
-                                                                  .ToList();
+
+            var feedPackageProperties = new HashSet<string>(
+                typeof(DataServices.Package).GetProperties().Select(p => p.Name), StringComparer.Ordinal);
+
+            var dataServiceProperties = typeof(DataServicePackage)
+                .GetProperties()
+                .Select(p => p.Name)
+                .ToList();
 
             // Assert
             // Assert.Equal(feedPackageProperties.Count, dataServiceProperties.Count);
@@ -33,8 +37,10 @@ namespace NuGet.Server.Tests
                 {
                     continue;
                 }
-                Assert.True(feedPackageProperties.Contains(property), string.Format(CultureInfo.InvariantCulture,
-                    "Property {0} could not be found in NuGet.Server package.", property));
+
+                Assert.True(feedPackageProperties.Contains(property), 
+                    string.Format(CultureInfo.InvariantCulture,
+                        "Property {0} could not be found in NuGet.Server package.", property));
             }
         }
     }
