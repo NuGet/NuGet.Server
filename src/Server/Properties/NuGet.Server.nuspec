@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package>
+    <metadata minClientVersion="2.6">
+        <id>$id$</id>
+        <version>$version$</version>
+        <description>$description$</description>
+        <authors>.NET Foundation</authors>
+        <owners>$author$</owners>
+        <licenseUrl>http://nuget.codeplex.com/license</licenseUrl>
+        <projectUrl>http://nuget.codeplex.com</projectUrl>
+        <copyright>$copyright$</copyright>
+        <frameworkAssemblies>
+          <frameworkAssembly assemblyName="System.ServiceModel" />
+          <frameworkAssembly assemblyName="System.ServiceModel.Web" />
+          <frameworkAssembly assemblyName="System.ServiceModel.Activation" />
+          <frameworkAssembly assemblyName="System.Data.Services" />
+        </frameworkAssemblies>
+        <dependencies>
+            <dependency id="NuGet.Core" version="$version$" />
+        </dependencies>
+        <releaseNotes>The NuGet.Server.dll assembly in this package is now strong-name signed.</releaseNotes>
+    </metadata>
+</package>
