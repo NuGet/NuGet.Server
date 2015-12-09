@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
@@ -34,6 +35,49 @@ namespace NuGet.Server.Tests
             serverRepository.GetPackagesWithDerivedData(); // caches the files
 
             return serverRepository;
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryAddsPackagesFromDropFolderOnStart()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var packagesToAddToDropFolder = new Dictionary<string, IPackage>
+                {
+                    {"test.1.11.nupkg", CreatePackage("test", "1.11")},
+                    {"test.1.9.nupkg", CreatePackage("test", "1.9")},
+                    {"test.2.0-alpha.nupkg", CreatePackage("test", "2.0-alpha")}
+                };
+                foreach (var packageToAddToDropFolder in packagesToAddToDropFolder)
+                {
+                    using (var stream = File.Create(
+                        Path.Combine(temporaryDirectory.Path, packageToAddToDropFolder.Key)))
+                    {
+                        packageToAddToDropFolder.Value.GetStream().CopyTo(stream);
+                    }
+                }
+
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
+
+                // Act
+                var packages = serverRepository.GetPackagesWithDerivedData();
+
+                // Assert
+                Assert.Equal(packagesToAddToDropFolder.Count, packages.Count());
+                foreach (var packageToAddToDropFolder in packagesToAddToDropFolder)
+                {
+                    var package = packages.FirstOrDefault(
+                            p => p.Id == packageToAddToDropFolder.Value.Id 
+                                && p.Version == packageToAddToDropFolder.Value.Version.ToString());
+
+                    // check the package from drop folder has been added
+                    Assert.NotNull(package); 
+
+                    // check the package in the drop folder has been removed
+                    Assert.False(File.Exists(Path.Combine(temporaryDirectory.Path, packageToAddToDropFolder.Key)));
+                }
+            }
         }
 
         [Fact]
