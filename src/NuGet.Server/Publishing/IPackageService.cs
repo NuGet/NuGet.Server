@@ -14,5 +14,7 @@ namespace NuGet.Server.Publishing
         void DeletePackage(HttpContextBase context);
 
         void DownloadPackage(HttpContextBase context);
+
+        void ClearCache(HttpContextBase context);
     }
 }

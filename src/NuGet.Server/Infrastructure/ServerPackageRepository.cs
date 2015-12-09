@@ -34,7 +34,7 @@ namespace NuGet.Server.Infrastructure
 
         private IDictionary<IPackage, DerivedPackageData> _packages;
 
-        private bool _monitorFileSystem = true;
+        private readonly bool _monitorFileSystem;
         private FileSystemWatcher _fileSystemWatcher;
         
         public ServerPackageRepository(string path, IHashProvider hashProvider, ILogger logger)
@@ -231,7 +231,7 @@ namespace NuGet.Server.Infrastructure
                     _expandedPackageRepository.AddPackage(package);
                     _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
 
-                    InvalidatePackages();
+                    ClearCache();
                 }
                 finally
                 {
@@ -286,7 +286,7 @@ namespace NuGet.Server.Infrastructure
                             _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
                         }
 
-                        InvalidatePackages();
+                        ClearCache();
                     }
                 }
                 finally
@@ -477,12 +477,12 @@ namespace NuGet.Server.Infrastructure
         /// <summary>
         /// Sets the current cache to null so it will be regenerated next time.
         /// </summary>
-        public void InvalidatePackages()
+        public void ClearCache()
         {
             lock (_syncLock)
             {
                 _packages = null;
-                _logger.Log(LogLevel.Info, "Invalidated package cache.");
+                _logger.Log(LogLevel.Info, "Cleared package cache.");
             }
         }
 
@@ -564,7 +564,7 @@ namespace NuGet.Server.Infrastructure
             // Invalidate the cache when a nupkg in the packages folder changes
             // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
             // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
-            InvalidatePackages();
+            ClearCache();
         }
 
         private bool AllowOverrideExistingPackageOnPush

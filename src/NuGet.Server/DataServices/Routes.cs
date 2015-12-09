@@ -49,6 +49,12 @@ namespace NuGet.Server.DataServices
                                new { httpMethod = new HttpMethodConstraint("GET") },
                                context => CreatePackageService().DownloadPackage(context.HttpContext));
 
+            // Route to clear package cache
+            routes.MapDelegate("ClearPackageCache",
+                               "nugetserver/api/clear-cache",
+                               new { httpMethod = new HttpMethodConstraint("GET") },
+                               context => CreatePackageService().ClearCache(context.HttpContext));
+
 #if DEBUG
             // The default route is http://{root}/nuget/Packages
             var factory = new DataServiceHostFactory();

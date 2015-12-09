@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System;
+using System.IO;
 using System.Net;
 using System.Web;
 using System.Web.Routing;
@@ -111,6 +112,25 @@ namespace NuGet.Server.Publishing
             {
                 // Package not found
                 WritePackageNotFound(context, packageId, version);
+            }
+        }
+
+        public void ClearCache(HttpContextBase context)
+        {
+            if (context.Request.IsLocal)
+            {
+                // Clear cache
+                _serverRepository.ClearCache();
+                WriteStatus(context, HttpStatusCode.OK);
+                using (var responseStreamWriter = new StreamWriter(context.Response.OutputStream))
+                {
+                    responseStreamWriter.Write("Server cache has been cleared.");
+                }
+            }
+            else
+            {
+                // Forbidden
+                WriteStatus(context, HttpStatusCode.Forbidden, "Clear cache is only supported for local requests.");
             }
         }
 

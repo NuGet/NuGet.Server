@@ -22,10 +22,9 @@
             <blockquote>
                 <strong><%= Helpers.GetRepositoryUrl(Request.Url, Request.ApplicationPath) %></strong>
             </blockquote>
-            <% if (String.IsNullOrEmpty(ConfigurationManager.AppSettings["apiKey"])) { %>
+            <% if (string.IsNullOrEmpty(ConfigurationManager.AppSettings["apiKey"])) { %>
             To enable pushing packages to this feed using the nuget command line tool (nuget.exe). Set the api key appSetting in web.config.
-            <% } %> 
-            <% else { %>
+            <% } else { %>
             Use the command below to push packages to this feed using the nuget command line tool (nuget.exe).
             <% } %>
             <blockquote>
@@ -34,9 +33,14 @@
         </fieldset>
 
         <% if (Request.IsLocal) { %>
-        <p style="font-size:1.1em">
-            To add packages to the feed put package files (.nupkg files) in the folder "<% = NuGet.Server.Infrastructure.PackageUtility.PackagePhysicalPath%>".
-        </p>
+        <fieldset style="width:800px">
+            <legend><strong>Adding packages</strong></legend>
+
+            To add packages to the feed put package files (.nupkg files) in the folder
+            <code><% = PackageUtility.PackagePhysicalPath %></code><br/><br/>
+
+            Click <a href="<%= VirtualPathUtility.ToAbsolute("~/nugetserver/api/clear-cache") %>">here</a> to clear the package cache.
+        </fieldset>
         <% } %>
     </div>
 </body>
