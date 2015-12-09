@@ -241,7 +241,7 @@ namespace NuGet.Server.Infrastructure
         }
 
         /// <summary>
-        /// Unlist or delete a package
+        /// Unlist or delete a package.
         /// </summary>
         public override void RemovePackage(IPackage package)
         {
@@ -314,7 +314,7 @@ namespace NuGet.Server.Infrastructure
 
         protected virtual void Dispose(bool disposing)
         {
-            StopMonitoringFileSystem();
+            UnregisterFileSystemWatcher();
         }
         
         /// <summary>
@@ -346,9 +346,9 @@ namespace NuGet.Server.Infrastructure
                 return _packages;
             }
         }
-        
+
         /// <summary>
-        /// CreateCache loads all packages and determines additional metadata such as the hash, IsAbsoluteLatestVersion, and IsLatestVersion.
+        /// BuildCache loads all packages and determines additional metadata such as the hash, IsAbsoluteLatestVersion, and IsLatestVersion.
         /// </summary>
         private IDictionary<IPackage, DerivedPackageData> BuildCache()
         {
@@ -501,19 +501,21 @@ namespace NuGet.Server.Infrastructure
             {
                 if (monitor)
                 {
-                    StartMonitoringFileSystem();
+                    RegisterFileSystemWatcher();
                 }
                 else
                 {
-                    StopMonitoringFileSystem();
+                    UnregisterFileSystemWatcher();
                 }
             }
 
             _logger.Log(LogLevel.Verbose, "Monitoring {0} for new packages: {1}", Source, monitor);
         }
-        
-        // Add the file watcher to monitor changes on disk
-        private void StartMonitoringFileSystem()
+
+        /// <summary>
+        /// Registers the file system watcher to monitor changes on disk.
+        /// </summary>
+        private void RegisterFileSystemWatcher()
         {
             // When files are moved around, recreate the package cache
             if (_monitorFileSystem && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
@@ -534,8 +536,10 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        // clean up events
-        private void StopMonitoringFileSystem()
+        /// <summary>
+        /// Unregisters and clears events of the file system watcher to monitor changes on disk.
+        /// </summary>
+        private void UnregisterFileSystemWatcher()
         {
             if (_fileSystemWatcher != null)
             {
