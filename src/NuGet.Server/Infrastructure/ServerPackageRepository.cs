@@ -333,11 +333,14 @@ namespace NuGet.Server.Infrastructure
                         {
                             if (_fileSystemWatcher == null)
                             {
-                                // first time we come here, attach the file system watcher and scan the drop folder 
+                                // first time we come here, attach the file system watcher 
                                 MonitorFileSystem(true);
-                                AddPackagesFromDropFolder();
                             }
 
+                            // add packages from drop folder
+                            AddPackagesFromDropFolder();
+
+                            // build cache
                             _packages = BuildCache();
                         }
                     }
@@ -354,7 +357,7 @@ namespace NuGet.Server.Infrastructure
         {
             _logger.Log(LogLevel.Info, "Start building package cache.");
             MonitorFileSystem(false);
-
+            
             try
             {
                 var cachedPackages = new ConcurrentDictionary<IPackage, DerivedPackageData>();
