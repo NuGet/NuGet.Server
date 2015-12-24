@@ -58,6 +58,9 @@ namespace NuGet.Server.DataServices
             // set the latest flags based on the derived data
             IsAbsoluteLatestVersion = derivedPackageData.IsAbsoluteLatestVersion;
             IsLatestVersion = derivedPackageData.IsLatestVersion;
+
+            Path = derivedPackageData.Path;
+            FullPath = derivedPackageData.FullPath;
         }
 
         internal string FullPath
