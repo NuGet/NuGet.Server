@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System.Data.Services;
 using System.ServiceModel.Activation;
 using System.Web.Routing;
@@ -16,6 +15,7 @@ namespace NuGet.Server.DataServices
     {
         public static void Start()
         {
+            ServiceResolver.SetServiceResolver(new DefaultServiceResolver());
             MapRoutes(RouteTable.Routes);
         }
 

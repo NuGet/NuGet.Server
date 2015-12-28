@@ -1,24 +1,22 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using NuGet.Server.Infrastructure;
+using NuGet.Server.Logging;
 using NuGet.Server.Publishing;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server
 {
     public class DefaultServiceResolver
         : IServiceResolver
     {
-        const string HashAlgorithm = "SHA512";
-
         private readonly IHashProvider _hashProvider;
         private readonly IPackageService _packageService;
         private readonly IServerPackageRepository _packageRepository;
 
         public DefaultServiceResolver()
         {
-            _hashProvider = new CryptoHashProvider(HashAlgorithm);
+            _hashProvider = new CryptoHashProvider(Constants.HashAlgorithm);
 
             _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath,  _hashProvider, new TraceLogger());
 

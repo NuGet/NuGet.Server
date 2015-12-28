@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,7 +9,7 @@ using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using System.Web.Configuration;
 using NuGet.Resources;
-using NuGet.Server.DataServices;
+using NuGet.Server.Logging;
 
 namespace NuGet.Server.Infrastructure
 {
@@ -29,20 +28,20 @@ namespace NuGet.Server.Infrastructure
 
         private readonly IFileSystem _fileSystem;
         private readonly ExpandedPackageRepository _expandedPackageRepository;
-        private readonly ILogger _logger;
+        private readonly Logging.ILogger _logger;
         private readonly Func<string, bool, bool> _getSetting;
 
-        private IDictionary<IPackage, DerivedPackageData> _packages;
+        private HashSet<ServerPackage> _packages;
 
         private readonly bool _monitorFileSystem;
         private FileSystemWatcher _fileSystemWatcher;
         
-        public ServerPackageRepository(string path, IHashProvider hashProvider, ILogger logger)
+        public ServerPackageRepository(string path, IHashProvider hashProvider, Logging.ILogger logger)
             : this(new PhysicalFileSystem(path), true, hashProvider, logger)
         {
         }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, IHashProvider hashProvider, ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, IHashProvider hashProvider, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -62,7 +61,7 @@ namespace NuGet.Server.Infrastructure
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, ExpandedPackageRepository innerRepository, ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -81,16 +80,10 @@ namespace NuGet.Server.Infrastructure
 
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
-
-        public IQueryable<Package> GetPackagesWithDerivedData()
-        {
-            var cache = PackageCache;
-            return cache.Keys.Select(p => new Package(p, cache[p])).AsQueryable();
-        }
-
+        
         public override IQueryable<IPackage> GetPackages()
         {
-            return PackageCache.Keys.AsQueryable();
+            return PackageCache.AsQueryable();
         }
 
         public bool Exists(string packageId, SemanticVersion version)
@@ -109,27 +102,12 @@ namespace NuGet.Server.Infrastructure
             return GetPackages()
                 .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.Id, packageId) == 0);
         }
-
-        /// <summary>
-        /// Gives the Package containing both the IPackage and the derived metadata.
-        /// The returned Package will be null if <paramref name="package" /> no longer exists in the cache.
-        /// </summary>
-        public Package GetMetadataPackage(IPackage package)
-        {
-            DerivedPackageData data;
-            if (PackageCache.TryGetValue(package, out data))
-            {
-                return new Package(package, data);
-            }
-
-            return null;
-        }
-
+        
         public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
         {
             var cache = PackageCache;
 
-            var packages = cache.Keys.AsQueryable()
+            var packages = cache.AsQueryable()
                 .Find(searchTerm)
                 .FilterByPrerelease(allowPrereleaseVersions);
 
@@ -318,10 +296,10 @@ namespace NuGet.Server.Infrastructure
         }
         
         /// <summary>
-        /// Internal package cache containing both the packages and their metadata. 
+        /// Internal package cache containing packages metadata. 
         /// This data is generated if it does not exist already.
         /// </summary>
-        private IDictionary<IPackage, DerivedPackageData> PackageCache
+        private HashSet<ServerPackage> PackageCache
         {
             get
             {
@@ -353,19 +331,19 @@ namespace NuGet.Server.Infrastructure
         /// <summary>
         /// BuildCache loads all packages and determines additional metadata such as the hash, IsAbsoluteLatestVersion, and IsLatestVersion.
         /// </summary>
-        private IDictionary<IPackage, DerivedPackageData> BuildCache()
+        private HashSet<ServerPackage> BuildCache()
         {
             _logger.Log(LogLevel.Info, "Start building package cache.");
             MonitorFileSystem(false);
             
             try
             {
-                var cachedPackages = new ConcurrentDictionary<IPackage, DerivedPackageData>();
+                var cachedPackages = new ConcurrentBag<ServerPackage>();
 
-                var opts = new ParallelOptions {MaxDegreeOfParallelism = 4};
+                var opts = new ParallelOptions { MaxDegreeOfParallelism = 4 };
 
-                var absoluteLatest = new ConcurrentDictionary<string, Tuple<IPackage, DerivedPackageData>>();
-                var latest = new ConcurrentDictionary<string, Tuple<IPackage, DerivedPackageData>>();
+                var absoluteLatest = new ConcurrentDictionary<string, ServerPackage>();
+                var latest = new ConcurrentDictionary<string, ServerPackage>();
 
                 bool enableDelisting = EnableDelisting;
 
@@ -381,17 +359,12 @@ namespace NuGet.Server.Infrastructure
                     var physicalFileSystem = _fileSystem as PhysicalFileSystem;
 
                     // Build package info
-                    var derivedPackageData = new DerivedPackageData()
-                    {
-                        // default to false, these will be set later
-                        IsAbsoluteLatestVersion = false,
-                        IsLatestVersion = false
-                    };
+                    var packageDerivedData = new PackageDerivedData();
 
                     // Read package hash
                     using (var reader = new StreamReader(_fileSystem.OpenFile(hashFileName)))
                     {
-                        derivedPackageData.PackageHash = reader.ReadToEnd().Trim();
+                        packageDerivedData.PackageHash = reader.ReadToEnd().Trim();
                     }
 
                     // Read package info
@@ -400,12 +373,12 @@ namespace NuGet.Server.Infrastructure
                     {
                         // Read package info from file system
                         var fileInfo = new FileInfo(_fileSystem.GetFullPath(packageFileName));
-                        derivedPackageData.PackageSize = fileInfo.Length;
+                        packageDerivedData.PackageSize = fileInfo.Length;
 
-                        derivedPackageData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
-                        derivedPackageData.Created = _fileSystem.GetCreated(packageFileName);
-                        derivedPackageData.Path = packageFileName;
-                        derivedPackageData.FullPath = _fileSystem.GetFullPath(packageFileName);
+                        packageDerivedData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
+                        packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
+                        packageDerivedData.Path = packageFileName;
+                        packageDerivedData.FullPath = _fileSystem.GetFullPath(packageFileName);
 
                         if (enableDelisting && localPackage != null)
                         {
@@ -418,53 +391,58 @@ namespace NuGet.Server.Infrastructure
                         // Read package info from package (slower)
                         using (var stream = package.GetStream())
                         {
-                            derivedPackageData.PackageSize = stream.Length;
+                            packageDerivedData.PackageSize = stream.Length;
                         }
 
-                        derivedPackageData.LastUpdated = DateTime.MinValue;
-                        derivedPackageData.Created = DateTime.MinValue;
+                        packageDerivedData.LastUpdated = DateTime.MinValue;
+                        packageDerivedData.Created = DateTime.MinValue;
                     }
 
                     // TODO: frameworks?
 
-                    // Build cache entry
-                    var entry = new Tuple<IPackage, DerivedPackageData>(package, derivedPackageData);
+                    // Build entry
+                    var serverPackage = new ServerPackage(package, packageDerivedData);
+                    serverPackage.IsAbsoluteLatestVersion = false;
+                    serverPackage.IsLatestVersion = false;
 
                     // Find the latest versions
                     string id = package.Id.ToLowerInvariant();
 
                     // Update with the highest version
-                    absoluteLatest.AddOrUpdate(id, entry,
-                        (oldId, oldEntry) => oldEntry.Item1.Version < entry.Item1.Version ? entry : oldEntry);
+                    absoluteLatest.AddOrUpdate(id, serverPackage,
+                        (oldId, oldEntry) => oldEntry.Version < serverPackage.Version ? serverPackage : oldEntry);
 
                     // Update latest for release versions
                     if (package.IsReleaseVersion())
                     {
-                        latest.AddOrUpdate(id, entry,
-                            (oldId, oldEntry) => oldEntry.Item1.Version < entry.Item1.Version ? entry : oldEntry);
+                        latest.AddOrUpdate(id, serverPackage,
+                            (oldId, oldEntry) => oldEntry.Version < serverPackage.Version ? serverPackage : oldEntry);
                     }
 
                     // Add the package to the cache, it should not exist already
-                    if (cachedPackages.ContainsKey(package))
+                    if (cachedPackages.Contains(serverPackage))
                     {
                         _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
                     }
-                    cachedPackages.AddOrUpdate(package, entry.Item2, (oldPkg, oldData) => oldData);
+                    else
+                    {
+                        cachedPackages.Add(serverPackage);
+                    }
                 });
 
                 // Set additional attributes after visiting all packages
                 foreach (var entry in absoluteLatest.Values)
                 {
-                    entry.Item2.IsAbsoluteLatestVersion = true;
+                    entry.IsAbsoluteLatestVersion = true;
                 }
 
                 foreach (var entry in latest.Values)
                 {
-                    entry.Item2.IsLatestVersion = true;
+                    entry.IsLatestVersion = true;
                 }
 
                 _logger.Log(LogLevel.Info, "Finished building package cache.");
-                return cachedPackages;
+                return new HashSet<ServerPackage>(cachedPackages, PackageEqualityComparer.IdAndVersion);
             }
             catch (Exception ex)
             {
@@ -491,7 +469,7 @@ namespace NuGet.Server.Infrastructure
 
         private void MonitorFileSystem(bool monitor)
         {
-            if (_monitorFileSystem)
+            if (!_monitorFileSystem)
             {
                 return;
             }
@@ -615,7 +593,7 @@ namespace NuGet.Server.Infrastructure
 
         private string GetHashFileName(string packageId, SemanticVersion version)
         {
-            return string.Format(TemplateHashFilename, packageId, version.ToNormalizedString(), Constants.HashFileExtension);
+            return string.Format(TemplateHashFilename, packageId, version.ToNormalizedString(), NuGet.Constants.HashFileExtension);
         }
     }
 }

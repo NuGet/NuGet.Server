@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,10 +28,10 @@ namespace NuGet.Server.Tests
                 fileSystem,
                 monitorFileSystem: false,
                 innerRepository: expandedPackageRepository, 
-                logger: new Server.Infrastructure.NullLogger(),
+                logger: new Logging.NullLogger(),
                 getSetting: getSetting);
 
-            serverRepository.GetPackagesWithDerivedData(); // caches the files
+            serverRepository.GetPackages(); // caches the files
 
             return serverRepository;
         }
@@ -61,7 +60,7 @@ namespace NuGet.Server.Tests
                 var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(packagesToAddToDropFolder.Count, packages.Count());
@@ -69,7 +68,7 @@ namespace NuGet.Server.Tests
                 {
                     var package = packages.FirstOrDefault(
                             p => p.Id == packageToAddToDropFolder.Value.Id 
-                                && p.Version == packageToAddToDropFolder.Value.Version.ToString());
+                                && p.Version == packageToAddToDropFolder.Value.Version);
 
                     // check the package from drop folder has been added
                     Assert.NotNull(package); 
@@ -96,15 +95,15 @@ namespace NuGet.Server.Tests
                 // Act
                 serverRepository.RemovePackage(CreateMockPackage("test", "1.11"));
                 serverRepository.RemovePackage(CreateMockPackage("test", "2.0-alpha"));
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(1, packages.Count());
                 Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("1.9", packages.First(p => p.IsLatestVersion).Version);
+                Assert.Equal("1.9", packages.First(p => p.IsLatestVersion).Version.ToString());
 
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("1.9", packages.First(p => p.IsAbsoluteLatestVersion).Version);
+                Assert.Equal("1.9", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
             }
         }
 
@@ -240,7 +239,7 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(4, packages.Count(p => p.IsAbsoluteLatestVersion));
@@ -265,11 +264,11 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("2.3", packages.First(p => p.IsAbsoluteLatestVersion).Version);
+                Assert.Equal("2.3", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
             }
         }
 
@@ -287,7 +286,7 @@ namespace NuGet.Server.Tests
                 });
                 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(0, packages.Count(p => p.IsLatestVersion));
@@ -308,11 +307,11 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
 
                 // Assert
                 Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version);
+                Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version.ToString());
             }
         }
 
@@ -329,10 +328,12 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackagesWithDerivedData();
+                var packages = serverRepository.GetPackages();
+                var singlePackage = packages.Single() as ServerPackage;
 
                 // Assert
-                Assert.Equal(package.GetStream().Length, packages.Single().PackageSize);
+                Assert.NotNull(singlePackage);
+                Assert.Equal(package.GetStream().Length, singlePackage.PackageSize);
             }
         }
 
@@ -342,15 +343,14 @@ namespace NuGet.Server.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var package = CreatePackage("test", "1.0");
+                CreatePackage("test", "1.0");
                 var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
 
                 // Act
                 var findPackage = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
                 var findPackagesById = serverRepository.FindPackagesById("test");
-                var getMetadataPackage = serverRepository.GetMetadataPackage(package);
                 var getPackages = serverRepository.GetPackages().ToList();
-                var getPackagesWithDerivedData = serverRepository.GetPackagesWithDerivedData().ToList();
+                var getPackagesWithDerivedData = serverRepository.GetPackages().ToList();
                 var getUpdates = serverRepository.GetUpdates(Enumerable.Empty<IPackageName>(), true, true, Enumerable.Empty<FrameworkName>(), Enumerable.Empty<IVersionSpec>());
                 var search = serverRepository.Search("test", true).ToList();
                 var source = serverRepository.Source;
@@ -358,9 +358,7 @@ namespace NuGet.Server.Tests
                 // Assert
                 Assert.Null(findPackage);
                 Assert.Empty(findPackagesById);
-                Assert.Null(getMetadataPackage);
                 Assert.Empty(getPackages);
-                Assert.Null(getMetadataPackage);
                 Assert.Empty(getPackagesWithDerivedData);
                 Assert.Empty(getUpdates);
                 Assert.Empty(search);

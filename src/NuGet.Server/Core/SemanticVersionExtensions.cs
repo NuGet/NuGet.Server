@@ -1,10 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Globalization;
 
-namespace NuGet.Server.Infrastructure
+namespace NuGet.Server
 {
     /// <summary>
     /// Represents a normalized, spec-compatible (with NuGet extensions), Semantic Version as defined at http://semver.org
@@ -21,7 +20,6 @@ namespace NuGet.Server.Infrastructure
                 self.Version.Build,
                 self.Version.Revision > 0 ? ("." + self.Version.Revision.ToString(CultureInfo.InvariantCulture)) : String.Empty,
                 !String.IsNullOrEmpty(self.SpecialVersion) ? ("-" + self.SpecialVersion) : String.Empty);
-
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.IO;
 using System.Net;
@@ -87,21 +86,21 @@ namespace NuGet.Server.Publishing
             var version = new SemanticVersion(routeData.GetRequiredString("version"));
 
             var requestedPackage = _serverRepository.FindPackage(packageId, version);
-
             if (requestedPackage != null)
             {
-                var packageMetadata = _serverRepository.GetMetadataPackage(requestedPackage);
-                context.Response.AddHeader("content-disposition", string.Format("attachment; filename={0}", packageMetadata.Path));
+                context.Response.AddHeader("content-disposition", 
+                    string.Format("attachment; filename={0}.{1}.nupkg", requestedPackage.Id, requestedPackage.Version.ToNormalizedString()));
                 context.Response.ContentType = "binary/octet-stream";
 
-                if (!string.IsNullOrEmpty(packageMetadata.FullPath))
+                var serverPackage = requestedPackage as ServerPackage;
+                if (serverPackage != null && !string.IsNullOrEmpty(serverPackage.FullPath))
                 {
-                    // Physical filesystem - send the file as-is
-                    context.Response.TransmitFile(packageMetadata.FullPath);
+                    // FullPath known - send the file as-is
+                    context.Response.TransmitFile(serverPackage.FullPath);
                 }
                 else
                 {
-                    // Some virtual filesystem - stream it
+                    // FullPath unknown - stream it
                     using (var packageStream = requestedPackage.GetStream())
                     {
                         packageStream.CopyTo(context.Response.OutputStream);
