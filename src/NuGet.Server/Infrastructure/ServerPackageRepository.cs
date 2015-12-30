@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Configuration;
 using NuGet.Resources;
@@ -32,21 +33,19 @@ namespace NuGet.Server.Infrastructure
         private readonly Logging.ILogger _logger;
         private readonly Func<string, bool, bool> _getSetting;
 
-        private HashSet<ServerPackage> _packages;
+        private readonly IServerPackageStore _serverPackageStore;
 
-        private readonly bool _monitorFileSystem;
+        private readonly bool _runBackgroundTasks;
         private FileSystemWatcher _fileSystemWatcher;
-        
-        public ServerPackageRepository(string path, IHashProvider hashProvider, Logging.ILogger logger)
-            : this(new PhysicalFileSystem(path), true, hashProvider, logger)
-        {
-        }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, IHashProvider hashProvider, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        private Timer _persistenceTimer;
+        private Timer _rebuildTimer;
+
+        public ServerPackageRepository(string path, IHashProvider hashProvider, Logging.ILogger logger)
         {
-            if (fileSystem == null)
+            if (string.IsNullOrEmpty(path))
             {
-                throw new ArgumentNullException("fileSystem");
+                throw new ArgumentNullException("path");
             }
 
             if (hashProvider == null)
@@ -54,15 +53,17 @@ namespace NuGet.Server.Infrastructure
                 throw new ArgumentNullException("hashProvider");
             }
 
-            _fileSystem = fileSystem;
-            _monitorFileSystem = monitorFileSystem;
+            _fileSystem = new PhysicalFileSystem(path);
+            _runBackgroundTasks = true;
             _logger = logger ?? new TraceLogger();
-            _expandedPackageRepository = new ExpandedPackageRepository(fileSystem, hashProvider);
+            _expandedPackageRepository = new ExpandedPackageRepository(_fileSystem, hashProvider);
 
-            _getSetting = getSetting ?? GetBooleanAppSetting;
+            _serverPackageStore = new ServerPackageStore(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+
+            _getSetting = GetBooleanAppSetting;
         }
-
-        internal ServerPackageRepository(IFileSystem fileSystem, bool monitorFileSystem, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        
+        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -75,16 +76,38 @@ namespace NuGet.Server.Infrastructure
             }
 
             _fileSystem = fileSystem;
-            _monitorFileSystem = monitorFileSystem;
+            _runBackgroundTasks = runBackgroundTasks;
             _expandedPackageRepository = innerRepository;
             _logger = logger ?? new TraceLogger();
 
+            _serverPackageStore = new ServerPackageStore(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+
             _getSetting = getSetting ?? GetBooleanAppSetting;
         }
-        
+
+        private void SetupBackgroundJobs()
+        {
+            if (!_runBackgroundTasks)
+            {
+                return;
+            }
+
+            _logger.Log(LogLevel.Info, "Registering background jobs...");
+
+            // Persist to package store at given interval (when dirty)
+            _persistenceTimer = new Timer(state => 
+                _serverPackageStore.PersistIfDirty(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+
+            // Rebuild the package store in the background (every hour)
+            _rebuildTimer = new Timer(state =>
+                RebuildPackageStore(), null, TimeSpan.FromSeconds(15), TimeSpan.FromHours(1));
+            
+            _logger.Log(LogLevel.Info, "Finished registering background jobs.");
+        }
+
         public override IQueryable<IPackage> GetPackages()
         {
-            return PackageCache.AsQueryable();
+            return CachedPackages.AsQueryable();
         }
 
         public bool Exists(string packageId, SemanticVersion version)
@@ -106,7 +129,7 @@ namespace NuGet.Server.Infrastructure
         
         public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
         {
-            var cache = PackageCache;
+            var cache = CachedPackages;
 
             var packages = cache.AsQueryable()
                 .Find(searchTerm)
@@ -157,15 +180,19 @@ namespace NuGet.Server.Infrastructure
 
             try
             {
+                var serverPackages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
+
                 foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", false))
                 {
                     try
                     {
+                        // Copy to correct filesystem location
                         var package = new ZipPackage(_fileSystem.OpenFile(packageFile));
-
                         _expandedPackageRepository.AddPackage(package);
-
                         _fileSystem.DeleteFile(packageFile);
+
+                        // Mark for addition to metadata store
+                        serverPackages.Add(CreateServerPackage(package, EnableDelisting));
                     }
                     catch (UnauthorizedAccessException ex)
                     {
@@ -178,6 +205,10 @@ namespace NuGet.Server.Infrastructure
                         _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
                     }
                 }
+
+                // Add packages to metadata store in bulk
+                _serverPackageStore.StoreRange(serverPackages);
+                _serverPackageStore.PersistIfDirty();
 
                 _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
             }
@@ -202,20 +233,23 @@ namespace NuGet.Server.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            lock (_syncLock)
+            MonitorFileSystem(false);
+            try
             {
-                MonitorFileSystem(false);
-                try
+                lock (_syncLock)
                 {
+                    // Copy to correct filesystem location
                     _expandedPackageRepository.AddPackage(package);
-                    _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
 
-                    ClearCache();
+                    // Add to metadata store
+                    _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
+
+                    _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
                 }
-                finally
-                {
-                    MonitorFileSystem(true);
-                }
+            }
+            finally
+            {
+                MonitorFileSystem(true);
             }
         }
 
@@ -243,7 +277,16 @@ namespace NuGet.Server.Infrastructure
 
                                 if (File.Exists(fileName))
                                 {
+                                    // Set "unlisted"
                                     File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
+
+                                    // Update metadata store
+                                    var serverPackage = FindPackage(package.Id, package.Version) as ServerPackage;
+                                    if (serverPackage != null)
+                                    {
+                                        serverPackage.Listed = false;
+                                        _serverPackageStore.Store(serverPackage);
+                                    }
 
                                     // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
                                     // Also, no need to flip hidden attribute on these since only the one from the nupkg is queried.
@@ -260,12 +303,14 @@ namespace NuGet.Server.Infrastructure
                         }
                         else
                         {
+                            // Remove from filesystem
                             _expandedPackageRepository.RemovePackage(package);
+
+                            // Update metadata store
+                            _serverPackageStore.Remove(package.Id, package.Version);
 
                             _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
                         }
-
-                        ClearCache();
                     }
                 }
                 finally
@@ -293,132 +338,97 @@ namespace NuGet.Server.Infrastructure
 
         protected virtual void Dispose(bool disposing)
         {
+            if (_persistenceTimer != null)
+            {
+                _persistenceTimer.Dispose();
+            }
+
+            if (_rebuildTimer != null)
+            {
+                _rebuildTimer.Dispose();
+            }
+
             UnregisterFileSystemWatcher();
+            _serverPackageStore.PersistIfDirty();
         }
         
         /// <summary>
         /// Internal package cache containing packages metadata. 
         /// This data is generated if it does not exist already.
         /// </summary>
-        private HashSet<ServerPackage> PackageCache
+        private IEnumerable<ServerPackage> CachedPackages
         {
             get
             {
-                if (_packages == null)
+                if (!_serverPackageStore.HasPackages())
                 {
                     lock (_syncLock)
                     {
-                        if (_packages == null)
+                        if (!_serverPackageStore.HasPackages())
                         {
-                            if (_fileSystemWatcher == null)
-                            {
-                                // first time we come here, attach the file system watcher 
-                                MonitorFileSystem(true);
-                            }
-
-                            // add packages from drop folder
-                            AddPackagesFromDropFolder();
-
-                            // build cache
-                            _packages = BuildCache();
+                            RebuildPackageStore();
                         }
                     }
                 }
+                
+                // First time we come here, attach the file system watcher
+                if (_fileSystemWatcher == null)
+                {
+                    MonitorFileSystem(true);
+                }
 
-                return _packages;
+                // First time we come here, setup background jobs
+                if (_persistenceTimer == null)
+                {
+                    SetupBackgroundJobs();
+                }
+
+                // Return packages
+                return _serverPackageStore.GetAll();
+            }
+        }
+
+        private void RebuildPackageStore()
+        {
+            lock (_syncLock)
+            {
+                _logger.Log(LogLevel.Info, "Start rebuilding package store...");
+
+                // Build cache
+                var packages = ReadPackagesFromDisk();
+                _serverPackageStore.Clear();
+                _serverPackageStore.StoreRange(packages);
+
+                // Add packages from drop folder
+                AddPackagesFromDropFolder();
+
+                // Persist
+                _serverPackageStore.PersistIfDirty();
+
+                _logger.Log(LogLevel.Info, "Finished rebuilding package store.");
             }
         }
 
         /// <summary>
-        /// BuildCache loads all packages and determines additional metadata such as the hash, IsAbsoluteLatestVersion, and IsLatestVersion.
+        /// ReadPackagesFromDisk loads all packages from disk and determines additional metadata such as the hash, IsAbsoluteLatestVersion, and IsLatestVersion.
         /// </summary>
-        private HashSet<ServerPackage> BuildCache()
+        private HashSet<ServerPackage> ReadPackagesFromDisk()
         {
-            _logger.Log(LogLevel.Info, "Start building package cache.");
+            _logger.Log(LogLevel.Info, "Start reading packages from disk...");
             MonitorFileSystem(false);
             
             try
             {
                 var cachedPackages = new ConcurrentBag<ServerPackage>();
 
-                var opts = new ParallelOptions { MaxDegreeOfParallelism = 4 };
-
-                var absoluteLatest = new ConcurrentDictionary<string, ServerPackage>();
-                var latest = new ConcurrentDictionary<string, ServerPackage>();
-
                 bool enableDelisting = EnableDelisting;
 
                 var packages = _expandedPackageRepository.GetPackages().ToList();
 
-                Parallel.ForEach(packages, opts, package =>
+                Parallel.ForEach(packages, package =>
                 {
-                    // File names
-                    var packageFileName = GetPackageFileName(package.Id, package.Version);
-                    var hashFileName = GetHashFileName(package.Id, package.Version);
-
-                    // File system
-                    var physicalFileSystem = _fileSystem as PhysicalFileSystem;
-
-                    // Build package info
-                    var packageDerivedData = new PackageDerivedData();
-
-                    // Read package hash
-                    using (var reader = new StreamReader(_fileSystem.OpenFile(hashFileName)))
-                    {
-                        packageDerivedData.PackageHash = reader.ReadToEnd().Trim();
-                    }
-
-                    // Read package info
-                    var localPackage = package as LocalPackage;
-                    if (physicalFileSystem != null)
-                    {
-                        // Read package info from file system
-                        var fileInfo = new FileInfo(_fileSystem.GetFullPath(packageFileName));
-                        packageDerivedData.PackageSize = fileInfo.Length;
-
-                        packageDerivedData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
-                        packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
-                        packageDerivedData.Path = packageFileName;
-                        packageDerivedData.FullPath = _fileSystem.GetFullPath(packageFileName);
-
-                        if (enableDelisting && localPackage != null)
-                        {
-                            // hidden packages are considered delisted
-                            localPackage.Listed = !fileInfo.Attributes.HasFlag(FileAttributes.Hidden);
-                        }
-                    }
-                    else
-                    {
-                        // Read package info from package (slower)
-                        using (var stream = package.GetStream())
-                        {
-                            packageDerivedData.PackageSize = stream.Length;
-                        }
-
-                        packageDerivedData.LastUpdated = DateTime.MinValue;
-                        packageDerivedData.Created = DateTime.MinValue;
-                    }
-
-                    // TODO: frameworks?
-
-                    // Build entry
-                    var serverPackage = new ServerPackage(package, packageDerivedData);
-                    serverPackage.IsAbsoluteLatestVersion = false;
-                    serverPackage.IsLatestVersion = false;
-
-                    // Find the latest versions
-                    string id = package.Id.ToLowerInvariant();
-
-                    // Update with the highest version
-                    absoluteLatest.AddOrUpdate(id, serverPackage,
-                        (oldId, oldEntry) => oldEntry.Version < serverPackage.Version ? serverPackage : oldEntry);
-
-                    // Update latest for release versions
-                    if (package.IsReleaseVersion())
-                    {
-                        latest.AddOrUpdate(id, serverPackage,
-                            (oldId, oldEntry) => oldEntry.Version < serverPackage.Version ? serverPackage : oldEntry);
-                    }
+                    // Create server package
+                    var serverPackage = CreateServerPackage(package, enableDelisting);
 
                     // Add the package to the cache, it should not exist already
                     if (cachedPackages.Contains(serverPackage))
@@ -431,23 +441,12 @@ namespace NuGet.Server.Infrastructure
                     }
                 });
 
-                // Set additional attributes after visiting all packages
-                foreach (var entry in absoluteLatest.Values)
-                {
-                    entry.IsAbsoluteLatestVersion = true;
-                }
-
-                foreach (var entry in latest.Values)
-                {
-                    entry.IsLatestVersion = true;
-                }
-
-                _logger.Log(LogLevel.Info, "Finished building package cache.");
+                _logger.Log(LogLevel.Info, "Finished reading packages from disk.");
                 return new HashSet<ServerPackage>(cachedPackages, PackageEqualityComparer.IdAndVersion);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, "Error while building package cache: {0} {1}", ex.Message, ex.StackTrace);
+                _logger.Log(LogLevel.Error, "Error while reading packages from disk: {0} {1}", ex.Message, ex.StackTrace);
                 throw;
             }
             finally
@@ -456,21 +455,88 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
+        private ServerPackage CreateServerPackage(IPackage package, bool enableDelisting)
+        {
+            // File names
+            var packageFileName = GetPackageFileName(package.Id, package.Version);
+            var hashFileName = GetHashFileName(package.Id, package.Version);
+
+            // File system
+            var physicalFileSystem = _fileSystem as PhysicalFileSystem;
+
+            // Build package info
+            var packageDerivedData = new PackageDerivedData();
+
+            // Read package hash
+            using (var reader = new StreamReader(_fileSystem.OpenFile(hashFileName)))
+            {
+                packageDerivedData.PackageHash = reader.ReadToEnd().Trim();
+            }
+
+            // Read package info
+            var localPackage = package as LocalPackage;
+            if (physicalFileSystem != null)
+            {
+                // Read package info from file system
+                var fileInfo = new FileInfo(_fileSystem.GetFullPath(packageFileName));
+                packageDerivedData.PackageSize = fileInfo.Length;
+
+                packageDerivedData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
+                packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
+                packageDerivedData.Path = packageFileName;
+                packageDerivedData.FullPath = _fileSystem.GetFullPath(packageFileName);
+
+                if (enableDelisting && localPackage != null)
+                {
+                    // hidden packages are considered delisted
+                    localPackage.Listed = !fileInfo.Attributes.HasFlag(FileAttributes.Hidden);
+                }
+            }
+            else
+            {
+                // Read package info from package (slower)
+                using (var stream = package.GetStream())
+                {
+                    packageDerivedData.PackageSize = stream.Length;
+                }
+
+                packageDerivedData.LastUpdated = DateTime.MinValue;
+                packageDerivedData.Created = DateTime.MinValue;
+            }
+
+            // TODO: frameworks?
+
+            // Build entry
+            var serverPackage = new ServerPackage(package, packageDerivedData);
+            serverPackage.IsAbsoluteLatestVersion = false;
+            serverPackage.IsLatestVersion = false;
+            return serverPackage;
+        }
+
         /// <summary>
         /// Sets the current cache to null so it will be regenerated next time.
         /// </summary>
         public void ClearCache()
         {
-            lock (_syncLock)
+            MonitorFileSystem(false);
+            try
             {
-                _packages = null;
-                _logger.Log(LogLevel.Info, "Cleared package cache.");
+                lock (_syncLock)
+                {
+                    _serverPackageStore.Clear();
+                    _serverPackageStore.Persist();
+                    _logger.Log(LogLevel.Info, "Cleared package cache.");
+                }
+            }
+            finally
+            {
+                MonitorFileSystem(true);
             }
         }
 
         private void MonitorFileSystem(bool monitor)
         {
-            if (!_monitorFileSystem)
+            if (!_runBackgroundTasks)
             {
                 return;
             }
@@ -500,13 +566,13 @@ namespace NuGet.Server.Infrastructure
         private void RegisterFileSystemWatcher()
         {
             // When files are moved around, recreate the package cache
-            if (_monitorFileSystem && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
+            if (_runBackgroundTasks && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
             {
                 // ReSharper disable once UseObjectOrCollectionInitializer
                 _fileSystemWatcher = new FileSystemWatcher(Source);
                 _fileSystemWatcher.Filter = "*";
                 _fileSystemWatcher.IncludeSubdirectories = true;
-                
+
                 _fileSystemWatcher.Changed += FileSystemChanged;
                 _fileSystemWatcher.Created += FileSystemChanged;
                 _fileSystemWatcher.Deleted += FileSystemChanged;
@@ -541,16 +607,23 @@ namespace NuGet.Server.Infrastructure
         {
             _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
 
-            if (Path.GetDirectoryName(e.FullPath) == _fileSystemWatcher.Path)
+            // 1) If a .nupkg is dropped in the root, add it as a package
+            if (String.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase)
+                && String.Equals(Path.GetExtension(e.Name), "nupkg", StringComparison.OrdinalIgnoreCase))
             {
                 // When a package is dropped into the server packages root folder, add it to the repository.
                 AddPackagesFromDropFolder();
             }
-            
-            // Invalidate the cache when a nupkg in the packages folder changes
-            // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
-            // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
-            ClearCache();
+
+            // 2) If a file is updated in a subdirectory, *or* a folder is deleted, invalidate the cache
+            if ((!String.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
+                || e.ChangeType == WatcherChangeTypes.Deleted)
+            { 
+                // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
+                // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
+
+                ClearCache();
+            }
         }
 
         private bool AllowOverrideExistingPackageOnPush

@@ -5,11 +5,22 @@ namespace NuGet.Server
 {
     public class ServiceResolver
     {
+        private static readonly object SyncLock = new object();
+
         public static IServiceResolver Current { get; private set; }
 
-        static ServiceResolver()
+        private static void EnsureServiceResolver()
         {
-            Current = new DefaultServiceResolver();
+            if (Current == null)
+            {
+                lock (SyncLock)
+                {
+                    if (Current == null)
+                    {
+                        Current = new DefaultServiceResolver();
+                    }
+                }
+            }
         }
 
         public static void SetServiceResolver(IServiceResolver serviceResolver)
@@ -20,6 +31,8 @@ namespace NuGet.Server
         public static T Resolve<T>()
             where T : class
         {
+            EnsureServiceResolver();
+
             return Current.Resolve(typeof (T)) as T;
         }
     }

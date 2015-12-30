@@ -7,7 +7,7 @@ namespace NuGet.Server
 {
     internal static class FrameworkNameExtensions
     {
-        public static string ToShortNameOrEmpty(this FrameworkName current)
+        public static string ToShortNameOrNull(this FrameworkName current)
         {
             if (current == null)
             {

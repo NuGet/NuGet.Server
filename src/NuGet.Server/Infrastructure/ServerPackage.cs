@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using Newtonsoft.Json;
 
 namespace NuGet.Server.Infrastructure
 {
@@ -15,6 +16,46 @@ namespace NuGet.Server.Infrastructure
     {
         public ServerPackage()
         {
+        }
+
+        public ServerPackage(string id, SemanticVersion version, string title, IEnumerable<string> authors, IEnumerable<string> owners, Uri iconUrl, Uri licenseUrl, Uri projectUrl, bool requireLicenseAcceptance, bool developmentDependency, string description, string summary, string releaseNotes, string language, string tags, string copyright, string dependencies, Version minClientVersion, Uri reportAbuseUrl, int downloadCount, string supportedFrameworks, bool isAbsoluteLatestVersion, bool isLatestVersion, bool listed, DateTimeOffset? published, long packageSize, string packageHash, string packageHashAlgorithm, DateTimeOffset lastUpdated, DateTimeOffset created, string path, string fullPath)
+        {
+            Id = id;
+            Version = version;
+            Title = title;
+            Authors = authors;
+            Owners = owners;
+            IconUrl = iconUrl;
+            LicenseUrl = licenseUrl;
+            ProjectUrl = projectUrl;
+            RequireLicenseAcceptance = requireLicenseAcceptance;
+            DevelopmentDependency = developmentDependency;
+            Description = description;
+            Summary = summary;
+            ReleaseNotes = releaseNotes;
+            Language = language;
+            Tags = tags;
+            Copyright = copyright;
+            Dependencies = dependencies;
+            MinClientVersion = minClientVersion;
+            ReportAbuseUrl = reportAbuseUrl;
+            DownloadCount = downloadCount;
+            SupportedFrameworks = supportedFrameworks;
+            IsAbsoluteLatestVersion = isAbsoluteLatestVersion;
+            IsLatestVersion = isLatestVersion;
+            Listed = listed;
+            Published = published;
+            PackageSize = packageSize;
+            PackageHash = packageHash;
+            PackageHashAlgorithm = packageHashAlgorithm;
+            LastUpdated = lastUpdated;
+            Created = created;
+            Path = path;
+            FullPath = fullPath;
+
+            // Preload collections
+            DependencySets.Any();
+            SupportedFrameworks.Any();
         }
 
         public ServerPackage(IPackage package, PackageDerivedData packageDerivedData)
@@ -43,7 +84,10 @@ namespace NuGet.Server.Infrastructure
             Listed = package.Listed;
             Published = package.Published;
 
+            _dependencySets = package.DependencySets.ToList();
             Dependencies = DependencySetsAsString(package.DependencySets);
+
+            _supportedFrameworks = package.GetSupportedFrameworks().ToList();
             SupportedFrameworks = string.Join("|", package.GetSupportedFrameworks().Select(VersionUtility.GetFrameworkString));
 
             PackageSize = packageDerivedData.PackageSize;
@@ -55,40 +99,44 @@ namespace NuGet.Server.Infrastructure
             FullPath = packageDerivedData.FullPath;
         }
 
-        public string Id { get; }
+        public string Id { get; set; }
 
-        public SemanticVersion Version { get; }
+        [JsonConverter(typeof(SemanticVersionJsonConverter))]
+        public SemanticVersion Version { get; set; }
 
-        public string Title { get; }
+        public string Title { get; set; }
 
-        public IEnumerable<string> Authors { get; }
+        public IEnumerable<string> Authors { get; set; }
 
-        public IEnumerable<string> Owners { get; }
+        public IEnumerable<string> Owners { get; set; }
 
-        public Uri IconUrl { get; }
+        public Uri IconUrl { get; set; }
 
-        public Uri LicenseUrl { get; }
+        public Uri LicenseUrl { get; set; }
 
-        public Uri ProjectUrl { get; }
+        public Uri ProjectUrl { get; set; }
 
-        public bool RequireLicenseAcceptance { get; }
+        public bool RequireLicenseAcceptance { get; set; }
 
-        public bool DevelopmentDependency { get; }
+        public bool DevelopmentDependency { get; set; }
 
-        public string Description { get; }
+        public string Description { get; set; }
 
-        public string Summary { get; }
+        public string Summary { get; set; }
 
-        public string ReleaseNotes { get; }
+        public string ReleaseNotes { get; set; }
 
-        public string Language { get; }
+        public string Language { get; set; }
 
-        public string Tags { get; }
+        public string Tags { get; set; }
 
-        public string Copyright { get; }
+        public string Copyright { get; set; }
 
-        public string Dependencies { get; }
+        public string Dependencies { get; set; }
 
+        private List<PackageDependencySet> _dependencySets;
+
+        [JsonIgnore]
         public IEnumerable<PackageDependencySet> DependencySets
         {
             get
@@ -98,55 +146,66 @@ namespace NuGet.Server.Infrastructure
                     return Enumerable.Empty<PackageDependencySet>();
                 }
 
-                return ParseDependencySet(Dependencies);
-            }
-        }
-
-        public Version MinClientVersion { get; }
-
-        public Uri ReportAbuseUrl { get; }
-
-        public int DownloadCount { get; }
-        
-        public string SupportedFrameworks { get; }
-
-        public IEnumerable<FrameworkName> GetSupportedFrameworks()
-        {
-            if (!String.IsNullOrEmpty(SupportedFrameworks))
-            {
-                var supportedFrameworksAsStrings = SupportedFrameworks.Split('|').ToList();
-                if (supportedFrameworksAsStrings.Any())
+                if (_dependencySets == null)
                 {
-                    return supportedFrameworksAsStrings.Select(VersionUtility.ParseFrameworkName);
+                    _dependencySets = ParseDependencySet(Dependencies);
                 }
 
+                return _dependencySets;
             }
-
-            return Enumerable.Empty<FrameworkName>();
         }
 
-        public bool IsAbsoluteLatestVersion { get; internal set; }
+        [JsonConverter(typeof(SemanticVersionJsonConverter))]
+        public Version MinClientVersion { get; set; }
 
-        public bool IsLatestVersion { get; internal set; }
+        public Uri ReportAbuseUrl { get; set; }
 
-        public bool Listed { get; }
+        public int DownloadCount { get; set; }
+        
+        public string SupportedFrameworks { get; set; }
+       
+        private List<FrameworkName> _supportedFrameworks;
+        public IEnumerable<FrameworkName> GetSupportedFrameworks()
+        {
+            if (String.IsNullOrEmpty(SupportedFrameworks))
+            {
+                return Enumerable.Empty<FrameworkName>();
+            }
 
-        public DateTimeOffset? Published { get; }
+            if (_supportedFrameworks == null)
+            {
+                var supportedFrameworksAsStrings = SupportedFrameworks.Split('|').ToList();
+
+                _supportedFrameworks = supportedFrameworksAsStrings
+                    .Select(VersionUtility.ParseFrameworkName)
+                    .ToList();
+            }
+
+            return _supportedFrameworks;
+        }
+
+        public bool IsAbsoluteLatestVersion { get; set; }
+
+        public bool IsLatestVersion { get; set; }
+
+        public bool Listed { get; set; }
+
+        public DateTimeOffset? Published { get; set; }
 
         
-        public long PackageSize { get; }
+        public long PackageSize { get; set; }
 
-        public string PackageHash { get; }
+        public string PackageHash { get; set; }
 
-        public string PackageHashAlgorithm { get; }
+        public string PackageHashAlgorithm { get; set; }
 
-        public DateTimeOffset LastUpdated { get; }
+        public DateTimeOffset LastUpdated { get; set; }
 
-        public DateTimeOffset Created { get; }
+        public DateTimeOffset Created { get; set; }
 
-        public string Path { get; }
+        public string Path { get; set; }
 
-        public string FullPath { get; }
+        public string FullPath { get; set; }
 
         private static string DependencySetsAsString(IEnumerable<PackageDependencySet> dependencySets)
         {
@@ -160,13 +219,13 @@ namespace NuGet.Server.Infrastructure
             {
                 if (dependencySet.Dependencies.Count == 0)
                 {
-                    dependencies.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1}:{2}", null, null, dependencySet.TargetFramework.ToShortNameOrEmpty()));
+                    dependencies.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1}:{2}", null, null, dependencySet.TargetFramework.ToShortNameOrNull()));
                 }
                 else
                 {
                     foreach (var dependency in dependencySet.Dependencies.Select(d => new { d.Id, d.VersionSpec, dependencySet.TargetFramework }))
                     {
-                        dependencies.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1}:{2}", dependency.Id, dependency.VersionSpec == null ? null : dependency.VersionSpec.ToString(), dependencySet.TargetFramework.ToShortNameOrEmpty()));
+                        dependencies.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1}:{2}", dependency.Id, dependency.VersionSpec == null ? null : dependency.VersionSpec.ToString(), dependencySet.TargetFramework.ToShortNameOrNull()));
                     }
                 }
             }
@@ -246,7 +305,8 @@ namespace NuGet.Server.Infrastructure
         {
             throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support extracting contents.");
         }
-
+        
+        [JsonIgnore]
         public IEnumerable<FrameworkAssemblyReference> FrameworkAssemblies
         {
             get
@@ -255,6 +315,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
+        [JsonIgnore]
         public ICollection<PackageReferenceSet> PackageAssemblyReferences
         {
             get
@@ -263,6 +324,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
+        [JsonIgnore]
         public IEnumerable<IPackageAssemblyReference> AssemblyReferences
         {
             get

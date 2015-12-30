@@ -27,7 +27,7 @@ namespace NuGet.Server.Tests
 
             var serverRepository = new ServerPackageRepository(
                 fileSystem,
-                monitorFileSystem: false,
+                runBackgroundTasks: false,
                 innerRepository: expandedPackageRepository, 
                 logger: new Logging.NullLogger(),
                 getSetting: getSetting);

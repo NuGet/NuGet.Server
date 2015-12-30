@@ -36,6 +36,11 @@
       <HintPath>..\..\packages\Microsoft.Web.Xdt.2.1.1\lib\net40\Microsoft.Web.XmlTransform.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Newtonsoft.Json.8.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="NuGet.Core, Version=2.10.1.766, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\NuGet.Core.2.10.1\lib\net40-Client\NuGet.Core.dll</HintPath>
       <Private>True</Private>
@@ -57,7 +62,8 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Configuration" />
     <Reference Include="WebActivatorEx, Version=2.0.0.0, Culture=neutral, PublicKeyToken=7b26dc2a43f6a0d4, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\WebActivatorEx.2.0.6\lib\net40\WebActivatorEx.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\WebActivatorEx.2.1.0\lib\net40\WebActivatorEx.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="WindowsBase" />
@@ -75,7 +81,12 @@
     <Compile Include="DataServices\PackageExtensions.cs" />
     <Compile Include="DataServices\PackageIdComparisonVisitor.cs" />
     <Compile Include="Core\ServiceResolver.cs" />
+    <Compile Include="Infrastructure\JsonNetPackagesSerializer.cs" />
+    <Compile Include="Infrastructure\IPackagesSerializer.cs" />
+    <Compile Include="Infrastructure\IServerPackageStore.cs" />
     <Compile Include="Infrastructure\PackageDerivedData.cs" />
+    <Compile Include="Infrastructure\SemanticVersionJsonConverter.cs" />
+    <Compile Include="Infrastructure\ServerPackageStore.cs" />
     <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Logging\NullLogger.cs" />
     <Compile Include="Logging\ILogger.cs" />
