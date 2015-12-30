@@ -1,19 +1,22 @@
-﻿using System.Data.Services;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System.Data.Services;
 using System.ServiceModel.Activation;
 using System.Web.Routing;
-using Ninject;
 using NuGet.Server.DataServices;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Publishing;
 using RouteMagic;
 
-[assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NuGet.Server.NuGetRoutes), "Start")]
+[assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NuGetRoutes), "Start")]
 
-namespace NuGet.Server
+namespace NuGet.Server.DataServices
 {
     public static class NuGetRoutes
     {
         public static void Start()
         {
+            ServiceResolver.SetServiceResolver(new DefaultServiceResolver());
             MapRoutes(RouteTable.Routes);
         }
 
@@ -47,6 +50,12 @@ namespace NuGet.Server
                                new { httpMethod = new HttpMethodConstraint("GET") },
                                context => CreatePackageService().DownloadPackage(context.HttpContext));
 
+            // Route to clear package cache
+            routes.MapDelegate("ClearPackageCache",
+                               "nugetserver/api/clear-cache",
+                               new { httpMethod = new HttpMethodConstraint("GET") },
+                               context => CreatePackageService().ClearCache(context.HttpContext));
+
 #if DEBUG
             // The default route is http://{root}/nuget/Packages
             var factory = new DataServiceHostFactory();
@@ -59,7 +68,7 @@ namespace NuGet.Server
 
         private static IPackageService CreatePackageService()
         {
-            return NinjectBootstrapper.Kernel.Get<IPackageService>();
+            return ServiceResolver.Resolve<IPackageService>();
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,8 +11,6 @@ namespace NuGet.Server.DataServices
 {
     internal abstract class QueryTranslatorProvider : ExpressionVisitor
     {
-        private readonly IQueryable _source;
-
         protected QueryTranslatorProvider(IQueryable source)
         {
             if (source == null)
@@ -17,15 +18,13 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("source");
             }
 
-            _source = source;
+            Source = source;
         }
 
-        internal IQueryable Source
-        {
-            get { return _source; }
-        }
+        internal IQueryable Source { get; }
     }
 
+    // ReSharper disable once UnusedTypeParameter
     internal class QueryTranslatorProvider<T> : QueryTranslatorProvider, IQueryProvider
     {
         private readonly IEnumerable<ExpressionVisitor> _visitors;
@@ -47,7 +46,7 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("expression");
             }
 
-            return new QueryTranslator<TElement>(Source, expression, _visitors) as IQueryable<TElement>;
+            return new QueryTranslator<TElement>(Source, expression, _visitors);
         }
 
         public IQueryable CreateQuery(Expression expression)
@@ -57,9 +56,8 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("expression");
             }
 
-            Type elementType = expression.Type.GetGenericArguments().First();
-            IQueryable result = (IQueryable)Activator.CreateInstance(typeof(QueryTranslator<>).MakeGenericType(elementType),
-                    new object[] { Source, expression, _visitors });
+            var elementType = expression.Type.GetGenericArguments().First();
+            var result = (IQueryable)Activator.CreateInstance(typeof(QueryTranslator<>).MakeGenericType(elementType), Source, expression, _visitors);
             return result;
         }
 
@@ -69,7 +67,7 @@ namespace NuGet.Server.DataServices
             {
                 throw new ArgumentNullException("expression");
             }
-            object result = (this as IQueryProvider).Execute(expression);
+            var result = (this as IQueryProvider).Execute(expression);
             return (TResult)result;
         }
 
@@ -80,7 +78,7 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("expression");
             }
 
-            Expression translated = VisitAll(expression);
+            var translated = VisitAll(expression);
             return Source.Provider.Execute(translated);
         }
 
@@ -91,7 +89,7 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("expression");
             }
 
-            Expression translated = VisitAll(expression);
+            var translated = VisitAll(expression);
             return Source.Provider.CreateQuery(translated);
         }
 
@@ -100,7 +98,7 @@ namespace NuGet.Server.DataServices
             // Run all visitors in order
             var visitors = new ExpressionVisitor[] { this }.Concat(_visitors);
 
-            return visitors.Aggregate<ExpressionVisitor, Expression>(expression, (expr, visitor) => visitor.Visit(expr));
+            return visitors.Aggregate(expression, (expr, visitor) => visitor.Visit(expr));
         }
 
         protected override Expression VisitConstant(ConstantExpression node)

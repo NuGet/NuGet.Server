@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +11,6 @@ namespace NuGet.Server.DataServices
 {
     internal class QueryTranslator<T> : IOrderedQueryable<T>
     {
-        private readonly Expression _expression;
         private readonly QueryTranslatorProvider<T> _provider;
 
         public QueryTranslator(IQueryable source, IEnumerable<ExpressionVisitor> visitors)
@@ -23,7 +25,7 @@ namespace NuGet.Server.DataServices
                 throw new ArgumentNullException("visitors");
             }
 
-            _expression = Expression.Constant(this);
+            Expression = Expression.Constant(this);
             _provider = new QueryTranslatorProvider<T>(source, visitors);
         }
 
@@ -33,18 +35,18 @@ namespace NuGet.Server.DataServices
             {
                 throw new ArgumentNullException("expression");
             }
-            _expression = expression;
+            Expression = expression;
             _provider = new QueryTranslatorProvider<T>(source, visitors);
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            return ((IEnumerable<T>)_provider.ExecuteEnumerable(_expression)).GetEnumerator();
+            return ((IEnumerable<T>)_provider.ExecuteEnumerable(Expression)).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return _provider.ExecuteEnumerable(_expression).GetEnumerator();
+            return _provider.ExecuteEnumerable(Expression).GetEnumerator();
         }
 
         public Type ElementType
@@ -52,10 +54,7 @@ namespace NuGet.Server.DataServices
             get { return typeof(T); }
         }
 
-        public Expression Expression
-        {
-            get { return _expression; }
-        }
+        public Expression Expression { get; }
 
         public IQueryProvider Provider
         {
