@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.Data.Services;
@@ -7,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.ServiceModel.Web;
 using System.Web;
-using Ninject;
 using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server.DataServices
@@ -22,7 +24,7 @@ namespace NuGet.Server.DataServices
             {
                 // It's bad to use the container directly but we aren't in the loop when this 
                 // class is created
-                return NinjectBootstrapper.Kernel.Get<IServerPackageRepository>();
+                return ServiceResolver.Resolve<IServerPackageRepository>();
             }
         }
 
@@ -60,15 +62,15 @@ namespace NuGet.Server.DataServices
 
         public Uri GetReadStreamUri(object entity, DataServiceOperationContext operationContext)
         {
-            var package = (Package)entity;
+            var package = (ODataPackage)entity;
 
             var rootUrlConfig = System.Configuration.ConfigurationManager.AppSettings["rootUrl"];
             var rootUrl = !string.IsNullOrWhiteSpace(rootUrlConfig) 
-                            ? rootUrlConfig
-                            : HttpContext.Current.Request.Url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
+                ? rootUrlConfig
+                : HttpContext.Current.Request.Url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
 
             // the URI need to ends with a '/' to be correctly merged so we add it to the application if it 
-            string downloadUrl = PackageUtility.GetPackageDownloadUrl(package);
+            var downloadUrl = PackageUtility.GetPackageDownloadUrl(package);
             return new Uri(new Uri(rootUrl), downloadUrl);
         }
 
@@ -110,32 +112,33 @@ namespace NuGet.Server.DataServices
         }
 
         [WebGet]
-        public IQueryable<Package> Search(string searchTerm, string targetFramework, bool includePrerelease, bool? includeDelisted)
+        public IQueryable<ODataPackage> Search(string searchTerm, string targetFramework, bool includePrerelease, bool? includeDelisted)
         {
-            IEnumerable<string> targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+            var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
 
-            return Repository.Search(searchTerm, targetFrameworks, includePrerelease)
-                .Select(Repository.GetMetadataPackage)
-                .Where(p => p != null)
+            return Repository
+                .Search(searchTerm, targetFrameworks, includePrerelease)
+                .Select(package => package.AsODataPackage())
                 .AsQueryable();
         }
 
         [WebGet]
-        public IQueryable<Package> FindPackagesById(string id)
+        public IQueryable<ODataPackage> FindPackagesById(string id)
         {
-            return Repository.FindPackagesById(id)
-                             .Select(Repository.GetMetadataPackage)
-                             .Where(package => package != null && package.Listed)
-                             .AsQueryable();
+            return Repository
+                .FindPackagesById(id)
+                .Where(package => package.Listed)
+                .Select(package => package.AsODataPackage())
+                .AsQueryable();
         }
 
         [WebGet]
-        public IQueryable<Package> GetUpdates(
+        public IQueryable<ODataPackage> GetUpdates(
             string packageIds, string versions, bool includePrerelease, bool includeAllVersions, string targetFrameworks, string versionConstraints)
         {
             if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
             {
-                return Enumerable.Empty<Package>().AsQueryable();
+                return Enumerable.Empty<ODataPackage>().AsQueryable();
             }
 
             var idValues = packageIds.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
@@ -149,17 +152,17 @@ namespace NuGet.Server.DataServices
             if (idValues.Length == 0 || idValues.Length != versionValues.Length || idValues.Length != versionConstraintValues.Length)
             {
                 // Exit early if the request looks invalid
-                return Enumerable.Empty<Package>().AsQueryable();
+                return Enumerable.Empty<ODataPackage>().AsQueryable();
             }
 
             var packagesToUpdate = new List<IPackageMetadata>();
-            for (int i = 0; i < idValues.Length; i++)
+            for (var i = 0; i < idValues.Length; i++)
             {
                 packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = new SemanticVersion(versionValues[i]) });
             }
 
             var versionConstraintsList = new IVersionSpec[versionConstraintValues.Length];
-            for (int i = 0; i < versionConstraintsList.Length; i++)
+            for (var i = 0; i < versionConstraintsList.Length; i++)
             {
                 if (!String.IsNullOrEmpty(versionConstraintValues[i]))
                 {
@@ -167,10 +170,10 @@ namespace NuGet.Server.DataServices
                 }
             }
 
-            return Repository.GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList)
-                   .Select(Repository.GetMetadataPackage)
-                   .Where(p => p != null)
-                   .AsQueryable();
+            return Repository
+                .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList)
+                .Select(package => package.AsODataPackage())
+                .AsQueryable();
         }
     }
 }

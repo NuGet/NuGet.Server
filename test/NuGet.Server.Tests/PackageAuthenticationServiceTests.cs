@@ -1,8 +1,11 @@
-﻿using System.Collections.Specialized;
-using Xunit;
-using Xunit.Extensions;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
-namespace NuGet.Server.Infrastructure.Test
+using System.Collections.Specialized;
+using NuGet.Server.Infrastructure;
+using Xunit;
+
+namespace NuGet.Server.Tests
 {
     public class PackageAuthenticationServiceTests
     {
@@ -13,11 +16,13 @@ namespace NuGet.Server.Infrastructure.Test
         public void AuthenticationServiceReturnsFalseIfRequireApiKeyValueIsMalformed(string requireApiKey)
         {
             // Arrange
-            var collection = new NameValueCollection();
-            collection.Add("requireApiKey", requireApiKey);
+            var collection = new NameValueCollection
+            {
+                { "requireApiKey", requireApiKey }
+            };
 
             // Act
-            bool result = PackageAuthenticationService.IsAuthenticatedInternal("test-apikey", collection);
+            var result = PackageAuthenticationService.IsAuthenticatedInternal("test-apikey", collection);
 
             // Assert
             Assert.False(result);
@@ -29,12 +34,14 @@ namespace NuGet.Server.Infrastructure.Test
         public void AuthenticationServiceReturnsTrueIfRequireApiKeyValueIsSetToFalse(string keyValue)
         {
             // Arrange
-            var collection = new NameValueCollection();
-            collection.Add("requireApiKey", keyValue);
-            collection.Add("apiKey", "test-key");
+            var collection = new NameValueCollection
+            {
+                { "requireApiKey", keyValue },
+                { "apiKey", "test-key" }
+            };
 
             // Act
-            bool result = PackageAuthenticationService.IsAuthenticatedInternal("incorrect-key", collection);
+            var result = PackageAuthenticationService.IsAuthenticatedInternal("incorrect-key", collection);
 
             // Assert
             Assert.True(result);
@@ -46,12 +53,14 @@ namespace NuGet.Server.Infrastructure.Test
         public void AuthenticationServiceReturnsFalseIfKeyDoesNotMatchConfigurationKey(string key)
         {
             // Arrange
-            var collection = new NameValueCollection();
-            collection.Add("requireApiKey", "true");
-            collection.Add("apiKey", "test-key");
+            var collection = new NameValueCollection
+            {
+                { "requireApiKey", "true" },
+                { "apiKey", "test-key" }
+            };
 
             // Act
-            bool result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
+            var result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
 
             // Assert
             Assert.False(result);
@@ -63,12 +72,14 @@ namespace NuGet.Server.Infrastructure.Test
         public void AuthenticationServiceReturnsTrueIfKeyMatchesConfigurationKey(string key)
         {
             // Arrange
-            var collection = new NameValueCollection();
-            collection.Add("requireApiKey", "true");
-            collection.Add("apiKey", "test-key");
+            var collection = new NameValueCollection
+            {
+                { "requireApiKey", "true" },
+                { "apiKey", "test-key" }
+            };
 
             // Act
-            bool result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
+            var result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
 
             // Assert
             Assert.True(result);

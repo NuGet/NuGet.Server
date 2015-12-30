@@ -1,17 +1,16 @@
 ﻿using System.Data.Services;
 using System.ServiceModel.Activation;
 using System.Web.Routing;
-using Ninject;
 using NuGet.Server;
 using NuGet.Server.DataServices;
-using NuGet.Server.Infrastructure;
-using RouteMagic;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof($rootnamespace$.NuGetRoutes), "Start")]
 
 namespace $rootnamespace$ {
     public static class NuGetRoutes {
         public static void Start() {
+			ServiceResolver.SetServiceResolver(new DefaultServiceResolver());
+
             MapRoutes(RouteTable.Routes);
         }
 
@@ -22,10 +21,6 @@ namespace $rootnamespace$ {
             serviceRoute.Defaults = new RouteValueDictionary { { "serviceType", "odata" } };
             serviceRoute.Constraints = new RouteValueDictionary { { "serviceType", "odata" } };
             routes.Add("nuget", serviceRoute);
-        }
-
-        private static PackageService CreatePackageService() {
-            return NinjectBootstrapper.Kernel.Get<PackageService>();
         }
     }
 }
