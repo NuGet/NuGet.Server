@@ -1,5 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System.Reflection;
 using System.Resources;
 using System.Runtime.InteropServices;
@@ -12,7 +13,7 @@ using System.Runtime.InteropServices;
 
 [assembly: ComVisible(false)]
 
-[assembly: AssemblyVersion("2.10.0.*")]
+[assembly: AssemblyVersion("2.10.0.0")]
 [assembly: AssemblyFileVersion("2.10.0.0")]
 
 [assembly: NeutralResourcesLanguage("en-US")]
