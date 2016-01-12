@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package>
+  <metadata minClientVersion="2.6">
+    <id>$id$</id>
+    <version>$version$</version>
+    <description>$description$</description>
+    <authors>.NET Foundation</authors>
+    <owners>$author$</owners>
+    <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/develop/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
+    <copyright>$copyright$</copyright>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.ServiceModel" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Web" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Activation" />
+      <frameworkAssembly assemblyName="System.Data.Services" />
+    </frameworkAssemblies>
+    <dependencies>
+      <dependency id="NuGet.Core" version="[2.10.1,)" />
+      <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
+    </dependencies>
+  </metadata>
+</package>

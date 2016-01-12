@@ -1,0 +1,3 @@
+[submodule "xdt"]
+	path = xdt
+	url = https://git01.codeplex.com/xdt

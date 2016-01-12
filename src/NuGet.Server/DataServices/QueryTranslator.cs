@@ -1,0 +1,64 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+
+namespace NuGet.Server.DataServices
+{
+    internal class QueryTranslator<T> : IOrderedQueryable<T>
+    {
+        private readonly QueryTranslatorProvider<T> _provider;
+
+        public QueryTranslator(IQueryable source, IEnumerable<ExpressionVisitor> visitors)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+
+            if (visitors == null)
+            {
+                throw new ArgumentNullException("visitors");
+            }
+
+            Expression = Expression.Constant(this);
+            _provider = new QueryTranslatorProvider<T>(source, visitors);
+        }
+
+        public QueryTranslator(IQueryable source, Expression expression, IEnumerable<ExpressionVisitor> visitors)
+        {
+            if (expression == null)
+            {
+                throw new ArgumentNullException("expression");
+            }
+            Expression = expression;
+            _provider = new QueryTranslatorProvider<T>(source, visitors);
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            return ((IEnumerable<T>)_provider.ExecuteEnumerable(Expression)).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return _provider.ExecuteEnumerable(Expression).GetEnumerator();
+        }
+
+        public Type ElementType
+        {
+            get { return typeof(T); }
+        }
+
+        public Expression Expression { get; }
+
+        public IQueryProvider Provider
+        {
+            get { return _provider; }
+        }
+    }
+}
