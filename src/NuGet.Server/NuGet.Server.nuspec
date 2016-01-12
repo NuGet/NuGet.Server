@@ -6,7 +6,7 @@
     <description>$description$</description>
     <authors>.NET Foundation</authors>
     <owners>$author$</owners>
-    <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/develop/LICENSE.txt</licenseUrl>
+    <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
     <copyright>$copyright$</copyright>
     <frameworkAssemblies>
