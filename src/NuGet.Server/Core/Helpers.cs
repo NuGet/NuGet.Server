@@ -14,7 +14,7 @@ namespace NuGet.Server
 
         public static string GetPushUrl(Uri currentUrl, string applicationPath)
         {
-            return GetBaseUrl(currentUrl, applicationPath);
+            return GetBaseUrl(currentUrl, applicationPath) + "nuget";
         }
 
         public static string GetBaseUrl(Uri currentUrl, string applicationPath)
