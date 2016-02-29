@@ -189,6 +189,16 @@ namespace NuGet.Server.Infrastructure
                         // Create package
                         var package = new ZipPackage(_fileSystem.OpenFile(packageFile));
 
+                        // Is it a symbols package?
+                        if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
+                        {
+                            var message = string.Format(Strings.Error_SymbolsPackagesIgnored, package);
+
+                            _logger.Log(LogLevel.Error, message);
+
+                            continue;
+                        }
+
                         // Allow overwriting package? If not, skip this one.
                         if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
                         {
@@ -236,6 +246,14 @@ namespace NuGet.Server.Infrastructure
         public override void AddPackage(IPackage package)
         {
             _logger.Log(LogLevel.Info, "Start adding package {0} {1}.", package.Id, package.Version);
+
+            if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
+            {
+                var message = string.Format(Strings.Error_SymbolsPackagesIgnored, package);
+
+                _logger.Log(LogLevel.Error, message);
+                throw new InvalidOperationException(message);
+            }
 
             if (!AllowOverrideExistingPackageOnPush && FindPackage(package.Id, package.Version) != null)
             {
@@ -644,6 +662,15 @@ namespace NuGet.Server.Infrastructure
             {
                 // If the setting is misconfigured, treat it as success (backwards compatibility).
                 return _getSetting("allowOverrideExistingPackageOnPush", true);
+            }
+        }
+
+        private bool IgnoreSymbolsPackages
+        {
+            get
+            {
+                // If the setting is misconfigured, treat it as "false" (backwards compatibility).
+                return _getSetting("ignoreSymbolsPackages", false);
             }
         }
 
