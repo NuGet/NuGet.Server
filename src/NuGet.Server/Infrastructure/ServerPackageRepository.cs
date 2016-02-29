@@ -186,8 +186,20 @@ namespace NuGet.Server.Infrastructure
                 {
                     try
                     {
-                        // Copy to correct filesystem location
+                        // Create package
                         var package = new ZipPackage(_fileSystem.OpenFile(packageFile));
+
+                        // Allow overwriting package? If not, skip this one.
+                        if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
+                        {
+                            var message = string.Format(NuGetResources.Error_PackageAlreadyExists, package);
+
+                            _logger.Log(LogLevel.Error, message);
+
+                            continue;
+                        }
+
+                        // Copy to correct filesystem location
                         _expandedPackageRepository.AddPackage(package);
                         _fileSystem.DeleteFile(packageFile);
 
