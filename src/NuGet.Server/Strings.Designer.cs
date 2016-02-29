@@ -61,7 +61,16 @@ namespace NuGet.Server {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Package {0} is a symbols package (it contains .pdb fiels and a /src folder). Symbols packages are ignored on this server..
+        ///   Looks up a localized string similar to Package {0} already exists. The server is configured to not allow overwriting packages that already exist..
+        /// </summary>
+        internal static string Error_PackageAlreadyExists {
+            get {
+                return ResourceManager.GetString("Error_PackageAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Package {0} is a symbols package (it contains .pdb fiels and a /src folder). The server is configured to ignore symbols packages..
         /// </summary>
         internal static string Error_SymbolsPackagesIgnored {
             get {

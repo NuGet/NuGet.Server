@@ -202,7 +202,7 @@ namespace NuGet.Server.Infrastructure
                         // Allow overwriting package? If not, skip this one.
                         if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
                         {
-                            var message = string.Format(NuGetResources.Error_PackageAlreadyExists, package);
+                            var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
                             _logger.Log(LogLevel.Error, message);
 
@@ -257,7 +257,7 @@ namespace NuGet.Server.Infrastructure
 
             if (!AllowOverrideExistingPackageOnPush && FindPackage(package.Id, package.Version) != null)
             {
-                var message = string.Format(NuGetResources.Error_PackageAlreadyExists, package);
+                var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
                 _logger.Log(LogLevel.Error, message);
                 throw new InvalidOperationException(message);
