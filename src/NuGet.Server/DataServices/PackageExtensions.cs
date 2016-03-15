@@ -23,6 +23,7 @@ namespace NuGet.Server.DataServices
             {
                 Id = package.Id,
                 Version = package.Version.ToString(),
+                NormalizedVersion = package.Version.ToNormalizedString(),
                 IsPrerelease = !package.IsReleaseVersion(),
                 Title = package.Title,
                 Authors = string.Join(",", package.Authors),
@@ -59,6 +60,7 @@ namespace NuGet.Server.DataServices
             {
                 Id = package.Id,
                 Version = package.Version.ToString(),
+                NormalizedVersion = package.Version.ToNormalizedString(),
                 IsPrerelease = !package.IsReleaseVersion(),
                 Title = package.Title,
                 Authors = string.Join(",", package.Authors),

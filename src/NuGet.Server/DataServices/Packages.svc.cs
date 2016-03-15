@@ -119,7 +119,8 @@ namespace NuGet.Server.DataServices
             return Repository
                 .Search(searchTerm, targetFrameworks, includePrerelease)
                 .Select(package => package.AsODataPackage())
-                .AsQueryable();
+                .AsQueryable()
+                .InterceptWith(new NormalizeVersionInterceptor());
         }
 
         [WebGet]
@@ -129,7 +130,8 @@ namespace NuGet.Server.DataServices
                 .FindPackagesById(id)
                 .Where(package => package.Listed)
                 .Select(package => package.AsODataPackage())
-                .AsQueryable();
+                .AsQueryable()
+                .InterceptWith(new NormalizeVersionInterceptor());
         }
 
         [WebGet]
@@ -173,7 +175,8 @@ namespace NuGet.Server.DataServices
             return Repository
                 .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList)
                 .Select(package => package.AsODataPackage())
-                .AsQueryable();
+                .AsQueryable()
+                .InterceptWith(new NormalizeVersionInterceptor());
         }
     }
 }
