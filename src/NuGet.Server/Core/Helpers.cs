@@ -22,7 +22,7 @@ namespace NuGet.Server
             var uriBuilder = new UriBuilder(currentUrl);
 
             var repositoryUrl = uriBuilder.Scheme + "://" + uriBuilder.Host;
-            if (uriBuilder.Port != 80)
+            if (uriBuilder.Port != 80 && uriBuilder.Port != 443)
             {
                 repositoryUrl += ":" + uriBuilder.Port;
             }
