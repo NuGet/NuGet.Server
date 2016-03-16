@@ -76,6 +76,7 @@
     <Compile Include="Core\DefaultServiceResolver.cs" />
     <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\IServiceResolver.cs" />
+    <Compile Include="Core\PackageExtensions.cs" />
     <Compile Include="DataServices\ODataPackage.cs" />
     <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageExtensions.cs" />
@@ -109,6 +110,11 @@
     <Compile Include="DataServices\QueryableExtensions.cs" />
     <Compile Include="DataServices\QueryTranslator.cs" />
     <Compile Include="DataServices\QueryTranslatorProvider.cs" />
+    <Compile Include="Strings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Strings.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Default.aspx" />
@@ -139,7 +145,12 @@
       <SubType>Designer</SubType>
     </Content>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(OS)' == 'Windows_NT'">
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
   </PropertyGroup>

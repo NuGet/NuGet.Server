@@ -46,8 +46,11 @@ namespace NuGet.Server.Infrastructure
                     {
                         using (var stream = _fileSystem.OpenFile(_fileName))
                         {
-                            _packages.AddRange(
-                                _packagesSerializer.Deserialize(stream));
+                            var deserializedPackages = _packagesSerializer.Deserialize(stream);
+                            if (deserializedPackages != null)
+                            {
+                                _packages.AddRange(deserializedPackages);
+                            }
                         }
                     }
                     catch (SerializationException)
