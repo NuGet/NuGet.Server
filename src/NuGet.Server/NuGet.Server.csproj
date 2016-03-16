@@ -80,7 +80,7 @@
     <Compile Include="DataServices\ODataPackage.cs" />
     <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageExtensions.cs" />
-    <Compile Include="DataServices\PackageIdComparisonVisitor.cs" />
+    <Compile Include="DataServices\NormalizeVersionInterceptor.cs" />
     <Compile Include="Core\ServiceResolver.cs" />
     <Compile Include="Infrastructure\JsonNetPackagesSerializer.cs" />
     <Compile Include="Infrastructure\IPackagesSerializer.cs" />
