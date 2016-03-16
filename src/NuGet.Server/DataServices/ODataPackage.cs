@@ -18,6 +18,8 @@ namespace NuGet.Server.DataServices
 
         public string Version { get; set; }
 
+        public string NormalizedVersion { get; set; }
+
         public bool IsPrerelease { get; set; }
 
         public string Title { get; set; }
