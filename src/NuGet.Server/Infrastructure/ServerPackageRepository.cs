@@ -639,7 +639,7 @@ namespace NuGet.Server.Infrastructure
 
             // 1) If a .nupkg is dropped in the root, add it as a package
             if (String.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase)
-                && String.Equals(Path.GetExtension(e.Name), "nupkg", StringComparison.OrdinalIgnoreCase))
+                && String.Equals(Path.GetExtension(e.Name), ".nupkg", StringComparison.OrdinalIgnoreCase))
             {
                 // When a package is dropped into the server packages root folder, add it to the repository.
                 AddPackagesFromDropFolder();
