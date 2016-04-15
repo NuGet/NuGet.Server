@@ -77,6 +77,7 @@
     <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\IServiceResolver.cs" />
     <Compile Include="Core\PackageExtensions.cs" />
+    <Compile Include="DataServices\IgnoreCaseForPackageIdInterceptor.cs" />
     <Compile Include="DataServices\ODataPackage.cs" />
     <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageExtensions.cs" />
