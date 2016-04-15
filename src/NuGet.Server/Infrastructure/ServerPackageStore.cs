@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace NuGet.Server.Infrastructure
 {
@@ -53,10 +54,17 @@ namespace NuGet.Server.Infrastructure
                             }
                         }
                     }
-                    catch (SerializationException)
+                    catch (Exception ex)
                     {
-                        // In case this happens, remove the file
-                        _fileSystem.DeleteFile(_fileName);
+                        if (ex is JsonReaderException || ex is SerializationException)
+                        {
+                            // In case this happens, remove the file
+                            _fileSystem.DeleteFile(_fileName);
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
                 }
             }

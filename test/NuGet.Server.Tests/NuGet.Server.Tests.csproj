@@ -66,9 +66,11 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
     <Compile Include="JsonNetPackagesSerializerTests.cs" />
     <Compile Include="FeedPackageTest.cs" />
     <Compile Include="Infrastructure\TemporaryDirectory.cs" />
+    <Compile Include="NormalizeVersionInterceptorTest.cs" />
     <Compile Include="PackageAuthenticationServiceTests.cs" />
     <Compile Include="PackageSvcFacts.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

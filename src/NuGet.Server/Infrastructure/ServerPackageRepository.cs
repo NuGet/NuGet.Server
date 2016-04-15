@@ -10,7 +10,6 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Configuration;
-using NuGet.Resources;
 using NuGet.Server.Logging;
 
 namespace NuGet.Server.Infrastructure
