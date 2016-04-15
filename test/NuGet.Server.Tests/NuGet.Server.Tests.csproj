@@ -66,6 +66,7 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
     <Compile Include="JsonNetPackagesSerializerTests.cs" />
     <Compile Include="FeedPackageTest.cs" />
     <Compile Include="Infrastructure\TemporaryDirectory.cs" />

@@ -22,7 +22,7 @@ namespace NuGet.Server.DataServices
                     .GetPackages()
                     .Select(package => package.AsODataPackage())
                     .AsQueryable()
-                    .InterceptWith(new NormalizeVersionInterceptor());
+                    .InterceptWith(new IgnoreCaseForPackageIdInterceptor(), new NormalizeVersionInterceptor());
             }
         }
     }

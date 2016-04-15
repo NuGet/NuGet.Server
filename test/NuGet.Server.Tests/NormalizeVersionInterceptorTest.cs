@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using NuGet.Server.DataServices;
@@ -61,6 +62,26 @@ namespace NuGet.Server.Tests
 
             // Assert
             Assert.Equal(rewrittenExpression.ToString(), expectedExpression.ToString());
+        }
+
+        [Fact]
+        public void FindsPackagesUsingNormalizedVersion()
+        {
+            // Arrange
+            var data = new List<ODataPackage>();
+            data.Add(new ODataPackage { Id = "foo", Version = "1.0.0.0.0.0", NormalizedVersion = "1.0.0"});
+
+            var queryable = data.AsQueryable().InterceptWith(new NormalizeVersionInterceptor());
+
+            // Act
+            var result1 = queryable.FirstOrDefault(p => p.Version == "1.0");
+            var result2 = queryable.FirstOrDefault(p => p.Version == "1.0.0");
+            var result3 = queryable.FirstOrDefault(p => p.Version == "1.0.0.0");
+
+            // Assert
+            Assert.Equal(result1, data[0]);
+            Assert.Equal(result2, data[0]);
+            Assert.Equal(result3, data[0]);
         }
     }
 }
