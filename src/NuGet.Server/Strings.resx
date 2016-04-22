@@ -121,6 +121,6 @@
     <value>Package {0} already exists. The server is configured to not allow overwriting packages that already exist.</value>
   </data>
   <data name="Error_SymbolsPackagesIgnored" xml:space="preserve">
-    <value>Package {0} is a symbols package (it contains .pdb fiels and a /src folder). The server is configured to ignore symbols packages.</value>
+    <value>Package {0} is a symbols package (it contains .pdb files and a /src folder). The server is configured to ignore symbols packages.</value>
   </data>
 </root>
