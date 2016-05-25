@@ -32,22 +32,42 @@ namespace NuGet.Server.Publishing
 
             // Get the package from the request body
             // ReSharper disable once PossibleNullReferenceException
-            var stream = request.Files.Count > 0 ? request.Files[0].InputStream : request.InputStream;
+            var stream = request.Files.Count > 0
+                ? request.Files[0].InputStream 
+                : request.InputStream;
 
-            var package = new ZipPackage(stream);
+            // Copy the package to a temporary file
+            var temporaryFile = Path.GetTempFileName();
+            using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                stream.CopyTo(temporaryFileStream);
+            }
 
-            // Make sure they can access this package
+            var package = new OptimizedZipPackage(temporaryFile);
+
+            // Make sure the user can access this package
             if (Authenticate(context, apiKey, package.Id))
             {
                 try
                 {
                     _serverRepository.AddPackage(package);
+
                     WriteStatus(context, HttpStatusCode.Created, "");
                 }
                 catch (InvalidOperationException ex)
                 {
                     WriteStatus(context, HttpStatusCode.InternalServerError, ex.Message);
                 }
+            }
+
+            package = null;
+            try
+            {
+                File.Delete(temporaryFile);
+            }
+            catch (Exception)
+            {
+                WriteStatus(context, HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
             }
         }
 

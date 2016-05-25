@@ -16,7 +16,7 @@
       <frameworkAssembly assemblyName="System.Data.Services" />
     </frameworkAssemblies>
     <dependencies>
-      <dependency id="NuGet.Core" version="[2.10.1,)" />
+      <dependency id="NuGet.Core" version="[2.11.1,)" />
       <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
     </dependencies>
   </metadata>
