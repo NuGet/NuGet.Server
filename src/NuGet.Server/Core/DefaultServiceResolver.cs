@@ -12,16 +12,19 @@ namespace NuGet.Server
         : IServiceResolver
     {
         private readonly IHashProvider _hashProvider;
-        private readonly IPackageService _packageService;
         private readonly IServerPackageRepository _packageRepository;
+        private readonly IPackageAuthenticationService _packageAuthenticationService;
+        private readonly IPackageService _packageService;
 
         public DefaultServiceResolver()
         {
             _hashProvider = new CryptoHashProvider(Constants.HashAlgorithm);
 
-            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath,  _hashProvider, new TraceLogger());
+            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath, _hashProvider, new TraceLogger());
 
-            _packageService = new PackageService(_packageRepository, new PackageAuthenticationService());
+            _packageAuthenticationService = new PackageAuthenticationService();
+
+            _packageService = new PackageService(_packageRepository, _packageAuthenticationService);
         }
 
         public object Resolve(Type type)
@@ -31,14 +34,19 @@ namespace NuGet.Server
                 return _hashProvider;
             }
 
-            if (type == typeof(IPackageService))
-            {
-                return _packageService;
-            }
-
             if (type == typeof(IServerPackageRepository))
             {
                 return _packageRepository;
+            }
+
+            if (type == typeof(IPackageAuthenticationService))
+            {
+                return _packageAuthenticationService;
+            }
+
+            if (type == typeof(IPackageService))
+            {
+                return _packageService;
             }
 
             return null;

@@ -186,7 +186,7 @@ namespace NuGet.Server.Infrastructure
                     try
                     {
                         // Create package
-                        var package = new ZipPackage(_fileSystem.OpenFile(packageFile));
+                        var package = new OptimizedZipPackage(_fileSystem, packageFile);
 
                         // Is it a symbols package?
                         if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
@@ -235,6 +235,8 @@ namespace NuGet.Server.Infrastructure
             }
             finally
             {
+                OptimizedZipPackage.PurgeCache();
+
                 MonitorFileSystem(true);
             }
         }
@@ -552,6 +554,8 @@ namespace NuGet.Server.Infrastructure
             {
                 lock (_syncLock)
                 {
+                    OptimizedZipPackage.PurgeCache();
+
                     _serverPackageStore.Clear();
                     _serverPackageStore.Persist();
                     _logger.Log(LogLevel.Info, "Cleared package cache.");
