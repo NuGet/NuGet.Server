@@ -24,12 +24,12 @@
                 <strong><%= Helpers.GetRepositoryUrl(Request.Url, Request.ApplicationPath) %></strong>
             </blockquote>
             <% if (string.IsNullOrEmpty(ConfigurationManager.AppSettings["apiKey"])) { %>
-            To enable pushing packages to this feed using the nuget command line tool (nuget.exe). Set the api key appSetting in web.config.
+            To enable pushing packages to this feed using the <a href="https://www.nuget.org/downloads">NuGet command line tool</a> (nuget.exe), set the api key appSetting in web.config.
             <% } else { %>
-            Use the command below to push packages to this feed using the nuget command line tool (nuget.exe).
+            Use the command below to push packages to this feed using the <a href="https://www.nuget.org/downloads">NuGet command line tool</a> (nuget.exe).
             <% } %>
             <blockquote>
-                <strong>nuget push {package file} -s <%= Helpers.GetPushUrl(Request.Url, Request.ApplicationPath) %> {apikey}</strong>
+                <strong>nuget.exe push {package file} {apikey} -Source <%= Helpers.GetPushUrl(Request.Url, Request.ApplicationPath) %></strong>
             </blockquote>            
         </fieldset>
 
