@@ -80,6 +80,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
+    <Compile Include="Infrastructure\FuncSettingsProvider.cs" />
+    <Compile Include="Infrastructure\NullLogger.cs" />
     <Compile Include="JsonNetPackagesSerializerTests.cs" />
     <Compile Include="FeedPackageTest.cs" />
     <Compile Include="Infrastructure\TemporaryDirectory.cs" />
@@ -92,6 +94,10 @@
     <Compile Include="ServerPackageRepositoryTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">
+      <Project>{1fe62f82-927a-4437-91f1-1a965e51682b}</Project>
+      <Name>NuGet.Server.Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\NuGet.Server\NuGet.Server.csproj">
       <Project>{793B20A9-E263-4B54-BB31-305B602087CE}</Project>
       <Name>NuGet.Server</Name>

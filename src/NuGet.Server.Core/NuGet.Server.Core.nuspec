@@ -10,15 +10,11 @@
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
     <copyright>$copyright$</copyright>
     <frameworkAssemblies>
-      <frameworkAssembly assemblyName="System.ServiceModel" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Web" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Activation" />
       <frameworkAssembly assemblyName="System.Data.Services" />
     </frameworkAssemblies>
     <dependencies>
       <dependency id="NuGet.Core" version="[2.11.1,)" />
       <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
-      <dependency id="NuGet.Server.Core" version="$version$" />
     </dependencies>
   </metadata>
 </package>

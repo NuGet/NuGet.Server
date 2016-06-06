@@ -28,9 +28,9 @@ namespace NuGet.Server.Tests
             var serverRepository = new ServerPackageRepository(
                 fileSystem,
                 runBackgroundTasks: false,
-                innerRepository: expandedPackageRepository, 
-                logger: new Logging.NullLogger(),
-                getSetting: getSetting);
+                innerRepository: expandedPackageRepository,
+                logger: new Infrastructure.NullLogger(),
+                settingsProvider: getSetting != null ? new FuncSettingsProvider(getSetting) : null);
 
             serverRepository.GetPackages(); // caches the files
 
