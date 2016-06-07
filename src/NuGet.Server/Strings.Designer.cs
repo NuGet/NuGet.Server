@@ -70,7 +70,7 @@ namespace NuGet.Server {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Package {0} is a symbols package (it contains .pdb fiels and a /src folder). The server is configured to ignore symbols packages..
+        ///   Looks up a localized string similar to Package {0} is a symbols package (it contains .pdb files and a /src folder). The server is configured to ignore symbols packages..
         /// </summary>
         internal static string Error_SymbolsPackagesIgnored {
             get {
