@@ -28,9 +28,9 @@ using NuGet.Server.V2.OData;
 
 namespace NuGet.Server.V2
 {
-    public static class NuGetWebApiEnabler
+    public static class NuGetV2WebApiEnabler
     {
-        public static HttpConfiguration UseNuGetWebApiFeed(this HttpConfiguration config,
+        public static HttpConfiguration UseNuGetV2WebApiFeed(this HttpConfiguration config,
             string routeName,
             string routeUrlRoot, 
             string oDatacontrollerName,

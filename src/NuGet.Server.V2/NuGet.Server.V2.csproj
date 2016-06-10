@@ -85,7 +85,7 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="NuGetWebApiEnabler.cs" />
+    <Compile Include="NuGetV2WebApiEnabler.cs" />
     <Compile Include="OData\Conventions\CompositeKeyRoutingConvention.cs" />
     <Compile Include="OData\Conventions\CompositeODataKeyHelper.cs" />
     <Compile Include="OData\Conventions\ControllerAliasingODataRoutingConvention.cs" />

@@ -19,19 +19,24 @@ namespace NuGet.Server.V2.Controllers
     [NuGetODataControllerConfiguration]
     public abstract class NuGetODataController : ODataController
     {
-        static readonly ODataQuerySettings SearchQuerySettings = new ODataQuerySettings
-        {
-            HandleNullPropagation = HandleNullPropagationOption.False,
-            EnsureStableOrdering = true
-        };
-
         readonly IServerPackageRepository _repository;
 
         public NuGetODataController(IServerPackageRepository repository)
         {
             _repository = repository;
         }
+        
+        // /api/v2/Packages
+        [HttpGet]
+        [HttpPost]
+        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
+        public IQueryable<ODataPackage> Get()
+        {
+            var sourceQuery = _repository.GetPackages();
+            return TransformPackages(sourceQuery);
+        }
 
+        // /api/v2/Packages(Id=,Version=)
         [HttpGet]
         public ODataPackage Get([FromODataUri] string id, [FromODataUri] string version)
         {
@@ -43,27 +48,9 @@ namespace NuGet.Server.V2.Controllers
             return package.AsODataPackage();
         }
 
+        // /api/v2/FindPackagesById()?id=
         [HttpGet]
         [HttpPost]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> Get()
-        {
-            var sourceQuery = _repository.GetPackages();
-            return TransformPackages(sourceQuery);
-        }
-
-        [HttpGet]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> Search([FromODataUri] string searchTerm, [FromODataUri] string targetFramework, [FromODataUri] bool includePrerelease)
-        {
-            var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
-
-            var sourceQuery = _repository
-                .Search(searchTerm, targetFrameworks, includePrerelease);
-            return TransformPackages(sourceQuery);
-        }
-
-        [HttpGet]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public IEnumerable<ODataPackage> FindPackagesById([FromODataUri] string id)
         {
@@ -72,16 +59,34 @@ namespace NuGet.Server.V2.Controllers
         }
 
 
-        [HttpPost]
+        // /api/v2/Search()?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
+        [HttpPost]
+        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
+        public IQueryable<ODataPackage> Search(
+            [FromODataUri] string searchTerm = "", 
+            [FromODataUri] string targetFramework ="", 
+            [FromODataUri] bool includePrerelease = false)
+        {
+            var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+
+            var sourceQuery = _repository
+                .Search(searchTerm, targetFrameworks, includePrerelease);
+
+            return TransformPackages(sourceQuery);
+        }
+
+        // /api/v2/GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
+        [HttpGet]
+        [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public IQueryable<ODataPackage> GetUpdates(
             [FromODataUri] string packageIds,
             [FromODataUri] string versions,
             [FromODataUri] bool includePrerelease,
             [FromODataUri] bool includeAllVersions,
-            [FromODataUri] string targetFrameworks,
-            [FromODataUri] string versionConstraints)
+            [FromODataUri] string targetFrameworks = "",
+            [FromODataUri] string versionConstraints = "")
         {
             if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
             {
