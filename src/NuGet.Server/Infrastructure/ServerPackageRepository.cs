@@ -210,10 +210,12 @@ namespace NuGet.Server.Infrastructure
 
                         // Copy to correct filesystem location
                         _expandedPackageRepository.AddPackage(package);
-                        _fileSystem.DeleteFile(packageFile);
 
                         // Mark for addition to metadata store
                         serverPackages.Add(CreateServerPackage(package, EnableDelisting));
+
+                        // Remove file from drop folder
+                        _fileSystem.DeleteFile(packageFile);
                     }
                     catch (UnauthorizedAccessException ex)
                     {
