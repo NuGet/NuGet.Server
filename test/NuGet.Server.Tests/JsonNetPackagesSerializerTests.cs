@@ -100,7 +100,7 @@ namespace NuGet.Server.Tests
                     supportedFrameworks: string.Empty,
                     packageSize: 1234,
                     packageHash: "Hash" + i,
-                    packageHashAlgorithm: "HashAlorithm" + i,
+                    packageHashAlgorithm: "HashAlgorithm" + i,
                     lastUpdated: DateTimeOffset.UtcNow,
                     created: DateTimeOffset.UtcNow,
                     path: "Path" + i,

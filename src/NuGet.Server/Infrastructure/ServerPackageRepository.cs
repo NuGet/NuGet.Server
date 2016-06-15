@@ -354,7 +354,7 @@ namespace NuGet.Server.Infrastructure
         }
 
         /// <summary>
-        /// Remove a package from the respository.
+        /// Remove a package from the repository.
         /// </summary>
         public void RemovePackage(string packageId, SemanticVersion version)
         {
