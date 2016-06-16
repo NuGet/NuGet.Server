@@ -1,6 +1,6 @@
 ﻿using NuGet;
-using NuGet.Server.DataServices;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.IO;

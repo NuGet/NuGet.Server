@@ -1,4 +1,4 @@
-﻿using NuGet.Server.DataServices;
+﻿using NuGet.Server.Core.DataServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;

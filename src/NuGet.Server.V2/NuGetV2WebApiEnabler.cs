@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.Edm;
 using Microsoft.Data.OData;
-using NuGet.Server.DataServices;
+using NuGet.Server.Core.DataServices;
 using NuGet.Server.V2.OData.Conventions;
 using NuGet.Server.V2.OData.Serialization;
 using NuGet.Server.V2.Controllers;
@@ -21,8 +21,8 @@ using System.Web.Http.Routing;
 using System.Web.Http.OData.Builder;
 using System.Web.Http.Controllers;
 using System.Net.Http;
-using NuGet.Server.Infrastructure;
-using NuGet.Server.Logging;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
 using System.Net;
 using NuGet.Server.V2.OData;
 
@@ -64,9 +64,9 @@ namespace NuGet.Server.V2
             return config;
         }
 
-        public static IServerPackageRepository CreatePackageRepository(string packagePath, ISettingsProvider settingsProvider=null, NuGet.Server.Logging.ILogger logger=null)
+        public static IServerPackageRepository CreatePackageRepository(string packagePath, ISettingsProvider settingsProvider=null, NuGet.Server.Core.Logging.ILogger logger=null)
         {
-            var hashProvider = new CryptoHashProvider(Constants.HashAlgorithm);
+            var hashProvider = new CryptoHashProvider(Core.Constants.HashAlgorithm);
             return new ServerPackageRepository(packagePath, hashProvider, settingsProvider, logger);          
         }
 

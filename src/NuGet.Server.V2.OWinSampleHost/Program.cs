@@ -1,6 +1,6 @@
 ﻿using Microsoft.Owin.Hosting;
-using NuGet.Server.Infrastructure;
-using NuGet.Server.Logging;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
 using NuGet.Server.V2;
 using Owin;
 using System;

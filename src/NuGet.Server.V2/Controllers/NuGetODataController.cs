@@ -1,5 +1,5 @@
-﻿using NuGet.Server.DataServices;
-using NuGet.Server.Infrastructure;
+﻿using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.V2.OData;
 using System;
 using System.Collections.Generic;

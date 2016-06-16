@@ -11,7 +11,7 @@ using Microsoft.Data.OData;
 using Microsoft.Data.OData.Atom;
 using System.Collections.Generic;
 using Microsoft.Data.Edm;
-using NuGet.Server.DataServices;
+using NuGet.Server.Core.DataServices;
 
 namespace NuGet.Server.V2.OData.Serializers
 {

@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.Edm;
 using Microsoft.Data.OData;
-using NuGet.Server.DataServices;
+using NuGet.Server.Core.DataServices;
 using NuGet.Server.V2.OData.Conventions;
 using System;
 using System.Collections.Generic;

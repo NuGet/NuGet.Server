@@ -1,4 +1,4 @@
-﻿using NuGet.Server.Infrastructure;
+﻿using NuGet.Server.Core.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
