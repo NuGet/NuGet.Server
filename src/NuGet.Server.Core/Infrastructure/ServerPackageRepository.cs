@@ -9,10 +9,9 @@ using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Server.Logging;
-using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
 
-namespace NuGet.Server.Infrastructure
+namespace NuGet.Server.Core.Infrastructure
 {
     /// <summary>
     /// ServerPackageRepository represents a folder of nupkgs on disk. All packages are cached during the first request in order

@@ -3,7 +3,7 @@
 
 using System.Runtime.Versioning;
 
-namespace NuGet.Server
+namespace NuGet.Server.Core
 {
     internal static class FrameworkNameExtensions
     {

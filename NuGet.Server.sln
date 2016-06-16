@@ -18,6 +18,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.Tests", "test\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.Core", "src\NuGet.Server.Core\NuGet.Server.Core.csproj", "{1FE62F82-927A-4437-91F1-1A965E51682B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0F277539-E9D7-4A06-A731-D525D9AFCE54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.Core.Tests", "test\NuGet.Server.Core.Tests\NuGet.Server.Core.Tests.csproj", "{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Coverage|Any CPU = Coverage|Any CPU
@@ -92,11 +96,34 @@ Global
 		{1FE62F82-927A-4437-91F1-1A965E51682B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1FE62F82-927A-4437-91F1-1A965E51682B}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{1FE62F82-927A-4437-91F1-1A965E51682B}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Coverage|Any CPU.ActiveCfg = Coverage|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Coverage|Any CPU.Build.0 = Coverage|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Coverage|Mixed Platforms.ActiveCfg = Coverage|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Coverage|Mixed Platforms.Build.0 = Coverage|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Debug|Any CPU.ActiveCfg = Mono Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Debug|Any CPU.Build.0 = Mono Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Debug|Mixed Platforms.ActiveCfg = Mono Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Debug|Mixed Platforms.Build.0 = Mono Debug|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Release|Any CPU.ActiveCfg = Mono Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Release|Any CPU.Build.0 = Mono Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Release|Mixed Platforms.ActiveCfg = Mono Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Mono Release|Mixed Platforms.Build.0 = Mono Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{793B20A9-E263-4B54-BB31-305B602087CE} = {0F277539-E9D7-4A06-A731-D525D9AFCE54}
 		{92D18050-3867-4E39-B305-9F9870F66F5E} = {E7B39EAD-EA32-4011-845A-C949A336389A}
+		{1FE62F82-927A-4437-91F1-1A965E51682B} = {0F277539-E9D7-4A06-A731-D525D9AFCE54}
+		{FDE8DDFB-E01B-47FD-9945-0A151F3AE589} = {E7B39EAD-EA32-4011-845A-C949A336389A}
 	EndGlobalSection
 EndGlobal

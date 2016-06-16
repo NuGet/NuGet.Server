@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System.Linq;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Core.Infrastructure;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server.Core.DataServices
 {
     public class PackageContext
     {

@@ -4,7 +4,7 @@
 using System;
 using Newtonsoft.Json;
 
-namespace NuGet.Server.Infrastructure
+namespace NuGet.Server.Core.Infrastructure
 {
     public class SemanticVersionJsonConverter
         : JsonConverter

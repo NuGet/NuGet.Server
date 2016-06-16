@@ -10,6 +10,8 @@ using System.IO;
 using System.Linq;
 using System.ServiceModel.Web;
 using System.Web;
+using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server.DataServices

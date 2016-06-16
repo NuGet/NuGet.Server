@@ -3,7 +3,7 @@
 
 using System;
 
-namespace NuGet.Server.Logging
+namespace NuGet.Server.Core.Logging
 {
     public class ConsoleLogger
         : ILogger

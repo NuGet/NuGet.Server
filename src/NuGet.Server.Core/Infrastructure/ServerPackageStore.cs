@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace NuGet.Server.Infrastructure
+namespace NuGet.Server.Core.Infrastructure
 {
     public class ServerPackageStore
         : IServerPackageStore

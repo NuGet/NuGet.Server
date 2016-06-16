@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 
-namespace NuGet.Server.Tests.Infrastructure
+namespace NuGet.Server.Core.Tests.Infrastructure
 {
     public class TemporaryDirectory 
         : IDisposable

@@ -6,10 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using NuGet.Server.DataServices;
+using NuGet.Server.Core.DataServices;
 using Xunit;
 
-namespace NuGet.Server.Tests
+namespace NuGet.Server.Core.Tests
 {
     public class IgnoreCaseForPackageIdInterceptorTest
     {

@@ -2,11 +2,11 @@
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\NuGet.Settings.targets" />
   <PropertyGroup>
-    <ProjectGuid>{92D18050-3867-4E39-B305-9F9870F66F5E}</ProjectGuid>
+    <ProjectGuid>{FDE8DDFB-E01B-47FD-9945-0A151F3AE589}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NuGet.Server.Tests</RootNamespace>
-    <AssemblyName>NuGet.Server.Tests</AssemblyName>
+    <RootNamespace>NuGet.Server.Core.Tests</RootNamespace>
+    <AssemblyName>NuGet.Server.Core.Tests</AssemblyName>
     <ProjectTypeGuids>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <TargetFrameworkProfile />
@@ -80,19 +80,21 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PackageAuthenticationServiceTests.cs" />
-    <Compile Include="PackageSvcFacts.cs" />
+    <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
+    <Compile Include="Infrastructure\FuncSettingsProvider.cs" />
+    <Compile Include="Infrastructure\NullLogger.cs" />
+    <Compile Include="JsonNetPackagesSerializerTests.cs" />
+    <Compile Include="FeedPackageTest.cs" />
+    <Compile Include="Infrastructure\TemporaryDirectory.cs" />
+    <Compile Include="NormalizeVersionInterceptorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="HelpersTest.cs" />
+    <Compile Include="SemanticVersionJsonConverterTests.cs" />
+    <Compile Include="ServerPackageRepositoryTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">
       <Project>{1fe62f82-927a-4437-91f1-1a965e51682b}</Project>
       <Name>NuGet.Server.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\NuGet.Server\NuGet.Server.csproj">
-      <Project>{793B20A9-E263-4B54-BB31-305B602087CE}</Project>
-      <Name>NuGet.Server</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

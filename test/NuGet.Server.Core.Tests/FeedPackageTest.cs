@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Linq;
 using Xunit;
 
-namespace NuGet.Server.Tests
+namespace NuGet.Server.Core.Tests
 {
     public class FeedPackageTest
     {

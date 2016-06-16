@@ -4,7 +4,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server.Core.DataServices
 {
     public class NormalizeVersionInterceptor : ExpressionVisitor
     {

@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace NuGet.Server.Logging
+namespace NuGet.Server.Core.Logging
 {
     public class TraceLogger
         : ILogger

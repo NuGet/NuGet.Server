@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server.Core.DataServices
 {
     public static class QueryableExtensions
     {

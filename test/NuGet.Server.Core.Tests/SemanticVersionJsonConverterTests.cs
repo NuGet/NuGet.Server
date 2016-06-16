@@ -5,10 +5,10 @@ using System;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Core.Infrastructure;
 using Xunit;
 
-namespace NuGet.Server.Tests
+namespace NuGet.Server.Core.Tests
 {
     public class SemanticVersionJsonConverterTests
     {

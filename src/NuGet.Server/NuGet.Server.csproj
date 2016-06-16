@@ -116,7 +116,7 @@
   <ItemGroup>
     <Compile Include="DataServices\Routes.cs" />
     <None Include="NuGet.Server.nuspec" />
-    <Content Include="DataServices\Routes.cs.pp" />
+    <None Include="DataServices\Routes.cs.pp" />
     <Content Include="web.config.install.xdt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

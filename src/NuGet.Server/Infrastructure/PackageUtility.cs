@@ -6,6 +6,7 @@ using System.Configuration;
 using System.Web;
 using System.Web.Hosting;
 using System.Web.Routing;
+using NuGet.Server.Core.DataServices;
 using NuGet.Server.DataServices;
 
 namespace NuGet.Server.Infrastructure

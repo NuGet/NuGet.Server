@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace NuGet.Server.Infrastructure
+namespace NuGet.Server.Core.Infrastructure
 {
     public interface IPackagesSerializer
     {

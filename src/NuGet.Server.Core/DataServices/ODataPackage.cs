@@ -4,7 +4,7 @@
 using System;
 using System.Data.Services.Common;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server.Core.DataServices
 {
     [DataServiceKey("Id", "Version")]
     [EntityPropertyMapping("Id", SyndicationItemProperty.Title, SyndicationTextContentKind.Plaintext, keepInContent: false)]

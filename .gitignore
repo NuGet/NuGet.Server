@@ -196,10 +196,11 @@ FakesAssemblies/
 
 *.orig
 *.vs10x
-src/Server/Packages/*.nupkg
-src/Server/Server.Publish.xml
+src/NuGet.Server/Packages/*.nupkg
+src/NuGet.Server/Server.Publish.xml
 DebugConstants.cs
 *.log
 *.userprefs
 src/VsExtension/source.extension.vsixmanifest
 !packages/Microsoft.Web.Xdt.1.0.0-alpha/
+src/NuGet.Server/packages/*.bin

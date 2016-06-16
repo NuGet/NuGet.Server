@@ -7,11 +7,11 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using Moq;
-using NuGet.Server.Infrastructure;
-using NuGet.Server.Tests.Infrastructure;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Tests.Infrastructure;
 using Xunit;
 
-namespace NuGet.Server.Tests
+namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageRepositoryTest
     {

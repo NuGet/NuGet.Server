@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Core.Infrastructure;
 
-namespace NuGet.Server.DataServices
+namespace NuGet.Server.Core.DataServices
 {
     public static class PackageExtensions
     {

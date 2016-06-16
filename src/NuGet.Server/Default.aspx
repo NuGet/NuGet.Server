@@ -1,5 +1,6 @@
 ﻿<%@ Page Language="C#" %>
 <%@ Import Namespace="NuGet.Server" %>
+<%@ Import Namespace="NuGet.Server.Core.DataServices" %>
 <%@ Import Namespace="NuGet.Server.Infrastructure" %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -12,7 +13,7 @@
 </head>
 <body>
     <div>
-        <h2>You are running NuGet.Server v<%= typeof(NuGet.Server.DataServices.ODataPackage).Assembly.GetName().Version %></h2>
+        <h2>You are running NuGet.Server v<%= typeof(ODataPackage).Assembly.GetName().Version %></h2>
         <p>
             Click <a href="<%= VirtualPathUtility.ToAbsolute("~/nuget/Packages") %>">here</a> to view your packages.
         </p>

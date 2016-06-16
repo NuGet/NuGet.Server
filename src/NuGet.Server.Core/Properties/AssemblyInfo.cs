@@ -5,6 +5,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("NuGet.Server.Core")]
-[assembly: AssemblyDescription("Core libraries for creating a Web Application used to host a simple NuGet feed")]
+[assembly: AssemblyDescription("Core library for creating a Web Application used to host a simple NuGet feed")]
 
-[assembly: InternalsVisibleTo("NuGet.Server.Tests")]
+[assembly: InternalsVisibleTo("NuGet.Server.Core.Tests")]

@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace NuGet.Server
+namespace NuGet.Server.Core
 {
     public static class PackageExtensions
     {

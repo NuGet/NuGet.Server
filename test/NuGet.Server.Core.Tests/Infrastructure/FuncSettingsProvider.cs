@@ -1,11 +1,7 @@
-﻿using NuGet.Server.Infrastructure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
+using NuGet.Server.Core.Infrastructure;
 
-namespace NuGet.Server.Tests.Infrastructure
+namespace NuGet.Server.Core.Tests.Infrastructure
 {
     class FuncSettingsProvider : ISettingsProvider
     {

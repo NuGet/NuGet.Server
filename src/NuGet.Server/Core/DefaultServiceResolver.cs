@@ -2,8 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
 using NuGet.Server.Infrastructure;
-using NuGet.Server.Logging;
 using NuGet.Server.Publishing;
 
 namespace NuGet.Server
@@ -19,7 +20,7 @@ namespace NuGet.Server
 
         public DefaultServiceResolver()
         {
-            _hashProvider = new CryptoHashProvider(Constants.HashAlgorithm);
+            _hashProvider = new CryptoHashProvider(Core.Constants.HashAlgorithm);
 
             _settingsProvider = new WebConfigSettingsProvider();
 

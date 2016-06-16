@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using NuGet.Server.Infrastructure;
+using NuGet.Server.Core.Infrastructure;
 using Xunit;
 
-namespace NuGet.Server.Tests
+namespace NuGet.Server.Core.Tests
 {
     public class JsonNetPackagesSerializerTests
     {
