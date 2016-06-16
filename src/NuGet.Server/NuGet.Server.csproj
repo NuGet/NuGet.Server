@@ -81,50 +81,21 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Core\Constants.cs" />
     <Compile Include="Core\DefaultServiceResolver.cs" />
-    <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\IServiceResolver.cs" />
-    <Compile Include="Core\PackageExtensions.cs" />
-    <Compile Include="DataServices\IgnoreCaseForPackageIdInterceptor.cs" />
-    <Compile Include="DataServices\ODataPackage.cs" />
-    <Compile Include="DataServices\PackageContext.cs" />
-    <Compile Include="DataServices\PackageExtensions.cs" />
-    <Compile Include="DataServices\NormalizeVersionInterceptor.cs" />
     <Compile Include="Core\ServiceResolver.cs" />
-    <Compile Include="Infrastructure\JsonNetPackagesSerializer.cs" />
-    <Compile Include="Infrastructure\IPackagesSerializer.cs" />
-    <Compile Include="Infrastructure\IServerPackageStore.cs" />
-    <Compile Include="Infrastructure\PackageDerivedData.cs" />
-    <Compile Include="Infrastructure\SemanticVersionJsonConverter.cs" />
-    <Compile Include="Infrastructure\ServerPackageStore.cs" />
-    <Compile Include="Logging\ConsoleLogger.cs" />
-    <Compile Include="Logging\NullLogger.cs" />
-    <Compile Include="Logging\ILogger.cs" />
-    <Compile Include="Logging\LogLevel.cs" />
     <Compile Include="Core\SemanticVersionExtensions.cs" />
-    <Compile Include="Logging\TraceLogger.cs" />
+    <Compile Include="Infrastructure\WebConfigSettingsProvider.cs" />
     <Compile Include="Publishing\IPackageService.cs" />
     <Compile Include="Publishing\PackageService.cs" />
     <Compile Include="Core\Helpers.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
-    <Compile Include="Infrastructure\IServerPackageRepository.cs" />
     <Compile Include="Infrastructure\PackageAuthenticationService.cs" />
-    <Compile Include="Infrastructure\ServerPackageRepository.cs" />
-    <Compile Include="Infrastructure\ServerPackage.cs" />
     <Compile Include="DataServices\Packages.svc.cs">
       <DependentUpon>Packages.svc</DependentUpon>
     </Compile>
     <Compile Include="Infrastructure\PackageUtility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="DataServices\QueryableExtensions.cs" />
-    <Compile Include="DataServices\QueryTranslator.cs" />
-    <Compile Include="DataServices\QueryTranslatorProvider.cs" />
-    <Compile Include="Strings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Strings.resx</DependentUpon>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Default.aspx" />
@@ -152,10 +123,10 @@
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Strings.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
+    <ProjectReference Include="..\NuGet.Server.Core\NuGet.Server.Core.csproj">
+      <Project>{1fe62f82-927a-4437-91f1-1a965e51682b}</Project>
+      <Name>NuGet.Server.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(OS)' == 'Windows_NT'">
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>

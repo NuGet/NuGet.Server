@@ -37,6 +37,7 @@ IF %ERRORLEVEL% NEQ 0 goto error
 REM Package
 mkdir artifacts
 mkdir artifacts\packages
+call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server.Core\NuGet.Server.Core.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
 call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server\NuGet.Server.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
 IF %ERRORLEVEL% NEQ 0 goto error
 

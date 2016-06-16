@@ -15,12 +15,15 @@ namespace NuGet.Server
         private readonly IServerPackageRepository _packageRepository;
         private readonly IPackageAuthenticationService _packageAuthenticationService;
         private readonly IPackageService _packageService;
+        private readonly ISettingsProvider _settingsProvider;
 
         public DefaultServiceResolver()
         {
             _hashProvider = new CryptoHashProvider(Constants.HashAlgorithm);
 
-            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath, _hashProvider, new TraceLogger());
+            _settingsProvider = new WebConfigSettingsProvider();
+
+            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath, _hashProvider, _settingsProvider, new TraceLogger());
 
             _packageAuthenticationService = new PackageAuthenticationService();
 

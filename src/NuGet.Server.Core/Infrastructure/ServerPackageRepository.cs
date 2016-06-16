@@ -9,8 +9,8 @@ using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Configuration;
 using NuGet.Server.Logging;
+using NuGet.Server.Core.Infrastructure;
 
 namespace NuGet.Server.Infrastructure
 {
@@ -30,7 +30,7 @@ namespace NuGet.Server.Infrastructure
         private readonly IFileSystem _fileSystem;
         private readonly ExpandedPackageRepository _expandedPackageRepository;
         private readonly Logging.ILogger _logger;
-        private readonly Func<string, bool, bool> _getSetting;
+        private readonly ISettingsProvider _settingsProvider;
 
         private readonly IServerPackageStore _serverPackageStore;
 
@@ -40,38 +40,36 @@ namespace NuGet.Server.Infrastructure
         private Timer _persistenceTimer;
         private Timer _rebuildTimer;
 
-        public ServerPackageRepository(string path, IHashProvider hashProvider, Logging.ILogger logger)
+        public ServerPackageRepository(string path, IHashProvider hashProvider, ISettingsProvider settingsProvider = null, Logging.ILogger logger = null)
         {
             if (string.IsNullOrEmpty(path))
             {
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             }
 
             if (hashProvider == null)
             {
-                throw new ArgumentNullException("hashProvider");
+                throw new ArgumentNullException(nameof(hashProvider));
             }
 
             _fileSystem = new PhysicalFileSystem(path);
             _runBackgroundTasks = true;
             _logger = logger ?? new TraceLogger();
             _expandedPackageRepository = new ExpandedPackageRepository(_fileSystem, hashProvider);
-
             _serverPackageStore = new ServerPackageStore(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
-
-            _getSetting = GetBooleanAppSetting;
+            _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
         }
-        
-        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
+
+        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, ISettingsProvider settingsProvider = null, Logging.ILogger logger = null)
         {
             if (fileSystem == null)
             {
-                throw new ArgumentNullException("fileSystem");
+                throw new ArgumentNullException(nameof(fileSystem));
             }
 
             if (innerRepository == null)
             {
-                throw new ArgumentNullException("innerRepository");
+                throw new ArgumentNullException(nameof(innerRepository));
             }
 
             _fileSystem = fileSystem;
@@ -81,7 +79,7 @@ namespace NuGet.Server.Infrastructure
 
             _serverPackageStore = new ServerPackageStore(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
 
-            _getSetting = getSetting ?? GetBooleanAppSetting;
+            _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
         }
 
         private void SetupBackgroundJobs()
@@ -94,13 +92,13 @@ namespace NuGet.Server.Infrastructure
             _logger.Log(LogLevel.Info, "Registering background jobs...");
 
             // Persist to package store at given interval (when dirty)
-            _persistenceTimer = new Timer(state => 
+            _persistenceTimer = new Timer(state =>
                 _serverPackageStore.PersistIfDirty(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
             // Rebuild the package store in the background (every hour)
             _rebuildTimer = new Timer(state =>
                 RebuildPackageStore(), null, TimeSpan.FromSeconds(15), TimeSpan.FromHours(1));
-            
+
             _logger.Log(LogLevel.Info, "Finished registering background jobs.");
         }
 
@@ -125,7 +123,7 @@ namespace NuGet.Server.Infrastructure
             return GetPackages()
                 .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.Id, packageId) == 0);
         }
-        
+
         public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
         {
             var cache = CachedPackages;
@@ -329,7 +327,7 @@ namespace NuGet.Server.Infrastructure
                                 else
                                 {
                                     _logger.Log(LogLevel.Error,
-                                        "Error removing package {0} {1} - could not find package file {2}", 
+                                        "Error removing package {0} {1} - could not find package file {2}",
                                             package.Id, package.Version, fileName);
                                 }
                             }
@@ -384,7 +382,7 @@ namespace NuGet.Server.Infrastructure
             UnregisterFileSystemWatcher();
             _serverPackageStore.PersistIfDirty();
         }
-        
+
         /// <summary>
         /// Internal package cache containing packages metadata. 
         /// This data is generated if it does not exist already.
@@ -403,7 +401,7 @@ namespace NuGet.Server.Infrastructure
                         }
                     }
                 }
-                
+
                 // First time we come here, attach the file system watcher
                 if (_fileSystemWatcher == null)
                 {
@@ -449,7 +447,7 @@ namespace NuGet.Server.Infrastructure
         {
             _logger.Log(LogLevel.Info, "Start reading packages from disk...");
             MonitorFileSystem(false);
-            
+
             try
             {
                 var cachedPackages = new ConcurrentBag<ServerPackage>();
@@ -637,7 +635,7 @@ namespace NuGet.Server.Infrastructure
                 _logger.Log(LogLevel.Verbose, "Destroyed FileSystemWatcher - no longer monitoring {0}.", Source);
             }
         }
-        
+
         private void FileSystemChanged(object sender, FileSystemEventArgs e)
         {
             _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
@@ -653,7 +651,7 @@ namespace NuGet.Server.Infrastructure
             // 2) If a file is updated in a subdirectory, *or* a folder is deleted, invalidate the cache
             if ((!String.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
                 || e.ChangeType == WatcherChangeTypes.Deleted)
-            { 
+            {
                 // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
                 // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
 
@@ -666,7 +664,7 @@ namespace NuGet.Server.Infrastructure
             get
             {
                 // If the setting is misconfigured, treat it as success (backwards compatibility).
-                return _getSetting("allowOverrideExistingPackageOnPush", true);
+                return _settingsProvider.GetBoolSetting("allowOverrideExistingPackageOnPush", true);
             }
         }
 
@@ -675,7 +673,7 @@ namespace NuGet.Server.Infrastructure
             get
             {
                 // If the setting is misconfigured, treat it as "false" (backwards compatibility).
-                return _getSetting("ignoreSymbolsPackages", false);
+                return _settingsProvider.GetBoolSetting("ignoreSymbolsPackages", false);
             }
         }
 
@@ -684,7 +682,7 @@ namespace NuGet.Server.Infrastructure
             get
             {
                 // If the setting is misconfigured, treat it as off (backwards compatibility).
-                return _getSetting("enableDelisting", false);
+                return _settingsProvider.GetBoolSetting("enableDelisting", false);
             }
         }
 
@@ -693,15 +691,8 @@ namespace NuGet.Server.Infrastructure
             get
             {
                 // If the setting is misconfigured, treat it as off (backwards compatibility).
-                return _getSetting("enableFrameworkFiltering", false);
+                return _settingsProvider.GetBoolSetting("enableFrameworkFiltering", false);
             }
-        }
-        
-        private static bool GetBooleanAppSetting(string key, bool defaultValue)
-        {
-            var appSettings = WebConfigurationManager.AppSettings;
-            bool value;
-            return !Boolean.TryParse(appSettings[key], out value) ? defaultValue : value;
         }
 
         private string GetPackageFileName(string packageId, SemanticVersion version)
