@@ -97,9 +97,6 @@
     <Compile Include="Controllers\NuGetODataController.cs" />
     <Compile Include="OData\Serializers\CustomSerializerProvider.cs" />
     <Compile Include="OData\Serializers\NuGetEntityTypeSerializer.cs" />
-    <Compile Include="OData\Serializers\StreamAwareEntityTypeSerializer.cs" />
-    <Compile Include="OData\Serializers\ODataPackageStreamAwareEntityTypeSerializer.cs" />
-    <Compile Include="OData\Serializers\ODataPackageStreamAwareSerializerProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -2,7 +2,7 @@
 using Microsoft.Data.OData;
 using NuGet.Server.Core.DataServices;
 using NuGet.Server.V2.OData.Conventions;
-using NuGet.Server.V2.OData.Serialization;
+using NuGet.Server.V2.OData.Serializers;
 using NuGet.Server.V2.Controllers;
 using System;
 using System.Collections.Generic;
@@ -56,7 +56,7 @@ namespace NuGet.Server.V2
 
             var downloadRouteName = routeName + "_download";
 
-            ODataPackageStreamAwareEntityTypeSerializer.RegisterDownloadLinkProvider(oDataModel, new DefaultDownloadLinkProvider(downloadRouteName));
+            NuGetEntityTypeSerializer.RegisterDownloadLinkProvider(oDataModel, new DefaultDownloadLinkProvider(downloadRouteName));
 
             config.Routes.MapHttpRoute(downloadRouteName, routeUrlRoot + "/PackagesDownload(Id='{id}',Version='{version}')",
                 new { controller = downloadControllerName, action = "DownloadPackage", version = RouteParameter.Optional });

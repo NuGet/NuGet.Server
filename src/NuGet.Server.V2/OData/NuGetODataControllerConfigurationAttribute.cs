@@ -1,4 +1,4 @@
-﻿using NuGet.Server.V2.OData.Serialization;
+﻿using NuGet.Server.V2.OData.Serializers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +15,8 @@ namespace NuGet.Server.V2.OData
     {
         public void Initialize(HttpControllerSettings controllerSettings, HttpControllerDescriptor controllerDescriptor)
         {
-            var formatters = ODataMediaTypeFormatters.Create(new ODataPackageStreamAwareSerializerProvider(), new DefaultODataDeserializerProvider());
+            var serProvider = new CustomSerializerProvider((x) => new NuGetEntityTypeSerializer(x));
+            var formatters = ODataMediaTypeFormatters.Create(serProvider, new DefaultODataDeserializerProvider());
             controllerSettings.Formatters.Clear();
             controllerSettings.Formatters.InsertRange(0, formatters);
         }
