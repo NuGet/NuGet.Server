@@ -26,11 +26,9 @@ namespace NuGet.Server.V2.Controllers
         }
 
         [HttpGet, HttpHead]
-        public HttpResponseMessage DownloadPackage(string id, string version = "")
+        public virtual HttpResponseMessage DownloadPackage(string id, string version = "")
         {
-            IPackage requestedPackage = string.IsNullOrEmpty(version) ?
-                                        _repository.FindPackage(id) :
-                                        _repository.FindPackage(id, new SemanticVersion(version));
+            IPackage requestedPackage = RetrievePackage(id, version);
 
             if (requestedPackage == null)
                 return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
@@ -69,5 +67,11 @@ namespace NuGet.Server.V2.Controllers
             return result;
         }
 
+        protected IPackage RetrievePackage(string id, string version)
+        {
+            return string.IsNullOrEmpty(version) ?
+                                        _repository.FindPackage(id) :
+                                        _repository.FindPackage(id, new SemanticVersion(version));
+        }
     }
 }

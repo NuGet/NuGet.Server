@@ -15,8 +15,9 @@ namespace NuGet.Server.V2.OData
     {
         public void Initialize(HttpControllerSettings controllerSettings, HttpControllerDescriptor controllerDescriptor)
         {
-            var serProvider = new CustomSerializerProvider((x) => new NuGetEntityTypeSerializer(x));
+            var serProvider = new CustomSerializerProvider(provider => new NuGetEntityTypeSerializer(provider));
             var formatters = ODataMediaTypeFormatters.Create(serProvider, new DefaultODataDeserializerProvider());
+
             controllerSettings.Formatters.Clear();
             controllerSettings.Formatters.InsertRange(0, formatters);
         }

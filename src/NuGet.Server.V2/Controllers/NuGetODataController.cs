@@ -27,6 +27,7 @@ namespace NuGet.Server.V2.Controllers
         }
         
         // /api/v2/Packages
+        // Never seen this invoked. NuGet.Exe and Visual Studio seems to use Search for all package listing.
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
@@ -38,7 +39,7 @@ namespace NuGet.Server.V2.Controllers
 
         // /api/v2/Packages(Id=,Version=)
         [HttpGet]
-        public ODataPackage Get([FromODataUri] string id, [FromODataUri] string version)
+        public ODataPackage Get(string id, string version)
         {
             var semVersion = new SemanticVersion(version);
             var package = _repository.FindPackage(id, semVersion);
@@ -52,7 +53,7 @@ namespace NuGet.Server.V2.Controllers
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IEnumerable<ODataPackage> FindPackagesById([FromODataUri] string id)
+        public IQueryable<ODataPackage> FindPackagesById([FromODataUri] string id)
         {
             var sourceQuery = _repository.FindPackagesById(id);
             return TransformPackages(sourceQuery);
@@ -66,7 +67,8 @@ namespace NuGet.Server.V2.Controllers
         public IQueryable<ODataPackage> Search(
             [FromODataUri] string searchTerm = "", 
             [FromODataUri] string targetFramework ="", 
-            [FromODataUri] bool includePrerelease = false)
+            [FromODataUri] bool includePrerelease = false,
+            [FromODataUri] bool includeDelisted=false)
         {
             var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
 
@@ -77,6 +79,7 @@ namespace NuGet.Server.V2.Controllers
         }
 
         // /api/v2/GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
+        // Never seen this invoked. Visual Studio and NuGet.exe both seems to use FindPackagesById for updates.
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
@@ -85,8 +88,8 @@ namespace NuGet.Server.V2.Controllers
             [FromODataUri] string versions,
             [FromODataUri] bool includePrerelease,
             [FromODataUri] bool includeAllVersions,
-            [FromODataUri] string targetFrameworks = "",
-            [FromODataUri] string versionConstraints = "")
+            [FromODataUri] string targetFrameworks,
+            [FromODataUri] string versionConstraints)
         {
             if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
             {

@@ -60,11 +60,11 @@ namespace NuGet.Server.V2.OWinSampleHost
 
             //Map route for ordinary controllers, this is not neccessary for the NuGet feed.
             //It is just included as an example of combining ordinary controllers with NuGet OData Controllers.
-            config.Routes.MapHttpRoute(
-                name: "DefaultApi",
-                routeTemplate: "api/{controller}/{id}",
-                defaults: new { id = RouteParameter.Optional }
-            );
+            ////config.Routes.MapHttpRoute(
+            ////    name: "DefaultApi",
+            ////    routeTemplate: "api/{controller}/{version}",
+            ////    defaults: new { id = RouteParameter.Optional }
+            ////);
 
             NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config,
                 routeName : "NuGetAdmin", 

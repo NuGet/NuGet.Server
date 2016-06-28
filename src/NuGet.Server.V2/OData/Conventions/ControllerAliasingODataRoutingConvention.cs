@@ -38,7 +38,8 @@ namespace NuGet.Server.V2.OData.Conventions
 
         public string SelectAction(ODataPath odataPath, HttpControllerContext controllerContext, ILookup<string, HttpActionDescriptor> actionMap)
         {
-            return _delegateRoutingConvention.SelectAction(odataPath, controllerContext, actionMap);
+            var retValue = _delegateRoutingConvention.SelectAction(odataPath, controllerContext, actionMap);
+            return retValue;
         }
     }
 }

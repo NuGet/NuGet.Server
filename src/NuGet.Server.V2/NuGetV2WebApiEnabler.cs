@@ -41,25 +41,21 @@ namespace NuGet.Server.V2
             //conventions.Insert(0, new EntitySetCountRoutingConvention());
             //conventions.Insert(0, new ActionCountRoutingConvention(oDatacontrollerName));
             conventions.Insert(0, new MethodNameActionRoutingConvention(oDatacontrollerName));
-            //conventions.Insert(0, new EntitySetPropertyRoutingConvention(oDatacontrollerName));
             conventions.Insert(0, new CompositeKeyRoutingConvention());
 
             // Translate all requests to use V2FeedController instead of PackagesController
-            conventions =
-                conventions.Select(c => new ControllerAliasingODataRoutingConvention(c, "Packages", oDatacontrollerName))
-                    .Cast<IODataRoutingConvention>()
-                    .ToList();
+            conventions = conventions.Select(c => new ControllerAliasingODataRoutingConvention(c, "Packages", oDatacontrollerName))
+                            .Cast<IODataRoutingConvention>()
+                            .ToList();
 
 
             var oDataModel = BuildNuGetODataModel();
             config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new DefaultODataPathHandler(), conventions);
 
             var downloadRouteName = routeName + "_download";
-
+            var downloadRouteTemplate = routeUrlRoot + "/PackagesDownload(Id='{id}',Version='{version}')";
             NuGetEntityTypeSerializer.RegisterDownloadLinkProvider(oDataModel, new DefaultDownloadLinkProvider(downloadRouteName));
-
-            config.Routes.MapHttpRoute(downloadRouteName, routeUrlRoot + "/PackagesDownload(Id='{id}',Version='{version}')",
-                new { controller = downloadControllerName, action = "DownloadPackage", version = RouteParameter.Optional });
+            config.Routes.MapHttpRoute(downloadRouteName, downloadRouteTemplate,  new { controller = downloadControllerName, action = "DownloadPackage", version = RouteParameter.Optional });
 
             return config;
         }
