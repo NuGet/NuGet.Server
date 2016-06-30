@@ -8,7 +8,8 @@ using System.Web.Http;
 
 namespace NuGet.Server.V2.OWinSampleHost
 {
-    //[Authorize(Roles ="Admin")]
+    [Authorize]
+    //Requires user to be authorized to use this feed.
     public class NuGetPrivateODataController : NuGetODataController
     {
         public NuGetPrivateODataController()

@@ -37,8 +37,6 @@ namespace NuGet.Server.V2
         {
             // Insert conventions to make NuGet-compatible OData feed possible
             var conventions = ODataRoutingConventions.CreateDefault();
-            //conventions.Insert(0, new EntitySetCountRoutingConvention());
-            //conventions.Insert(0, new ActionCountRoutingConvention(oDatacontrollerName));
             conventions.Insert(0, new MethodNameActionRoutingConvention(oDatacontrollerName));
             conventions.Insert(0, new CompositeKeyRoutingConvention());
 

@@ -3,15 +3,12 @@ using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.V2.OData;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.OData;
@@ -24,12 +21,22 @@ namespace NuGet.Server.V2.Controllers
     {
         const string ApiKeyHeader = "X-NUGET-APIKEY";
 
-        protected readonly IServerPackageRepository _repository;
+        protected readonly IServerPackageRepository _serverRepository;
         protected readonly IPackageAuthenticationService _authenticationService;
 
-        public NuGetODataController(IServerPackageRepository repository, IPackageAuthenticationService authenticationService=null)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="repository">Required.</param>
+        /// <param name="authenticationService">Optional. If this is not supplied Upload/Delete is not available (invocation returns 403 Forbidden)</param>
+        protected NuGetODataController(IServerPackageRepository repository, IPackageAuthenticationService authenticationService=null)
         {
-            _repository = repository;
+            if (repository == null)
+            {
+                throw new ArgumentNullException(nameof(repository));
+            }
+
+            _serverRepository = repository;
             _authenticationService = authenticationService;
         }
         
@@ -40,7 +47,7 @@ namespace NuGet.Server.V2.Controllers
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public virtual IQueryable<ODataPackage> Get()
         {
-            var sourceQuery = _repository.GetPackages();
+            var sourceQuery = _serverRepository.GetPackages();
             return TransformPackages(sourceQuery);
         }
 
@@ -63,7 +70,7 @@ namespace NuGet.Server.V2.Controllers
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public virtual IQueryable<ODataPackage> FindPackagesById([FromODataUri] string id)
         {
-            var sourceQuery = _repository.FindPackagesById(id);
+            var sourceQuery = _serverRepository.FindPackagesById(id);
             return TransformPackages(sourceQuery);
         }
 
@@ -80,7 +87,7 @@ namespace NuGet.Server.V2.Controllers
         {
             var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
 
-            var sourceQuery = _repository
+            var sourceQuery = _serverRepository
                 .Search(searchTerm, targetFrameworks, includePrerelease);
 
             return TransformPackages(sourceQuery);
@@ -133,7 +140,7 @@ namespace NuGet.Server.V2.Controllers
                 }
             }
 
-            var sourceQuery = _repository
+            var sourceQuery = _serverRepository
                 .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList);
 
             return TransformPackages(sourceQuery);
@@ -201,7 +208,27 @@ namespace NuGet.Server.V2.Controllers
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package delete is not allowed");
 
-            return Request.CreateResponse(HttpStatusCode.Accepted);
+            string apiKey = GetApiKeyFromHeader();
+
+            var requestedPackage = RetrieveFromRepository(id, version);
+
+            if (requestedPackage == null || !requestedPackage.Listed)
+            {
+                // Package not found
+                return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
+            }
+
+            // Make sure the user can access this package
+            if (_authenticationService.IsAuthenticated(User, apiKey, requestedPackage.Id))
+            {
+                _serverRepository.RemovePackage(requestedPackage.Id, requestedPackage.Version);
+                return Request.CreateResponse(HttpStatusCode.NoContent);
+            }
+            else
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}', version '{1}'.", requestedPackage.Id,version));
+            }
+
         }
 
         /// <summary>
@@ -215,12 +242,7 @@ namespace NuGet.Server.V2.Controllers
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package upload is not allowed");
 
-            // Get the api key from the header
-            string apiKey = null;
-            IEnumerable<string> values;
-            if (Request.Headers.TryGetValues(ApiKeyHeader, out values))
-                apiKey = values.FirstOrDefault();
-
+            string apiKey = GetApiKeyFromHeader();
 
             // Copy the package to a temporary file
             var temporaryFile = Path.GetTempFileName();
@@ -242,10 +264,9 @@ namespace NuGet.Server.V2.Controllers
 
 
             HttpResponseMessage retValue;
-            // Make sure the user can access this package
             if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
             {
-                _repository.AddPackage(package);
+                _serverRepository.AddPackage(package);
                 retValue = Request.CreateResponse(HttpStatusCode.Created);
             }
             else
@@ -266,11 +287,20 @@ namespace NuGet.Server.V2.Controllers
             return retValue;
         }
 
+        private string GetApiKeyFromHeader()
+        {
+            string apiKey = null;
+            IEnumerable<string> values;
+            if (Request.Headers.TryGetValues(ApiKeyHeader, out values))
+                apiKey = values.FirstOrDefault();
+            return apiKey;
+        }
+
         protected IPackage RetrieveFromRepository(string id, string version)
         {
             return string.IsNullOrEmpty(version) ?
-                                        _repository.FindPackage(id) :
-                                        _repository.FindPackage(id, new SemanticVersion(version));
+                                        _serverRepository.FindPackage(id) :
+                                        _serverRepository.FindPackage(id, new SemanticVersion(version));
         }
 
         protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)

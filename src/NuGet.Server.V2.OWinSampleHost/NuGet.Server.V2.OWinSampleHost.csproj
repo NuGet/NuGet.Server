@@ -103,8 +103,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BasicAuthentication.cs" />
     <Compile Include="Controllers\NuGetPrivateODataController.cs" />
     <Compile Include="Controllers\NuGetPublicODataController.cs" />
+    <Compile Include="Controllers\NuGetVeryPublicODataController.cs" />
     <Compile Include="DictionarySettingsProvider.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
