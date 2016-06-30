@@ -90,10 +90,7 @@
     <Compile Include="OData\Conventions\CompositeODataKeyHelper.cs" />
     <Compile Include="OData\Conventions\ControllerAliasingODataRoutingConvention.cs" />
     <Compile Include="OData\Conventions\MethodNameActionRoutingConvention.cs" />
-    <Compile Include="OData\DefaultDownloadLinkProvider.cs" />
-    <Compile Include="OData\IDownloadLinkProvider.cs" />
     <Compile Include="OData\NuGetODataControllerConfigurationAttribute.cs" />
-    <Compile Include="Controllers\NuGetDownloadController.cs" />
     <Compile Include="Controllers\NuGetODataController.cs" />
     <Compile Include="OData\Serializers\CustomSerializerProvider.cs" />
     <Compile Include="OData\Serializers\NuGetEntityTypeSerializer.cs" />

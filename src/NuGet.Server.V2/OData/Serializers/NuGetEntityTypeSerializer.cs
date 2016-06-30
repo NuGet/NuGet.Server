@@ -1,6 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Copied from NuGetGallery (commit:f2fc834d 26.05.2016), removed V1 support and added DownloadLinkProviders
+// Copied from NuGetGallery (commit:f2fc834d 26.05.2016), removed V1 support and modified downloadlink
 
 using System;
 using System.Net.Http;
@@ -12,6 +12,9 @@ using Microsoft.Data.OData.Atom;
 using System.Collections.Generic;
 using Microsoft.Data.Edm;
 using NuGet.Server.Core.DataServices;
+using System.Linq;
+using System.Web.Http.OData.Extensions;
+using System.Web.Http.OData.Routing;
 
 namespace NuGet.Server.V2.OData.Serializers
 {
@@ -19,14 +22,6 @@ namespace NuGet.Server.V2.OData.Serializers
         : ODataEntityTypeSerializer
     {
         private readonly string _contentType;
-
-        static Dictionary<IEdmModel, IDownloadLinkProvider> _downloadLinkProviders = new Dictionary<IEdmModel, IDownloadLinkProvider>();
-
-        internal static void RegisterDownloadLinkProvider(IEdmModel oDataModel, IDownloadLinkProvider downloadLinkProvider)
-        {
-            _downloadLinkProviders.Add(oDataModel, downloadLinkProvider);
-        }
-
 
         public NuGetEntityTypeSerializer(ODataSerializerProvider serializerProvider)
             : base(serializerProvider)
@@ -79,11 +74,11 @@ namespace NuGet.Server.V2.OData.Serializers
             get { return _contentType; }
         }
 
-        private static Uri BuildLinkForStreamProperty(ODataPackage package, EntityInstanceContext context)
+        private  Uri BuildLinkForStreamProperty(ODataPackage package, EntityInstanceContext context)
         {
-            var linkProvider = _downloadLinkProviders[context.EdmModel];
-            var retValue = linkProvider.GetDownloadUrl(package, context);
-            return retValue;
+            var keyValue = "Id='" + package.Id + "',Version='" + package.Version + "'";
+            var downloadUrl = context.Url.CreateODataLink(new EntitySetPathSegment("Packages"), new KeyValuePathSegment(keyValue), new ActionPathSegment("Download"));
+            return new Uri(downloadUrl);
         }
 
     }

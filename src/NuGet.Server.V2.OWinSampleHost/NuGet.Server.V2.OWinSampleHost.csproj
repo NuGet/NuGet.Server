@@ -103,8 +103,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Controllers\NuGetPrivateDownloadController.cs" />
-    <Compile Include="Controllers\NuGetPublicDownloadController.cs" />
     <Compile Include="Controllers\NuGetPrivateODataController.cs" />
     <Compile Include="Controllers\NuGetPublicODataController.cs" />
     <Compile Include="DictionarySettingsProvider.cs" />

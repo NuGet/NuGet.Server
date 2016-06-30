@@ -89,7 +89,6 @@
     <Compile Include="Publishing\IPackageService.cs" />
     <Compile Include="Publishing\PackageService.cs" />
     <Compile Include="Core\Helpers.cs" />
-    <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\PackageAuthenticationService.cs" />
     <Compile Include="DataServices\Packages.svc.cs">
       <DependentUpon>Packages.svc</DependentUpon>

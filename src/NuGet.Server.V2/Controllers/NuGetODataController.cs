@@ -4,9 +4,12 @@ using NuGet.Server.V2.OData;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -19,52 +22,57 @@ namespace NuGet.Server.V2.Controllers
     [NuGetODataControllerConfiguration]
     public abstract class NuGetODataController : ODataController
     {
-        readonly IServerPackageRepository _repository;
+        const string ApiKeyHeader = "X-NUGET-APIKEY";
 
-        public NuGetODataController(IServerPackageRepository repository)
+        protected readonly IServerPackageRepository _repository;
+        protected readonly IPackageAuthenticationService _authenticationService;
+
+        public NuGetODataController(IServerPackageRepository repository, IPackageAuthenticationService authenticationService=null)
         {
             _repository = repository;
+            _authenticationService = authenticationService;
         }
         
-        // /api/v2/Packages
-        // Never seen this invoked. NuGet.Exe and Visual Studio seems to use Search for all package listing.
+        // GET /Packages
+        // Never seen this invoked. NuGet.Exe and Visual Studio seems to use 'Search' for all package listing.
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> Get()
+        public virtual IQueryable<ODataPackage> Get()
         {
             var sourceQuery = _repository.GetPackages();
             return TransformPackages(sourceQuery);
         }
 
-        // /api/v2/Packages(Id=,Version=)
+        // GET /Packages(Id=,Version=)
         [HttpGet]
-        public ODataPackage Get(string id, string version)
+        public virtual ODataPackage Get(string id, string version)
         {
-            var semVersion = new SemanticVersion(version);
-            var package = _repository.FindPackage(id, semVersion);
+            var package = RetrieveFromRepository(id, version);
+
             if (package == null)
                 throw new HttpResponseException(HttpStatusCode.NotFound);
 
             return package.AsODataPackage();
         }
 
-        // /api/v2/FindPackagesById()?id=
+
+        // GET/POST /FindPackagesById()?id=
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> FindPackagesById([FromODataUri] string id)
+        public virtual IQueryable<ODataPackage> FindPackagesById([FromODataUri] string id)
         {
             var sourceQuery = _repository.FindPackagesById(id);
             return TransformPackages(sourceQuery);
         }
 
 
-        // /api/v2/Search()?searchTerm=&targetFramework=&includePrerelease=
+        // GET/POST /Search()?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> Search(
+        public virtual IQueryable<ODataPackage> Search(
             [FromODataUri] string searchTerm = "", 
             [FromODataUri] string targetFramework ="", 
             [FromODataUri] bool includePrerelease = false,
@@ -78,12 +86,12 @@ namespace NuGet.Server.V2.Controllers
             return TransformPackages(sourceQuery);
         }
 
-        // /api/v2/GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
-        // Never seen this invoked. Visual Studio and NuGet.exe both seems to use FindPackagesById for updates.
+        // GET/POST /GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
+        // Never seen this invoked. Visual Studio and NuGet.exe both seems to use 'FindPackagesById' for updates.
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public IQueryable<ODataPackage> GetUpdates(
+        public virtual IQueryable<ODataPackage> GetUpdates(
             [FromODataUri] string packageIds,
             [FromODataUri] string versions,
             [FromODataUri] bool includePrerelease,
@@ -131,7 +139,141 @@ namespace NuGet.Server.V2.Controllers
             return TransformPackages(sourceQuery);
         }
 
-        IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)
+        /// <summary>
+        /// Exposed as OData Action for specific entity
+        /// GET/HEAD /Packages(Id=,Version=)/Download
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        [HttpGet, HttpHead]
+        public virtual HttpResponseMessage Download(string id, string version = "")
+        {
+            IPackage requestedPackage = RetrieveFromRepository(id, version);
+
+            if (requestedPackage == null)
+                return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
+
+            var serverPackage = requestedPackage as ServerPackage;
+
+            var result = Request.CreateResponse(HttpStatusCode.OK);
+
+            if (Request.Method == HttpMethod.Get)
+            {
+                if (serverPackage != null)
+                    result.Content = new StreamContent(File.OpenRead(serverPackage.FullPath));
+                else
+                    result.Content = new StreamContent(requestedPackage.GetStream());
+            }
+            else
+            {
+                result.Content = new StringContent(string.Empty);
+            }
+
+            result.Content.Headers.ContentType = new MediaTypeWithQualityHeaderValue("binary/octet-stream");
+            if (serverPackage != null)
+            {
+                result.Content.Headers.LastModified = serverPackage.LastUpdated;
+                result.Headers.ETag = new EntityTagHeaderValue('"' + serverPackage.PackageHash + '"');
+            }
+
+            result.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(DispositionTypeNames.Attachment)
+            {
+                FileName = string.Format("{0}.{1}{2}", requestedPackage.Id, requestedPackage.Version, NuGet.Constants.PackageExtension),
+                Size = serverPackage != null ? (long?)serverPackage.PackageSize : null,
+                CreationDate = requestedPackage.Published,
+                ModificationDate = result.Content.Headers.LastModified,
+            };
+
+            return result;
+        }
+
+        /// <summary>
+        /// Exposed through ordinary Web API route. Bypasses OData pipeline.
+        /// DELETE /id/version
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        [HttpDelete]
+        public virtual HttpResponseMessage DeletePackage(string id, string version)
+        {
+            if (_authenticationService == null)
+                return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package delete is not allowed");
+
+            return Request.CreateResponse(HttpStatusCode.Accepted);
+        }
+
+        /// <summary>
+        /// Exposed through ordinary Web API route. Bypasses OData pipeline.
+        /// PUT /
+        /// </summary>
+        /// <returns></returns>
+        [HttpPut]
+        public virtual async Task<HttpResponseMessage> UploadPackage()
+        {
+            if (_authenticationService == null)
+                return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package upload is not allowed");
+
+            // Get the api key from the header
+            string apiKey = null;
+            IEnumerable<string> values;
+            if (Request.Headers.TryGetValues(ApiKeyHeader, out values))
+                apiKey = values.FirstOrDefault();
+
+
+            // Copy the package to a temporary file
+            var temporaryFile = Path.GetTempFileName();
+            using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                if (Request.Content.IsMimeMultipartContent())
+                {
+                    var provider = new MultipartMemoryStreamProvider();
+                    var multipartContents = await Request.Content.ReadAsMultipartAsync();
+                    await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
+                }
+                else
+                {
+                    await Request.Content.CopyToAsync(temporaryFileStream);
+                }
+            }
+
+            var package = new OptimizedZipPackage(temporaryFile);
+
+
+            HttpResponseMessage retValue;
+            // Make sure the user can access this package
+            if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
+            {
+                _repository.AddPackage(package);
+                retValue = Request.CreateResponse(HttpStatusCode.Created);
+            }
+            else
+            {
+                retValue = Request.CreateErrorResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
+            }
+
+            package = null;
+            try
+            {
+                File.Delete(temporaryFile);
+            }
+            catch (Exception)
+            {
+                retValue = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
+            }
+
+            return retValue;
+        }
+
+        protected IPackage RetrieveFromRepository(string id, string version)
+        {
+            return string.IsNullOrEmpty(version) ?
+                                        _repository.FindPackage(id) :
+                                        _repository.FindPackage(id, new SemanticVersion(version));
+        }
+
+        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)
         {
             var retValue = packages.Select(x => x.AsODataPackage())
                 .AsQueryable()

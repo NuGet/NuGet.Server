@@ -33,8 +33,7 @@ namespace NuGet.Server.V2
         public static HttpConfiguration UseNuGetV2WebApiFeed(this HttpConfiguration config,
             string routeName,
             string routeUrlRoot, 
-            string oDatacontrollerName,
-            string downloadControllerName)
+            string oDatacontrollerName)
         {
             // Insert conventions to make NuGet-compatible OData feed possible
             var conventions = ODataRoutingConventions.CreateDefault();
@@ -43,20 +42,28 @@ namespace NuGet.Server.V2
             conventions.Insert(0, new MethodNameActionRoutingConvention(oDatacontrollerName));
             conventions.Insert(0, new CompositeKeyRoutingConvention());
 
-            // Translate all requests to use V2FeedController instead of PackagesController
+            // Translate all requests to Packages to use specified controllername instead of PackagesController
             conventions = conventions.Select(c => new ControllerAliasingODataRoutingConvention(c, "Packages", oDatacontrollerName))
                             .Cast<IODataRoutingConvention>()
                             .ToList();
 
-
             var oDataModel = BuildNuGetODataModel();
+
+            config.Routes.MapHttpRoute(
+                 name: routeName + "_upload",
+                 routeTemplate: routeUrlRoot + "/",
+                 defaults: new { controller = oDatacontrollerName, action = "UploadPackage" },
+                 constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Put) }
+             );
+
+            config.Routes.MapHttpRoute(
+                 name: routeName + "_delete",
+                 routeTemplate: routeUrlRoot + "/{id}/{version}",
+                 defaults: new { controller = oDatacontrollerName, action = "DeletePackage" },
+                 constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Delete) }
+             );
+
             config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new DefaultODataPathHandler(), conventions);
-
-            var downloadRouteName = routeName + "_download";
-            var downloadRouteTemplate = routeUrlRoot + "/PackagesDownload(Id='{id}',Version='{version}')";
-            NuGetEntityTypeSerializer.RegisterDownloadLinkProvider(oDataModel, new DefaultDownloadLinkProvider(downloadRouteName));
-            config.Routes.MapHttpRoute(downloadRouteName, downloadRouteTemplate,  new { controller = downloadControllerName, action = "DownloadPackage", version = RouteParameter.Optional });
-
             return config;
         }
 
@@ -73,16 +80,18 @@ namespace NuGet.Server.V2
             var packagesCollection = builder.EntitySet<ODataPackage>("Packages");
             packagesCollection.EntityType.HasKey(pkg => pkg.Id);
             packagesCollection.EntityType.HasKey(pkg => pkg.Version);
+            var downloadPackageAction = packagesCollection.EntityType.Action("Download");
+            downloadPackageAction.Returns<HttpResponseMessage>();
 
             var searchAction = builder.Action("Search");
             searchAction.Parameter<string>("searchTerm");
             searchAction.Parameter<string>("targetFramework");
             searchAction.Parameter<bool>("includePrerelease");
-            searchAction.ReturnsCollectionFromEntitySet<ODataPackage>("Packages");
+            searchAction.ReturnsCollectionFromEntitySet(packagesCollection);
 
             var findPackagesAction = builder.Action("FindPackagesById");
             findPackagesAction.Parameter<string>("id");
-            findPackagesAction.ReturnsCollectionFromEntitySet<ODataPackage>("Packages");
+            findPackagesAction.ReturnsCollectionFromEntitySet(packagesCollection);
 
             var getUpdatesAction = builder.Action("GetUpdates");
             getUpdatesAction.Parameter<string>("packageIds");
@@ -91,7 +100,7 @@ namespace NuGet.Server.V2
             getUpdatesAction.Parameter<bool>("includeAllVersions");
             getUpdatesAction.Parameter<string>("targetFrameworks");
             getUpdatesAction.Parameter<string>("versionConstraints");
-            getUpdatesAction.ReturnsCollectionFromEntitySet<ODataPackage>("Packages");
+            getUpdatesAction.ReturnsCollectionFromEntitySet(packagesCollection);
 
             var retValue = builder.GetEdmModel();
             retValue.SetHasDefaultStream(retValue.FindDeclaredType(typeof(ODataPackage).FullName) as IEdmEntityType, hasStream: true);

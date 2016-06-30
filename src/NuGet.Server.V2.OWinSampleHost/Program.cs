@@ -67,10 +67,10 @@ namespace NuGet.Server.V2.OWinSampleHost
             ////);
 
             NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config,
-                routeName : "NuGetAdmin", 
-                routeUrlRoot : "NuGet/admin",
-                oDatacontrollerName: "NuGetPrivateOData",            //NuGetPrivateODataController.cs, located in Controllers\ folder
-                downloadControllerName: "NuGetPrivateDownload");     //NuGetPrivateDownloadController.cs, located in Controllers\ folder
+                routeName: "NuGetAdmin",
+                routeUrlRoot: "NuGet/admin",
+                oDatacontrollerName: "NuGetPrivateOData");            //NuGetPrivateODataController.cs, located in Controllers\ folder
+
 
             //NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config,
             //    routeName: "NuGetPublic",
