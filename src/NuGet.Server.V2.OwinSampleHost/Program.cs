@@ -14,7 +14,7 @@ using System.Text;
 using System.Web.Http;
 using System.Web.Http.OData.Extensions;
 
-namespace NuGet.Server.V2.OWinSampleHost
+namespace NuGet.Server.V2.OwinSampleHost
 {
     class Program
     {
@@ -75,7 +75,7 @@ namespace NuGet.Server.V2.OWinSampleHost
             );
 
             //Feed that allows  read/download access for authenticated users, delete/upload is disabled (configured in controller's constructor).
-            //User authentication is done by hosting environment, typical OWin pipeline or IIS (configured by attribute on controller).
+            //User authentication is done by hosting environment, typical Owin pipeline or IIS (configured by attribute on controller).
             NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config,
                 routeName: "NuGetAdmin",
                 routeUrlRoot: "NuGet/admin",

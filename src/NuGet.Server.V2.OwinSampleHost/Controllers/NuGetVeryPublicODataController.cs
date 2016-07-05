@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net.Http;
 
-namespace NuGet.Server.V2.OWinSampleHost
+namespace NuGet.Server.V2.OwinSampleHost
 {
     public class NuGetVeryPublicODataController : NuGetODataController
     {

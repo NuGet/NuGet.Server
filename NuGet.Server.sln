@@ -24,7 +24,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.Core.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.V2", "src\NuGet.Server.V2\NuGet.Server.V2.csproj", "{273E4575-4054-4578-9D14-8D4E640A365F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.V2.OWinSampleHost", "src\NuGet.Server.V2.OWinSampleHost\NuGet.Server.V2.OWinSampleHost.csproj", "{5CF9DB92-53DE-488E-82F9-4C3F867516B2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.V2.OwinSampleHost", "src\NuGet.Server.V2.OwinSampleHost\NuGet.Server.V2.OwinSampleHost.csproj", "{5CF9DB92-53DE-488E-82F9-4C3F867516B2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

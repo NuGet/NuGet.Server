@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 
-namespace NuGet.Server.V2.OWinSampleHost
+namespace NuGet.Server.V2.OwinSampleHost
 {
     public class ValuesController : ApiController
     {
