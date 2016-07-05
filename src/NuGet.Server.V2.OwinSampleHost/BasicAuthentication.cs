@@ -68,10 +68,14 @@ namespace NuGet.Server.V2.OwinSampleHost
 
         protected virtual void SetClaimsIdentity(IOwinRequest request, string username)
         {
-            var claims = new[] { new Claim(ClaimTypes.Name, username) }
+            var claims = new [] 
+            {
+                new Claim(ClaimTypes.Name, username)
+            }
             .Concat(
-                    GetRolesForUser(username).Select(r=>new Claim(ClaimTypes.Role, r))
+                GetRolesForUser(username).Select(r=>new Claim(ClaimTypes.Role, r))
                 );
+
             var id = new ClaimsIdentity(claims, "Basic");
             request.User = new ClaimsPrincipal(id);
         }
@@ -87,8 +91,10 @@ namespace NuGet.Server.V2.OwinSampleHost
         protected virtual bool ValidateUser(string username, string password)
         {
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
                 return false;
-            
+            }
+
             return true;
         }
     }
