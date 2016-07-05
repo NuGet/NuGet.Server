@@ -42,6 +42,7 @@ namespace NuGet.Server.V2.Controllers
         
         // GET /Packages
         // Never seen this invoked. NuGet.Exe and Visual Studio seems to use 'Search' for all package listing.
+        // Probably required to be OData compliant?
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
@@ -94,7 +95,6 @@ namespace NuGet.Server.V2.Controllers
         }
 
         // GET/POST /GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
-        // Never seen this invoked. Visual Studio and NuGet.exe both seems to use 'FindPackagesById' for updates.
         [HttpGet]
         [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]

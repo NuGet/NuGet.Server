@@ -24,11 +24,11 @@ namespace NuGet.Server.V2.OwinSampleHost
 
             response.OnSendingHeaders(state =>
             {
-                var resp = (OwinResponse)state;
+                var owinResponse = (OwinResponse)state;
 
-                if (resp.StatusCode == 401)
+                if (owinResponse.StatusCode == 401)
                 {
-                    resp.Headers.Add("WWW-Authenticate", new[] { "Basic" });
+                    owinResponse.Headers.Add("WWW-Authenticate", new[] { "Basic" });
                 }
             }, response);
 
@@ -62,7 +62,6 @@ namespace NuGet.Server.V2.OwinSampleHost
             var claims = new[]
                             {
                                 new Claim(ClaimTypes.Name, username),
-                                //new Claim(ClaimTypes.Role,"User")
                             };
             var id = new ClaimsIdentity(claims, "Basic");
             request.User = new ClaimsPrincipal(id);
@@ -73,7 +72,6 @@ namespace NuGet.Server.V2.OwinSampleHost
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 return false;
             
-
             return true;
         }
     }

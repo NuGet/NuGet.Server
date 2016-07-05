@@ -15,8 +15,8 @@ namespace NuGet.Server.Core.Infrastructure
     /// </summary>
     public class ApiKeyPackageAuthenticationService: IPackageAuthenticationService
     {
-        readonly bool _requireApiKey;
-        readonly string _apiKey;
+        private readonly bool _requireApiKey;
+        private readonly string _apiKey;
 
         /// <summary>
         /// 
