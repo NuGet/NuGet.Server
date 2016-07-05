@@ -9,27 +9,17 @@ using System.Net.Http;
 
 namespace NuGet.Server.V2.OwinSampleHost
 {
+    /// <summary>
+    /// Controller that exposes Program.NuGetPublicRepository as NuGet OData feed
+    /// that allows unauthenticated read/download access.
+    /// Delete/upload requires user supplied ApiKey to match Program.ApiKey.
+    /// </summary>
     public class NuGetPublicODataController : NuGetODataController
     {
         public NuGetPublicODataController()
             : base(Program.NuGetPublicRepository, new ApiKeyPackageAuthenticationService(true,Program.ApiKey))
         {
 
-        }
-
-        public override HttpResponseMessage Download(string id, string version = "")
-        {
-            return base.Download(id, version);
-        }
-
-        public override Task<HttpResponseMessage> UploadPackage()
-        {
-            return base.UploadPackage();
-        }
-
-        public override HttpResponseMessage DeletePackage(string id, string version)
-        {
-            return base.DeletePackage(id, version);
         }
     }
 }

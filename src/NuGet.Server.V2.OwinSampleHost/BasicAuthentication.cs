@@ -9,6 +9,15 @@ using System.Threading.Tasks;
 
 namespace NuGet.Server.V2.OwinSampleHost
 {
+    /// <summary>
+    /// Authenticates all users that supply a non-empty username and password.
+    /// All usernames that starts with 'admin' are assigned to the 'Admin' role.
+    /// For demonstratiion purposes only!
+    /// 
+    /// Modify this class or 
+    ///   - override ValidateUser method to provide a real username/password check.
+    ///   - override GetRolesForUser method to return roles based on usernames.
+    /// </summary>
     public class BasicAuthentication : OwinMiddleware
     {
         public BasicAuthentication(OwinMiddleware next) :
@@ -59,12 +68,20 @@ namespace NuGet.Server.V2.OwinSampleHost
 
         protected virtual void SetClaimsIdentity(IOwinRequest request, string username)
         {
-            var claims = new[]
-                            {
-                                new Claim(ClaimTypes.Name, username),
-                            };
+            var claims = new[] { new Claim(ClaimTypes.Name, username) }
+            .Concat(
+                    GetRolesForUser(username).Select(r=>new Claim(ClaimTypes.Role, r))
+                );
             var id = new ClaimsIdentity(claims, "Basic");
             request.User = new ClaimsPrincipal(id);
+        }
+
+        protected virtual IEnumerable<string> GetRolesForUser(string username)
+        {
+            if (username.ToLower().StartsWith("admin"))
+                return new[] { "Admin" };
+
+            return Enumerable.Empty<string>();
         }
 
         protected virtual bool ValidateUser(string username, string password)
