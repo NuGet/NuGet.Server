@@ -68,7 +68,7 @@ namespace NuGet.Server.V2.Controllers
             var package = RetrieveFromRepository(id, version);
 
             if (package == null)
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+                return NotFound();
 
             var queryable = (new[] { package.AsODataPackage() }).AsQueryable();
             var queryResult = QueryResult(options, queryable, _maxPageSize);

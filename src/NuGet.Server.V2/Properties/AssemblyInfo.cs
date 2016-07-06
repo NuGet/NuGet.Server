@@ -6,4 +6,4 @@ using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("NuGet.Server.V2")]
 [assembly: AssemblyDescription("Library to host one or more simple NuGet V2 feeds as Web API controllers.")]
-[assembly: InternalsVisibleTo("NuGet.Server.Tests")]
+[assembly: InternalsVisibleTo("NuGet.Server.V2.Tests")]
