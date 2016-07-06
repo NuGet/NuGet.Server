@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace NuGet.Server.V2.OwinSampleHost
+namespace NuGet.Server.V2.Samples.OwinHost
 {
     /// <summary>
     /// Authenticates all users that supply a non-empty username and password.

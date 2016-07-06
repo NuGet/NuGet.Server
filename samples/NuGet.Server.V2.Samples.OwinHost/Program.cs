@@ -14,7 +14,7 @@ using System.Text;
 using System.Web.Http;
 using System.Web.Http.OData.Extensions;
 
-namespace NuGet.Server.V2.OwinSampleHost
+namespace NuGet.Server.V2.Samples.OwinHost
 {
     class Program
     {

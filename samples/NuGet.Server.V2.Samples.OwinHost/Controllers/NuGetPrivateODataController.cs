@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Net.Http;
 
-namespace NuGet.Server.V2.OwinSampleHost
+namespace NuGet.Server.V2.Samples.OwinHost.Controllers
 {
     /// <summary>
     /// Controller that exposes Program.NuGetPrivateRepository as NuGet OData feed

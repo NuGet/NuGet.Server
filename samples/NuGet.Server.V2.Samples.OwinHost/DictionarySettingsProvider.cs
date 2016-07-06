@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NuGet.Server.V2.OwinSampleHost
+namespace NuGet.Server.V2.Samples.OwinHost
 {
     public class DictionarySettingsProvider : ISettingsProvider
     {

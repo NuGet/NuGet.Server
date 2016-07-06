@@ -7,8 +7,8 @@
     <ProjectGuid>{5CF9DB92-53DE-488E-82F9-4C3F867516B2}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NuGet.Server.V2.OwinSampleHost</RootNamespace>
-    <AssemblyName>NuGet.Server.V2.OwinSampleHost</AssemblyName>
+    <RootNamespace>NuGet.Server.V2.Samples.OwinHost</RootNamespace>
+    <AssemblyName>NuGet.Server.V2.Samples.OwinHost</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -33,6 +33,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>NuGet.Server.V2.Samples.OwinHost.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Data.Edm, Version=5.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -116,11 +119,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NuGet.Server.Core\NuGet.Server.Core.csproj">
+    <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">
       <Project>{1fe62f82-927a-4437-91f1-1a965e51682b}</Project>
       <Name>NuGet.Server.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\NuGet.Server.V2\NuGet.Server.V2.csproj">
+    <ProjectReference Include="..\..\src\NuGet.Server.V2\NuGet.Server.V2.csproj">
       <Project>{273e4575-4054-4578-9d14-8d4e640a365f}</Project>
       <Name>NuGet.Server.V2</Name>
     </ProjectReference>
