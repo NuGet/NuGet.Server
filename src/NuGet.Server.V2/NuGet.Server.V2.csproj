@@ -98,6 +98,8 @@
     <Compile Include="OData\NuGetODataControllerConfigurationAttribute.cs" />
     <Compile Include="Controllers\NuGetODataController.cs" />
     <Compile Include="OData\QueryResultExtensions.cs" />
+    <Compile Include="OData\Routing\CountODataPathHandler.cs" />
+    <Compile Include="OData\Routing\CountPathSegment.cs" />
     <Compile Include="OData\Serializers\CustomSerializerProvider.cs" />
     <Compile Include="OData\Serializers\NuGetEntityTypeSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

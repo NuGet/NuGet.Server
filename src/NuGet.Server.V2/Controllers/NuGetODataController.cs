@@ -31,7 +31,7 @@ namespace NuGet.Server.V2.Controllers
         /// 
         /// </summary>
         /// <param name="repository">Required.</param>
-        /// <param name="authenticationService">Optional. If this is not supplied Upload/Delete is not available (invocation returns 403 Forbidden)</param>
+        /// <param name="authenticationService">Optional. If this is not supplied Upload/Delete is not available (requests returns 403 Forbidden)</param>
         protected NuGetODataController(IServerPackageRepository repository, IPackageAuthenticationService authenticationService=null)
         {
             if (repository == null)

@@ -25,6 +25,7 @@ using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Logging;
 using System.Net;
 using NuGet.Server.V2.OData;
+using NuGet.Server.V2.OData.Routing;
 
 namespace NuGet.Server.V2
 {
@@ -64,7 +65,7 @@ namespace NuGet.Server.V2
                  constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Delete) }
              );
 
-            config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new DefaultODataPathHandler(), conventions);
+            config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new CountODataPathHandler(), conventions);
             return config;
         }
 
