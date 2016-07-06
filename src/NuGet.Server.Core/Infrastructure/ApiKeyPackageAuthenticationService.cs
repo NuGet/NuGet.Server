@@ -21,12 +21,17 @@ namespace NuGet.Server.Core.Infrastructure
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="requireApiKey"></param>
+        /// <param name="requireApiKey">When false all requests are authenticated.</param>
         /// <param name="apiKey">Must be supplied if requireApiKey is true. Should be null when requireApiKey is false.</param>
         public ApiKeyPackageAuthenticationService(bool requireApiKey, string apiKey)
         {
             _requireApiKey = requireApiKey;
             _apiKey = apiKey;
+
+            if(requireApiKey && string.IsNullOrEmpty(apiKey))
+            {
+                throw new ArgumentException("Value can not be null or empty when " + nameof(requireApiKey) +  " is true", nameof(apiKey));
+            }
         }
 
         public bool IsAuthenticated(IPrincipal user, string apiKey, string packageId)
