@@ -240,7 +240,7 @@ namespace NuGet.Server.V2.Tests
                 // Act
                 var result = (v2Service.FindPackagesById(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    "Foo"))
+                    ""))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -262,12 +262,16 @@ namespace NuGet.Server.V2.Tests
                             {
                                 Id = "Foo",
                                 Version = SemanticVersion.Parse("1.0.0"),
+                                Authors= Enumerable.Empty<string>(),
+                                Owners= Enumerable.Empty<string>(),
                                 Listed = false,
                             },
                         new ServerPackage
                             {
                                 Id = "Foo",
                                 Version = SemanticVersion.Parse("1.0.1"),
+                                Authors= Enumerable.Empty<string>(),
+                                Owners= Enumerable.Empty<string>(),
                                 //IsPrerelease = false,
                                 Listed = true,
                                 //Deleted = true
