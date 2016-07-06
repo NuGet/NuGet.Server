@@ -1,5 +1,6 @@
 ﻿using NuGet.Server.Core.DataServices;
 using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.V2.Model;
 using NuGet.Server.V2.OData;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,8 @@ namespace NuGet.Server.V2.Controllers
     public abstract class NuGetODataController : ODataController
     {
         const string ApiKeyHeader = "X-NUGET-APIKEY";
+
+        protected int _maxPageSize = 25;
 
         protected readonly IServerPackageRepository _serverRepository;
         protected readonly IPackageAuthenticationService _authenticationService;
@@ -44,43 +47,68 @@ namespace NuGet.Server.V2.Controllers
         // Never seen this invoked. NuGet.Exe and Visual Studio seems to use 'Search' for all package listing.
         // Probably required to be OData compliant?
         [HttpGet]
-        [HttpPost]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public virtual IQueryable<ODataPackage> Get()
+        public virtual IHttpActionResult Get(ODataQueryOptions<ODataPackage> options)
         {
             var sourceQuery = _serverRepository.GetPackages();
-            return TransformPackages(sourceQuery);
+            return TransformToQueryResult(options, sourceQuery);
+        }
+
+        // GET /Packages/$count
+        [HttpGet]
+        public virtual IHttpActionResult GetCount(ODataQueryOptions<ODataPackage> options)
+        {
+            return (Get(options)).FormattedAsCountResult<ODataPackage>();
         }
 
         // GET /Packages(Id=,Version=)
         [HttpGet]
-        public virtual ODataPackage Get(string id, string version)
+        public virtual IHttpActionResult Get(ODataQueryOptions<ODataPackage> options, string id, string version)
         {
             var package = RetrieveFromRepository(id, version);
 
             if (package == null)
                 throw new HttpResponseException(HttpStatusCode.NotFound);
 
-            return package.AsODataPackage();
+            var queryable = (new[] { package.AsODataPackage() }).AsQueryable();
+            var queryResult = QueryResult(options, queryable, _maxPageSize);
+            return queryResult.FormattedAsSingleResult<ODataPackage>();
         }
-
 
         // GET/POST /FindPackagesById()?id=
         [HttpGet]
         [HttpPost]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public virtual IQueryable<ODataPackage> FindPackagesById([FromODataUri] string id)
+        public virtual IHttpActionResult FindPackagesById(ODataQueryOptions<ODataPackage> options, [FromODataUri]string id)
         {
+            if (string.IsNullOrEmpty(id))
+            {
+                var emptyResult = Enumerable.Empty<ODataPackage>().AsQueryable();
+                return QueryResult(options, emptyResult, _maxPageSize);
+            }
+
             var sourceQuery = _serverRepository.FindPackagesById(id);
-            return TransformPackages(sourceQuery);
+            return TransformToQueryResult(options, sourceQuery);
         }
 
+
+        // GET /Packages(Id=,Version=)/propertyName
+        [HttpGet]
+        public virtual IHttpActionResult GetPropertyFromPackages(string propertyName, string id, string version)
+        {
+            switch (propertyName.ToLowerInvariant())
+            {
+                case "id": return Ok(id);
+                case "version": return Ok(version);
+            }
+
+            return BadRequest("Querying property " + propertyName + " is not supported.");
+        }
 
         // GET/POST /Search()?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
         [HttpPost]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public virtual IQueryable<ODataPackage> Search(
+        public virtual IHttpActionResult Search(
+            ODataQueryOptions<ODataPackage> options,
             [FromODataUri] string searchTerm = "", 
             [FromODataUri] string targetFramework ="", 
             [FromODataUri] bool includePrerelease = false,
@@ -91,24 +119,45 @@ namespace NuGet.Server.V2.Controllers
             var sourceQuery = _serverRepository
                 .Search(searchTerm, targetFrameworks, includePrerelease);
 
-            return TransformPackages(sourceQuery);
+            return TransformToQueryResult(options, sourceQuery);
+        }
+
+        // GET /Search()/$count?searchTerm=&targetFramework=&includePrerelease=
+        [HttpGet]
+        public virtual IHttpActionResult SearchCount(
+            ODataQueryOptions<ODataPackage> options,
+            [FromODataUri]string searchTerm = "",
+            [FromODataUri]string targetFramework = "",
+            [FromODataUri]bool includePrerelease = false)
+        {
+            var searchResults = Search(options, searchTerm, targetFramework, includePrerelease);
+            return searchResults.FormattedAsCountResult<ODataPackage>();
         }
 
         // GET/POST /GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
         [HttpGet]
         [HttpPost]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public virtual IQueryable<ODataPackage> GetUpdates(
-            [FromODataUri] string packageIds,
-            [FromODataUri] string versions,
-            [FromODataUri] bool includePrerelease,
-            [FromODataUri] bool includeAllVersions,
-            [FromODataUri] string targetFrameworks,
-            [FromODataUri] string versionConstraints)
+        public virtual IHttpActionResult GetUpdates(
+            ODataQueryOptions<ODataPackage> options,
+            [FromODataUri]string packageIds,
+            [FromODataUri]string versions,
+            [FromODataUri]bool includePrerelease,
+            [FromODataUri]bool includeAllVersions,
+            [FromODataUri]string targetFrameworks = "",
+            [FromODataUri]string versionConstraints = "")
         {
-            if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
+            if (string.IsNullOrEmpty(packageIds) || string.IsNullOrEmpty(versions))
             {
-                return Enumerable.Empty<ODataPackage>().AsQueryable();
+                return Ok(Enumerable.Empty<ODataPackage>().AsQueryable());
+            }
+
+            // Workaround https://github.com/NuGet/NuGetGallery/issues/674 for NuGet 2.1 client.
+            // Can probably eventually be retired (when nobody uses 2.1 anymore...)
+            // Note - it was URI un-escaping converting + to ' ', undoing that is actually a pretty conservative substitution because
+            // space characters are never acepted as valid by VersionUtility.ParseFrameworkName.
+            if (!string.IsNullOrEmpty(targetFrameworks))
+            {
+                targetFrameworks = targetFrameworks.Replace(' ', '+');
             }
 
             var idValues = packageIds.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
@@ -122,7 +171,7 @@ namespace NuGet.Server.V2.Controllers
             if (idValues.Length == 0 || idValues.Length != versionValues.Length || idValues.Length != versionConstraintValues.Length)
             {
                 // Exit early if the request looks invalid
-                return Enumerable.Empty<ODataPackage>().AsQueryable();
+                return Ok(Enumerable.Empty<ODataPackage>().AsQueryable());
             }
 
             var packagesToUpdate = new List<IPackageMetadata>();
@@ -143,7 +192,23 @@ namespace NuGet.Server.V2.Controllers
             var sourceQuery = _serverRepository
                 .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList);
 
-            return TransformPackages(sourceQuery);
+            return TransformToQueryResult(options, sourceQuery);
+        }
+
+        // /api/v2/GetUpdates()/$count?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
+        [HttpGet]
+        [HttpPost]
+        public virtual IHttpActionResult GetUpdatesCount(
+            ODataQueryOptions<ODataPackage> options,
+            [FromODataUri]string packageIds,
+            [FromODataUri]string versions,
+            [FromODataUri]bool includePrerelease,
+            [FromODataUri]bool includeAllVersions,
+            [FromODataUri]string targetFrameworks = "",
+            [FromODataUri]string versionConstraints = "")
+        {
+            return GetUpdates(options, packageIds, versions, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints)
+                .FormattedAsCountResult<ODataPackage>();
         }
 
         /// <summary>
@@ -163,36 +228,36 @@ namespace NuGet.Server.V2.Controllers
 
             var serverPackage = requestedPackage as ServerPackage;
 
-            var result = Request.CreateResponse(HttpStatusCode.OK);
+            var responseMessage = Request.CreateResponse(HttpStatusCode.OK);
 
             if (Request.Method == HttpMethod.Get)
             {
                 if (serverPackage != null)
-                    result.Content = new StreamContent(File.OpenRead(serverPackage.FullPath));
+                    responseMessage.Content = new StreamContent(File.OpenRead(serverPackage.FullPath));
                 else
-                    result.Content = new StreamContent(requestedPackage.GetStream());
+                    responseMessage.Content = new StreamContent(requestedPackage.GetStream());
             }
             else
             {
-                result.Content = new StringContent(string.Empty);
+                responseMessage.Content = new StringContent(string.Empty);
             }
 
-            result.Content.Headers.ContentType = new MediaTypeWithQualityHeaderValue("binary/octet-stream");
+            responseMessage.Content.Headers.ContentType = new MediaTypeWithQualityHeaderValue("binary/octet-stream");
             if (serverPackage != null)
             {
-                result.Content.Headers.LastModified = serverPackage.LastUpdated;
-                result.Headers.ETag = new EntityTagHeaderValue('"' + serverPackage.PackageHash + '"');
+                responseMessage.Content.Headers.LastModified = serverPackage.LastUpdated;
+                responseMessage.Headers.ETag = new EntityTagHeaderValue('"' + serverPackage.PackageHash + '"');
             }
 
-            result.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(DispositionTypeNames.Attachment)
+            responseMessage.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(DispositionTypeNames.Attachment)
             {
                 FileName = string.Format("{0}.{1}{2}", requestedPackage.Id, requestedPackage.Version, NuGet.Constants.PackageExtension),
                 Size = serverPackage != null ? (long?)serverPackage.PackageSize : null,
                 CreationDate = requestedPackage.Published,
-                ModificationDate = result.Content.Headers.LastModified,
+                ModificationDate = responseMessage.Content.Headers.LastModified,
             };
 
-            return result;
+            return responseMessage;
         }
 
         /// <summary>
@@ -309,6 +374,31 @@ namespace NuGet.Server.V2.Controllers
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
             return retValue;
+        }
+
+        /// <summary>
+        /// Generates a QueryResult.
+        /// </summary>
+        /// <typeparam name="TModel">Model type.</typeparam>
+        /// <param name="options">OData query options.</param>
+        /// <param name="queryable">Queryable to build QueryResult from.</param>
+        /// <param name="maxPageSize">Maximum page size.</param>
+        /// <returns>A QueryResult instance.</returns>
+        protected virtual IHttpActionResult QueryResult<TModel>(ODataQueryOptions<TModel> options, IQueryable<TModel> queryable, int maxPageSize)
+        {
+            return new QueryResult<TModel>(options, queryable, this, maxPageSize);
+        }
+
+        /// <summary>
+        /// Transforms IPackages to ODataPackages and generates a QueryResult<ODataPackage></ODataPackage>
+        /// </summary>
+        /// <param name="options"></param>
+        /// <param name="sourceQuery"></param>
+        /// <returns></returns>
+        protected virtual IHttpActionResult TransformToQueryResult(ODataQueryOptions<ODataPackage> options, IEnumerable<IPackage> sourceQuery)
+        {
+            var transformedQuery = TransformPackages(sourceQuery);
+            return QueryResult(options, transformedQuery, _maxPageSize);
         }
 
     }

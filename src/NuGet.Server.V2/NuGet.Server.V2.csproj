@@ -85,13 +85,19 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Model\PlainTextResult.cs" />
+    <Compile Include="Model\QueryResult.cs" />
     <Compile Include="NuGetV2WebApiEnabler.cs" />
+    <Compile Include="OData\Conventions\ActionCountRoutingConvention.cs" />
     <Compile Include="OData\Conventions\CompositeKeyRoutingConvention.cs" />
     <Compile Include="OData\Conventions\CompositeODataKeyHelper.cs" />
     <Compile Include="OData\Conventions\ControllerAliasingODataRoutingConvention.cs" />
+    <Compile Include="OData\Conventions\EntitySetCountRoutingConvention.cs" />
+    <Compile Include="OData\Conventions\EntitySetPropertyRoutingConvention.cs" />
     <Compile Include="OData\Conventions\MethodNameActionRoutingConvention.cs" />
     <Compile Include="OData\NuGetODataControllerConfigurationAttribute.cs" />
     <Compile Include="Controllers\NuGetODataController.cs" />
+    <Compile Include="OData\QueryResultExtensions.cs" />
     <Compile Include="OData\Serializers\CustomSerializerProvider.cs" />
     <Compile Include="OData\Serializers\NuGetEntityTypeSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
