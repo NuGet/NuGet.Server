@@ -451,7 +451,7 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 var cachedPackages = new ConcurrentBag<ServerPackage>();
 
-                bool enableDelisting = EnableDelisting;
+                var enableDelisting = EnableDelisting;
 
                 var packages = _expandedPackageRepository.GetPackages().ToList();
 

@@ -1,19 +1,19 @@
-﻿using Moq;
-using NuGet.Server.Core.DataServices;
-using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.V2.Tests.Infrastructure;
-using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http.Results;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Query;
-using Xunit;
-using NuGet.Server.V2.Tests.TestUtils;
+using System.Web.Http.Results;
+using Moq;
+using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.V2.Model;
+using NuGet.Server.V2.Tests.Infrastructure;
+using NuGet.Server.V2.Tests.TestUtils;
+using Xunit;
 
 namespace NuGet.Server.V2.Tests
 {
@@ -63,7 +63,7 @@ namespace NuGet.Server.V2.Tests
 
                 // Assert
                 Assert.Equal(expectedNumberOfPackages, result.Length);
-                for (int i = 0; i < expectedIds.Length; i++)
+                for (var i = 0; i < expectedIds.Length; i++)
                 {
                     var expectedId = expectedIds[i];
                     var expectedVersion = expectedVersions[i];
@@ -342,7 +342,7 @@ namespace NuGet.Server.V2.Tests
 
                 // Assert
                 Assert.Equal(expectedNumberOfPackages, result.Length);
-                for (int i = 0; i < expectedIds.Length; i++)
+                for (var i = 0; i < expectedIds.Length; i++)
                 {
                     var expectedId = expectedIds[i];
                     var expectedVersion = expectedVersions[i];

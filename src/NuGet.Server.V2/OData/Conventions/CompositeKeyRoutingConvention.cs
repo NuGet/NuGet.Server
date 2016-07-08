@@ -1,14 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Copied from NuGetGallery (commit:f2fc834d 26.05.2016). Modified to support entityactions with composite keys.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
-using Microsoft.Data.Edm;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web.Http.Controllers;
 using System.Web.Http.OData.Routing;
 using System.Web.Http.OData.Routing.Conventions;
@@ -41,8 +34,8 @@ namespace NuGet.Server.V2.OData.Conventions
             else if (odataPath.PathTemplate == "~/entityset/key/action" ||
                     odataPath.PathTemplate == "~/entityset/key/cast/action")
             {
-                KeyValuePathSegment keyValueSegment = odataPath.Segments[1] as KeyValuePathSegment;
-                ActionPathSegment actionSegment = odataPath.Segments.Last() as ActionPathSegment;
+                var keyValueSegment = odataPath.Segments[1] as KeyValuePathSegment;
+                var actionSegment = odataPath.Segments.Last() as ActionPathSegment;
                 var actionFunctionImport = actionSegment.Action;
 
                 controllerContext.RouteData.Values[ODataRouteConstants.Key] = keyValueSegment.Value;

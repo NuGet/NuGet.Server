@@ -1,7 +1,6 @@
-﻿using NuGet.Server.Core.DataServices;
-using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.V2.Model;
-using NuGet.Server.V2.OData;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,6 +13,10 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Query;
+using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.V2.Model;
+using NuGet.Server.V2.OData;
 
 namespace NuGet.Server.V2.Controllers
 {
@@ -221,7 +224,7 @@ namespace NuGet.Server.V2.Controllers
         [HttpGet, HttpHead]
         public virtual HttpResponseMessage Download(string id, string version = "")
         {
-            IPackage requestedPackage = RetrieveFromRepository(id, version);
+            var requestedPackage = RetrieveFromRepository(id, version);
 
             if (requestedPackage == null)
                 return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
@@ -273,7 +276,7 @@ namespace NuGet.Server.V2.Controllers
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package delete is not allowed");
 
-            string apiKey = GetApiKeyFromHeader();
+            var apiKey = GetApiKeyFromHeader();
 
             var requestedPackage = RetrieveFromRepository(id, version);
 
@@ -307,7 +310,7 @@ namespace NuGet.Server.V2.Controllers
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package upload is not allowed");
 
-            string apiKey = GetApiKeyFromHeader();
+            var apiKey = GetApiKeyFromHeader();
 
             // Copy the package to a temporary file
             var temporaryFile = Path.GetTempFileName();
@@ -315,7 +318,6 @@ namespace NuGet.Server.V2.Controllers
             {
                 if (Request.Content.IsMimeMultipartContent())
                 {
-                    var provider = new MultipartMemoryStreamProvider();
                     var multipartContents = await Request.Content.ReadAsMultipartAsync();
                     await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
                 }

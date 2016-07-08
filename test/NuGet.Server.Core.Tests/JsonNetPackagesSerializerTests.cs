@@ -34,7 +34,7 @@ namespace NuGet.Server.Core.Tests
 
             // Assert
             Assert.Equal(originalPackages.Count, deserializedPackages.Count);
-            for (int i = 0; i < originalPackages.Count; i++)
+            for (var i = 0; i < originalPackages.Count; i++)
             {
                 Assert.True(PublicPropertiesEqual(originalPackages[i], deserializedPackages[i], "DependencySets", "FrameworkAssemblies", "PackageAssemblyReferences", "AssemblyReferences"));
             }
@@ -70,7 +70,7 @@ namespace NuGet.Server.Core.Tests
         {
             var originalPackages = new List<ServerPackage>();
 
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 var package = new ServerPackage(
                     id: "Package" + i,

@@ -1,12 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Copied from NuGetGallery (commit:f2fc834d 26.05.2016).
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NuGet.Server.V2.OData.Conventions
 {
@@ -24,7 +20,7 @@ namespace NuGet.Server.V2.OData.Conventions
 
             foreach (var compoundKeyPair in compoundKeyPairs)
             {
-                string[] pair = compoundKeyPair.Split('=');
+                var pair = compoundKeyPair.Split('=');
                 if (pair.Length != 2)
                 {
                     continue;

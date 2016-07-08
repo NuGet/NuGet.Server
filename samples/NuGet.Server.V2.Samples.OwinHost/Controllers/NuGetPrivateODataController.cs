@@ -1,12 +1,8 @@
-﻿using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.V2.Controllers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System.Web.Http;
-using System.Net.Http;
+using NuGet.Server.V2.Controllers;
 
 namespace NuGet.Server.V2.Samples.OwinHost.Controllers
 {
@@ -20,8 +16,8 @@ namespace NuGet.Server.V2.Samples.OwinHost.Controllers
     {
         public NuGetPrivateODataController()
             : base(Program.NuGetPrivateRepository)
-            //Replace line above with the one below to allow upload/delete for all authenticated users
-            //: base(Program.NuGetPrivateRepository, new ApiKeyPackageAuthenticationService(false, null))
+            // Replace line above with the one below to allow upload/delete for all authenticated users
+            // : base(Program.NuGetPrivateRepository, new ApiKeyPackageAuthenticationService(false, null))
         {
         }
     }

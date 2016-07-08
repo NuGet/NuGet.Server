@@ -1,18 +1,13 @@
-﻿using Microsoft.Owin.Hosting;
-using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.Core.Logging;
-using NuGet.Server.V2;
-using Owin;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Collections.Generic;
-using System.Data.Services;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Text;
 using System.Web.Http;
-using System.Web.Http.OData.Extensions;
+using Microsoft.Owin.Hosting;
+using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
+using Owin;
 
 namespace NuGet.Server.V2.Samples.OwinHost
 {
@@ -28,8 +23,8 @@ namespace NuGet.Server.V2.Samples.OwinHost
         {
             var baseAddress = "http://localhost:9000/";
 
-            //Set up a common settingsProvider to be used by all repositories. 
-            //If a setting is not present in dictionary default value will be used.
+            // Set up a common settingsProvider to be used by all repositories. 
+            // If a setting is not present in dictionary default value will be used.
             var settings = new Dictionary<string, bool>();
             settings.Add("enableDelisting", false);                         //default=false
             settings.Add("enableFrameworkFiltering", false);                //default=false
@@ -63,7 +58,7 @@ namespace NuGet.Server.V2.Samples.OwinHost
             appBuilder.Use(typeof(BasicAuthentication));
 
             // Configure Web API for self-host. 
-            HttpConfiguration config = new HttpConfiguration();
+            var config = new HttpConfiguration();
             appBuilder.UseWebApi(config);
 
             //Map route for ordinary controllers, this is not neccessary for the NuGet feed.

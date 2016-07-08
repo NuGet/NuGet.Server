@@ -17,10 +17,10 @@ namespace NuGet.Server.Core.DataServices
             if (node.NodeType == ExpressionType.Equal)
             {
                 // Figure out which side is the target
-                ConstantExpression constSide = (node.Left as ConstantExpression) ?? (node.Right as ConstantExpression);
+                var constSide = (node.Left as ConstantExpression) ?? (node.Right as ConstantExpression);
                 if (constSide != null && constSide.Type == typeof(string))
                 {
-                    MemberExpression memberSide = (node.Right as MemberExpression) ?? (node.Left as MemberExpression);
+                    var memberSide = (node.Right as MemberExpression) ?? (node.Left as MemberExpression);
                     if (memberSide != null && memberSide.Member == _versionMember)
                     {
                         // We have a "Package.Version == <constant>" expression!

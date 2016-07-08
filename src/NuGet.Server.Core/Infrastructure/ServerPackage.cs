@@ -264,7 +264,7 @@ namespace NuGet.Server.Core.Infrastructure
             // IMPORTANT: Do not pass StringSplitOptions.RemoveEmptyEntries to this method, because it will break 
             // if the version spec is null, for in that case, the Dependencies string sent down is "<id>::<target framework>".
             // We do want to preserve the second empty element after the split.
-            string[] tokens = value.Trim().Split(new[] { ':' });
+            var tokens = value.Trim().Split(new[] { ':' });
 
             if (tokens.Length == 0)
             {
@@ -272,7 +272,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             // Trim the id
-            string id = tokens[0].Trim();
+            var id = tokens[0].Trim();
 
             IVersionSpec versionSpec = null;
             if (tokens.Length > 1)

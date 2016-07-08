@@ -1,12 +1,9 @@
-﻿using NuGet.Server.Core.Infrastructure;
-using System;
-using System.Collections.Generic;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.Versioning;
 using Moq;
-using NuGet.Server.Core.DataServices;
+using NuGet.Server.Core.Infrastructure;
 
 namespace NuGet.Server.V2.Tests.Infrastructure
 {

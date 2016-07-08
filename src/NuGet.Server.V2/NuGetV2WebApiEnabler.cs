@@ -1,30 +1,18 @@
-﻿using Microsoft.Data.Edm;
-using Microsoft.Data.OData;
-using NuGet.Server.Core.DataServices;
-using NuGet.Server.V2.OData.Conventions;
-using NuGet.Server.V2.OData.Serializers;
-using NuGet.Server.V2.Controllers;
-using System;
-using System.Collections.Generic;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System.Linq;
-using System.Threading.Tasks;
+using System.Net.Http;
 using System.Web.Http;
-using System.Web.Http.Dispatcher;
-using System.Web.Http.OData;
+using System.Web.Http.OData.Builder;
 using System.Web.Http.OData.Extensions;
-using System.Web.Http.OData.Formatter;
-using System.Web.Http.OData.Formatter.Deserialization;
-using System.Web.Http.OData.Formatter.Serialization;
-using System.Web.Http.OData.Routing;
 using System.Web.Http.OData.Routing.Conventions;
 using System.Web.Http.Routing;
-using System.Web.Http.OData.Builder;
-using System.Web.Http.Controllers;
-using System.Net.Http;
+using Microsoft.Data.Edm;
+using Microsoft.Data.OData;
+using NuGet.Server.Core.DataServices;
 using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.Core.Logging;
-using System.Net;
-using NuGet.Server.V2.OData;
+using NuGet.Server.V2.OData.Conventions;
 using NuGet.Server.V2.OData.Routing;
 
 namespace NuGet.Server.V2

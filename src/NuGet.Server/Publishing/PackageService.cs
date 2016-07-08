@@ -7,7 +7,6 @@ using System.Net;
 using System.Web;
 using System.Web.Routing;
 using NuGet.Server.Core.Infrastructure;
-using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server.Publishing
 {

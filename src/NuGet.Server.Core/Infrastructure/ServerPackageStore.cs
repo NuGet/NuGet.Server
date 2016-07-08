@@ -24,7 +24,7 @@ namespace NuGet.Server.Core.Infrastructure
         private readonly IFileSystem _fileSystem;
         private readonly string _fileName;
 
-        private HashSet<ServerPackage> _packages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
+        private readonly HashSet<ServerPackage> _packages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
 
         public ServerPackageStore(IFileSystem fileSystem, string fileName)
         {
@@ -181,7 +181,7 @@ namespace NuGet.Server.Core.Infrastructure
                 package.IsLatestVersion = false;
 
                 // Find the latest versions
-                string id = package.Id.ToLowerInvariant();
+                var id = package.Id.ToLowerInvariant();
 
                 // Update with the highest version
                 absoluteLatest.AddOrUpdate(id, package,

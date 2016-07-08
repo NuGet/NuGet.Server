@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
-using NuGet.Server.V2.Model;
 using System;
 using System.Web.Http;
 using System.Web.Http.Results;
+using NuGet.Server.V2.Model;
 
 namespace NuGet.Server.V2.Tests.TestUtils
 {
