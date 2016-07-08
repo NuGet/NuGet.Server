@@ -165,13 +165,14 @@ namespace NuGet.Server.V2.Controllers
 
             var idValues = packageIds.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
             var versionValues = versions.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-            var targetFrameworkValues = String.IsNullOrEmpty(targetFrameworks) ? null :
-                                                                                 targetFrameworks.Split('|').Select(VersionUtility.ParseFrameworkName).ToList();
-            var versionConstraintValues = String.IsNullOrEmpty(versionConstraints)
+            var targetFrameworkValues = String.IsNullOrEmpty(targetFrameworks) 
+                                        ? null 
+                                        : targetFrameworks.Split('|').Select(VersionUtility.ParseFrameworkName).ToList();
+            var versionConstraintValues = (String.IsNullOrEmpty(versionConstraints)
                                             ? new string[idValues.Length]
-                                            : versionConstraints.Split('|');
+                                            : versionConstraints.Split('|')).ToList();
 
-            if (idValues.Length == 0 || idValues.Length != versionValues.Length || idValues.Length != versionConstraintValues.Length)
+            if (idValues.Length == 0 || idValues.Length != versionValues.Length || idValues.Length != versionConstraintValues.Count)
             {
                 // Exit early if the request looks invalid
                 return Ok(Enumerable.Empty<ODataPackage>().AsQueryable());
@@ -180,10 +181,19 @@ namespace NuGet.Server.V2.Controllers
             var packagesToUpdate = new List<IPackageMetadata>();
             for (var i = 0; i < idValues.Length; i++)
             {
-                packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = new SemanticVersion(versionValues[i]) });
+                SemanticVersion semVersion;
+                if(SemanticVersion.TryParse(versionValues[i],out semVersion))
+                {
+                    packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = semVersion });
+                }
+                else
+                {
+                    versionConstraintValues.RemoveAt(i);
+                }
+
             }
 
-            var versionConstraintsList = new IVersionSpec[versionConstraintValues.Length];
+            var versionConstraintsList = new IVersionSpec[versionConstraintValues.Count];
             for (var i = 0; i < versionConstraintsList.Length; i++)
             {
                 if (!String.IsNullOrEmpty(versionConstraintValues[i]))
@@ -372,10 +382,11 @@ namespace NuGet.Server.V2.Controllers
 
         protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)
         {
-            var retValue = packages.Select(x => x.AsODataPackage())
+            return packages
+                .Distinct()
+                .Select(x => x.AsODataPackage())
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
-            return retValue;
         }
 
         /// <summary>

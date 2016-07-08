@@ -238,73 +238,6 @@ namespace NuGet.Server.V2.Tests
             }
         }
 
-        public class SearchMethod
-        {
-            [Theory]
-            [InlineData("Foo", false, 1, new[] { "Foo" }, new[] { "1.0.0" })]
-            [InlineData("Bar", false, 2, new[] { "Bar", "Bar" }, new[] { "1.0.0", "2.0.0" })]
-            [InlineData("", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
-            [InlineData("CommonTag", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
-            [InlineData("", true, 5, new[] { "Foo", "Foo", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a" })]
-            public void SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages, string[] expectedIds, string[] expectedVersions)
-            {
-                // Arrange
-                var repo = ControllerTestHelpers.SetupTestPackageRepository();
-                var v2Service = new TestableNuGetODataController(repo.Object);
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
-
-                // Act
-                var result = (v2Service.Search(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    searchTerm: searchTerm,
-                    targetFramework: null,
-                    includePrerelease: includePrerelease))
-                    .ExpectQueryResult<ODataPackage>()
-                    .GetInnerResult()
-                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
-                    .ToArray();
-
-                // Assert
-                Assert.Equal(expectedNumberOfPackages, result.Length);
-                for (var i = 0; i < expectedIds.Length; i++)
-                {
-                    var expectedId = expectedIds[i];
-                    var expectedVersion = expectedVersions[i];
-
-                    Assert.True(result.Any(p => p.Id == expectedId && p.Version == expectedVersion), string.Format("Search results did not contain {0} {1}", expectedId, expectedVersion));
-                }
-            }
-
-            [Theory]
-            [InlineData("Foo", false, 1)]
-            [InlineData("Bar", false, 2)]
-            [InlineData("", false, 3)]
-            [InlineData("CommonTag", false, 3)]
-            [InlineData("", true, 5)]
-            public void SearchCountFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages)
-            {
-                // Arrange
-                var repo = ControllerTestHelpers.SetupTestPackageRepository();
-                var v2Service = new TestableNuGetODataController(repo.Object);
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
-
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()/$count?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
-
-                // Act
-                var result = (v2Service.SearchCount(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    searchTerm: searchTerm,
-                    targetFramework: null,
-                    includePrerelease: includePrerelease))
-                    .ExpectQueryResult<ODataPackage>()
-                    .GetInnerResult()
-                    .ExpectResult<PlainTextResult>();
-
-                // Assert
-                Assert.Equal(expectedNumberOfPackages.ToString(), result.Content);
-            }
-        }
-
         public class GetUpdatesMethod
         {
             [Theory]
@@ -386,7 +319,7 @@ namespace NuGet.Server.V2.Tests
                         CreatePackageWithDefaults("Foo", "1.1.0", listed: true),
                         CreatePackageWithDefaults("Foo", "1.2.0-alpha", listed: true),
                         CreatePackageWithDefaults("Foo", "1.2.0", listed: true),
-                        CreatePackageWithDefaults("Qux", "1.1.0", listed: true) ,
+                        CreatePackageWithDefaults("Qux", "2.0", listed: true) ,
                 }.AsQueryable());
                 var v2Service = new TestableNuGetODataController(repo.Object);
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
@@ -772,13 +705,14 @@ namespace NuGet.Server.V2.Tests
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
-                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5,Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5,Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5,WinRT"),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5|WinRT"),
                         CreatePackageWithDefaults("Qux", "2.0", listed: true),
                 }.AsQueryable());
 
-                var v2Service = new TestableNuGetODataController(repo.Object); v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
                 var result = v2Service.GetUpdates(
@@ -809,10 +743,10 @@ namespace NuGet.Server.V2.Tests
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
-                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5,Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true, supportedFrameWorks: "SL5,Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5,Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5,WinRT"),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5|WinRT"),
                         CreatePackageWithDefaults("Qux", "2.0", listed: true),
                 }.AsQueryable());
 
