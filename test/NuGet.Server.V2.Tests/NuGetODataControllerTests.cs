@@ -95,12 +95,6 @@ namespace NuGet.Server.V2.Tests
                 Assert.Equal(expectedNumberOfPackages.ToString(), result.Content);
             }
 
-            [Fact]
-            public void PackagesCountReturnsCorrectCountForDeletedPackages()
-            {
-                PackagesCountReturnsCorrectCount("Id eq 'Baz'", 100, 0);
-            }
-
             [Theory]
             [InlineData("Foo", "1.0.0")]
             [InlineData("Foo", "1.0.1-a")]
@@ -141,33 +135,6 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request), expectedId, expectedVersion)
                     .ExpectResult<NotFoundResult>();
             }
-
-            [Fact]
-            public void PackagesByIdAndVersionReturnsNotFoundWhenPackageIsDeleted()
-            {
-                PackagesByIdAndVersionReturnsNotFoundWhenPackageNotFound("Baz", "1.0.0");
-            }
-
-            [Theory]
-            [InlineData("Id eq 'Baz'")]
-            public void PackagesCollectionDoesNotContainDeletedPackages(string filter)
-            {
-                // Arrange
-                var repo = ControllerTestHelpers.SetupTestPackageRepository();
-                var v2Service = new TestableNuGetODataController(repo.Object);
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages?$filter=" + filter);
-
-                // Act
-                var result = (v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request)))
-                    .ExpectQueryResult<ODataPackage>()
-                    .GetInnerResult()
-                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
-                    .ToArray();
-
-                // Assert
-                Assert.False(result.Any(p => p.Id == "Baz"));
-            }
-
         }
 
         public class FindPackagesByIdMethod
@@ -269,49 +236,6 @@ namespace NuGet.Server.V2.Tests
                 repo.Verify(r => r.GetPackages(), Times.Never);
                 Assert.Equal(0, result.Count());
             }
-
-            [Fact]
-            public void FindPackagesByIdDoesNotReturnDeletedPackages()
-            {
-                // Arrange
-                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
-                    new[]
-                {
-                        new ServerPackage
-                            {
-                                Id = "Foo",
-                                Version = SemanticVersion.Parse("1.0.0"),
-                                Authors= Enumerable.Empty<string>(),
-                                Owners= Enumerable.Empty<string>(),
-                                Listed = false,
-                            },
-                        new ServerPackage
-                            {
-                                Id = "Foo",
-                                Version = SemanticVersion.Parse("1.0.1"),
-                                Authors= Enumerable.Empty<string>(),
-                                Owners= Enumerable.Empty<string>(),
-                                //IsPrerelease = false,
-                                Listed = true,
-                                //Deleted = true
-                            },
-                    }.AsQueryable());
-
-                var v2Service = new TestableNuGetODataController(repo.Object);
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
-
-                // Act
-                var result = (v2Service.FindPackagesById(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    "Foo"))
-                    .ExpectQueryResult<ODataPackage>()
-                    .GetInnerResult()
-                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
-
-                // Assert
-                Assert.Equal(0, result.Count());
-            }
         }
 
         public class SearchMethod
@@ -378,12 +302,6 @@ namespace NuGet.Server.V2.Tests
 
                 // Assert
                 Assert.Equal(expectedNumberOfPackages.ToString(), result.Content);
-            }
-
-            [Fact]
-            public void SearchCountDoesNotCountDeletedPackages()
-            {
-                SearchCountFiltersPackagesBySearchTermAndPrereleaseFlag("Baz", true, 0);
             }
         }
 
@@ -800,39 +718,6 @@ namespace NuGet.Server.V2.Tests
                 AssertPackage(new { Id = "Foo", Version = "1.2.0" }, result[0]);
                 AssertPackage(new { Id = "Foo", Version = "1.2.0-alpha" }, result[1]);
                 AssertPackage(new { Id = "Qux", Version = "2.0" }, result[2]);
-            }
-
-            [Fact]
-            public void GetUpdatesDoesNotReturnDeletedPackages()
-            {
-                // Arrange
-                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
-                    new[]
-                {
-                        CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
-                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true),
-                }.AsQueryable());
-
-                var v2Service = new TestableNuGetODataController(repo.Object);
-                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
-
-                // Act
-                var result = v2Service.GetUpdates(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    "Foo",
-                    "1.0.0",
-                    includePrerelease: true,
-                    includeAllVersions: true,
-                    targetFrameworks: null,
-                    versionConstraints: null)
-                    .ExpectQueryResult<ODataPackage>()
-                    .GetInnerResult()
-                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
-                    .ToArray();
-
-                // Assert
-                Assert.Equal(0, result.Length);
             }
 
             [Fact]
