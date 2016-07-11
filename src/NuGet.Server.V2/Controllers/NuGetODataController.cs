@@ -293,7 +293,7 @@ namespace NuGet.Server.V2.Controllers
             if (requestedPackage == null || !requestedPackage.Listed)
             {
                 // Package not found
-                return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
+                return CreateStringResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version)); // Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
             }
 
             // Make sure the user can access this package
@@ -304,9 +304,8 @@ namespace NuGet.Server.V2.Controllers
             }
             else
             {
-                return Request.CreateErrorResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}', version '{1}'.", requestedPackage.Id,version));
+                return CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}', version '{1}'.", requestedPackage.Id,version));
             }
-
         }
 
         /// <summary>
@@ -348,7 +347,7 @@ namespace NuGet.Server.V2.Controllers
             }
             else
             {
-                retValue = Request.CreateErrorResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
+                retValue = CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
             }
 
             package = null;
@@ -357,11 +356,17 @@ namespace NuGet.Server.V2.Controllers
                 File.Delete(temporaryFile);
             }
             catch (Exception)
-            {
-                retValue = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
+            {                
+                retValue = CreateStringResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
             }
 
             return retValue;
+        }
+
+        protected HttpResponseMessage CreateStringResponse(HttpStatusCode statusCode, string response)
+        {
+            var responseMessage = new HttpResponseMessage(statusCode) { Content = new StringContent(response) };
+            return responseMessage;
         }
 
         private string GetApiKeyFromHeader()

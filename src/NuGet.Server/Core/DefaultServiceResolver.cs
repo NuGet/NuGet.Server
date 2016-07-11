@@ -5,7 +5,6 @@ using System;
 using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Logging;
 using NuGet.Server.Infrastructure;
-using NuGet.Server.Publishing;
 
 namespace NuGet.Server
 {
@@ -15,7 +14,6 @@ namespace NuGet.Server
         private readonly IHashProvider _hashProvider;
         private readonly IServerPackageRepository _packageRepository;
         private readonly IPackageAuthenticationService _packageAuthenticationService;
-        private readonly IPackageService _packageService;
         private readonly ISettingsProvider _settingsProvider;
 
         public DefaultServiceResolver()
@@ -28,7 +26,6 @@ namespace NuGet.Server
 
             _packageAuthenticationService = new PackageAuthenticationService();
 
-            _packageService = new PackageService(_packageRepository, _packageAuthenticationService);
         }
 
         public object Resolve(Type type)
@@ -48,10 +45,6 @@ namespace NuGet.Server
                 return _packageAuthenticationService;
             }
 
-            if (type == typeof(IPackageService))
-            {
-                return _packageService;
-            }
 
             return null;
         }
