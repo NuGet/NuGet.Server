@@ -855,14 +855,10 @@ namespace NuGet.Server.V2.Tests
                 return ServerPackageRepositoryTest.CreateServerPackageRepository(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("Foo", "1.0.0", new[] { "Foo", "CommonTag" }));
-//                    repository.AddPackage(CreatePackage("Foo", "1.0.1", new[] { "Foo", "CommonTag" }));
-//                    repository.AddPackage(CreatePackage("Foo", "2.0.0", new[] { "Foo", "CommonTag" }));
                     repository.AddPackage(CreatePackage("Foo", "1.0.1-a", new[] { "Foo", "CommonTag" }));
                     repository.AddPackage(CreatePackage("Bar", "1.0.0", new[] { "Bar", "CommonTag" }));
                     repository.AddPackage(CreatePackage("Bar", "2.0.0", new[] { "Bar", "CommonTag" }));
                     repository.AddPackage(CreatePackage("Bar", "2.0.1-a", new[] { "Bar", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Bar", "2.0.1-b", new[] { "Bar", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Baz", "1.0.0", new[] { "Baz", "CommonTag" }));
                 });
             }
 
