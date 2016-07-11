@@ -130,6 +130,10 @@
       <Project>{273e4575-4054-4578-9d14-8d4e640a365f}</Project>
       <Name>NuGet.Server.V2</Name>
     </ProjectReference>
+    <ProjectReference Include="..\NuGet.Server.Core.Tests\NuGet.Server.Core.Tests.csproj">
+      <Project>{fde8ddfb-e01b-47fd-9945-0a151f3ae589}</Project>
+      <Name>NuGet.Server.Core.Tests</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />

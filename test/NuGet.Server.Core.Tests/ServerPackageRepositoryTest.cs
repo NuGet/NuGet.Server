@@ -15,7 +15,7 @@ namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        public static ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);

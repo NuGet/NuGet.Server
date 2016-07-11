@@ -14,6 +14,9 @@ using NuGet.Server.V2.Model;
 using NuGet.Server.V2.Tests.Infrastructure;
 using NuGet.Server.V2.Tests.TestUtils;
 using Xunit;
+using System.IO;
+using NuGet.Server.Core.Tests.Infrastructure;
+using NuGet.Server.Core.Tests;
 
 namespace NuGet.Server.V2.Tests
 {
@@ -773,6 +776,123 @@ namespace NuGet.Server.V2.Tests
                 AssertPackage(new { Id = "Qux", Version = "2.0" }, result[1]);
             }
         }
+
+        public class SearchMethod
+        {
+            [Theory]
+            [InlineData("Foo", false, 1, new[] { "Foo" }, new[] { "1.0.0" })]
+            [InlineData("Bar", false, 2, new[] { "Bar", "Bar" }, new[] { "1.0.0", "2.0.0" })]
+            [InlineData("", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
+            [InlineData("CommonTag", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
+            [InlineData("", true, 5, new[] { "Foo", "Foo", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a" })]
+            public void SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages, string[] expectedIds, string[] expectedVersions)
+            {
+                using (var temporaryDirectory = new TemporaryDirectory())
+                {
+                    // Arrange
+                    ServerPackageRepository serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+
+                    var v2Service = new TestableNuGetODataController(serverRepository);
+                    v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=" + includePrerelease);
+
+                    // Act
+                    var result = v2Service.Search(
+                        new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                        searchTerm: searchTerm,
+                        targetFramework: null,
+                        includePrerelease: includePrerelease)
+                        .ExpectQueryResult<ODataPackage>()
+                        .GetInnerResult()
+                        .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
+                        .ToArray();
+
+
+                    // Assert
+                    Assert.Equal(expectedNumberOfPackages, result.Length);
+                    for (var i = 0; i < expectedIds.Length; i++)
+                    {
+                        var expectedId = expectedIds[i];
+                        var expectedVersion = expectedVersions[i];
+
+                        Assert.True(result.Any(p => p.Id == expectedId && p.Version == expectedVersion), string.Format("Search results did not contain {0} {1}", expectedId, expectedVersion));
+                    }
+                }
+            }
+
+            [Theory]
+            [InlineData("Foo", false, 1)]
+            [InlineData("Bar", false, 2)]
+            [InlineData("", false, 3)]
+            [InlineData("CommonTag", false, 3)]
+            [InlineData("", true, 5)]
+            public void SearchCountFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages)
+            {
+                using (var temporaryDirectory = new TemporaryDirectory())
+                {
+                    // Arrange
+                    ServerPackageRepository serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+
+                    var v2Service = new TestableNuGetODataController(serverRepository);
+                    v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()/$count?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
+
+                    // Act
+                    var result = v2Service.SearchCount(
+                        new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                        searchTerm: searchTerm,
+                        targetFramework: null,
+                        includePrerelease: includePrerelease)
+                        .ExpectQueryResult<ODataPackage>()
+                        .GetInnerResult()
+                        .ExpectResult<PlainTextResult>();
+
+                    // Assert
+                    Assert.Equal(expectedNumberOfPackages.ToString(), result.Content);
+                }
+            }
+
+            private ServerPackageRepository CreateRepositoryWithPackages(TemporaryDirectory temporaryDirectory)
+            {
+                return ServerPackageRepositoryTest.CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("Foo", "1.0.0", new[] { "Foo", "CommonTag" }));
+//                    repository.AddPackage(CreatePackage("Foo", "1.0.1", new[] { "Foo", "CommonTag" }));
+//                    repository.AddPackage(CreatePackage("Foo", "2.0.0", new[] { "Foo", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Foo", "1.0.1-a", new[] { "Foo", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Bar", "1.0.0", new[] { "Bar", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Bar", "2.0.0", new[] { "Bar", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Bar", "2.0.1-a", new[] { "Bar", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Bar", "2.0.1-b", new[] { "Bar", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Baz", "1.0.0", new[] { "Baz", "CommonTag" }));
+                });
+            }
+
+            private IPackage CreatePackage(string id, string version, IEnumerable<string> tags)
+            {
+                var package = new PackageBuilder
+                {
+                    Id = id,
+                    Version = new SemanticVersion(version),
+                    Authors = { "Test" },
+                    Owners = { "Test" },
+                    Description = id,
+                    Summary = id,
+                };
+
+                package.Tags.AddRange(tags);
+
+                var mockFile = new Mock<IPackageFile>();
+                mockFile.Setup(m => m.Path).Returns("foo");
+                mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
+                package.Files.Add(mockFile.Object);
+
+                var packageStream = new MemoryStream();
+                package.Save(packageStream);
+                packageStream.Seek(0, SeekOrigin.Begin);
+
+                return new ZipPackage(packageStream);
+            }
+        }
+
     }
 
 
