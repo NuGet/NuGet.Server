@@ -30,8 +30,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.V2.Samples.Owi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Server.V2.Tests", "test\NuGet.Server.V2.Tests\NuGet.Server.V2.Tests.csproj", "{BE64E341-7D99-43D9-A0D2-A38E977B7D97}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleIISHost", "SampleIISHost\SampleIISHost.csproj", "{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Coverage|Any CPU = Coverage|Any CPU
@@ -186,26 +184,6 @@ Global
 		{BE64E341-7D99-43D9-A0D2-A38E977B7D97}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BE64E341-7D99-43D9-A0D2-A38E977B7D97}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{BE64E341-7D99-43D9-A0D2-A38E977B7D97}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Coverage|Any CPU.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Coverage|Any CPU.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Coverage|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Coverage|Mixed Platforms.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Release|Any CPU.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Mono Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -218,6 +196,5 @@ Global
 		{273E4575-4054-4578-9D14-8D4E640A365F} = {0F277539-E9D7-4A06-A731-D525D9AFCE54}
 		{5CF9DB92-53DE-488E-82F9-4C3F867516B2} = {D54BB20B-57E8-4D4F-BD9D-CF284CBFAB3B}
 		{BE64E341-7D99-43D9-A0D2-A38E977B7D97} = {E7B39EAD-EA32-4011-845A-C949A336389A}
-		{AF935BDD-673A-4928-9CBD-0BF0889DE1AC} = {0F277539-E9D7-4A06-A731-D525D9AFCE54}
 	EndGlobalSection
 EndGlobal

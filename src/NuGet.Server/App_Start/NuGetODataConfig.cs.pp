@@ -5,8 +5,10 @@ using System.Web.Http.Routing;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof($rootnamespace$.App_Start.NuGetODataConfig), "Start")]
 
-namespace $rootnamespace$.App_Start {
-    public static class NuGetODataConfig {
+namespace $rootnamespace$.App_Start 
+{
+    public static class NuGetODataConfig 
+	{
         public static void Start() 
 		{
             ServiceResolver.SetServiceResolver(new DefaultServiceResolver());

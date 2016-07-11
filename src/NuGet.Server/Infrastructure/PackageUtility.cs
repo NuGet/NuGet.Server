@@ -22,24 +22,6 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        public static string GetPackageDownloadUrl(ODataPackage package)
-        {
-            var routesValues = new RouteValueDictionary { 
-                { "packageId", package.Id },
-                { "version", package.Version } 
-            };
-
-            var context = HttpContext.Current;
-
-            var route = RouteTable.Routes["DownloadPackage"];
-
-            var vpd = route.GetVirtualPath(context.Request.RequestContext, routesValues);
-
-            var applicationPath = Helpers.EnsureTrailingSlash(context.Request.ApplicationPath);
-
-            return applicationPath + vpd.VirtualPath;
-        }
-
         private static string ResolvePackagePath()
         {
             // The packagesPath could be an absolute path (rooted and use as is)
