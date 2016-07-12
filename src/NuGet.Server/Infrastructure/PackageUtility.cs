@@ -3,10 +3,7 @@
 
 using System;
 using System.Configuration;
-using System.Web;
 using System.Web.Hosting;
-using System.Web.Routing;
-using NuGet.Server.Core.DataServices;
 
 namespace NuGet.Server.Infrastructure
 {

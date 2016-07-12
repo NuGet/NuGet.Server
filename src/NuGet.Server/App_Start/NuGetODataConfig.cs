@@ -1,7 +1,10 @@
-﻿using System.Net.Http;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
+using System.Net.Http;
 using System.Web.Http;
-using NuGet.Server.V2;
 using System.Web.Http.Routing;
+using NuGet.Server.V2;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NuGet.Server.App_Start.NuGetODataConfig), "Start")]
 namespace NuGet.Server.App_Start
