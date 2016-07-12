@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Web.Http.OData;
@@ -10,13 +11,12 @@ using System.Web.Http.Results;
 using Moq;
 using NuGet.Server.Core.DataServices;
 using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Tests;
+using NuGet.Server.Core.Tests.Infrastructure;
 using NuGet.Server.V2.Model;
 using NuGet.Server.V2.Tests.Infrastructure;
 using NuGet.Server.V2.Tests.TestUtils;
 using Xunit;
-using System.IO;
-using NuGet.Server.Core.Tests.Infrastructure;
-using NuGet.Server.Core.Tests;
 
 namespace NuGet.Server.V2.Tests
 {
@@ -790,7 +790,7 @@ namespace NuGet.Server.V2.Tests
                 using (var temporaryDirectory = new TemporaryDirectory())
                 {
                     // Arrange
-                    ServerPackageRepository serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+                    var serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
 
                     var v2Service = new TestableNuGetODataController(serverRepository);
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=" + includePrerelease);
@@ -830,7 +830,7 @@ namespace NuGet.Server.V2.Tests
                 using (var temporaryDirectory = new TemporaryDirectory())
                 {
                     // Arrange
-                    ServerPackageRepository serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+                    var serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
 
                     var v2Service = new TestableNuGetODataController(serverRepository);
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()/$count?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
