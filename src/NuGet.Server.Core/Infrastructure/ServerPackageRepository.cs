@@ -457,17 +457,21 @@ namespace NuGet.Server.Core.Infrastructure
 
                 Parallel.ForEach(packages, package =>
                 {
-                    // Create server package
-                    var serverPackage = CreateServerPackage(package, enableDelisting);
+                    ServerPackage serverPackage;
 
-                    // Add the package to the cache, it should not exist already
-                    if (cachedPackages.Contains(serverPackage))
+                    //Try to create the server package and ignore a bad package if it fails
+                    var couldCreateServerPackage = TryCreateServerPackage(package, enableDelisting, out serverPackage);
+                    if (couldCreateServerPackage)
                     {
-                        _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
-                    }
-                    else
-                    {
-                        cachedPackages.Add(serverPackage);
+                        // Add the package to the cache, it should not exist already
+                        if (cachedPackages.Contains(serverPackage))
+                        {
+                            _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
+                        }
+                        else
+                        {
+                            cachedPackages.Add(serverPackage);
+                        }
                     }
                 });
 
@@ -543,6 +547,21 @@ namespace NuGet.Server.Core.Infrastructure
             return serverPackage;
         }
 
+        private bool TryCreateServerPackage(IPackage package, bool enableDelisting, out ServerPackage serverPackage)
+        {
+            try
+            {
+                serverPackage = CreateServerPackage(package, enableDelisting);
+                return true;
+            }
+            catch(Exception e)
+            {
+                serverPackage = null;
+                _logger.Log(LogLevel.Warning, "Unable to create server package - {0} {1}: {2}", package.Id, package.Version, e.Message);
+                return false;
+            }
+        }
+        
         /// <summary>
         /// Sets the current cache to null so it will be regenerated next time.
         /// </summary>
