@@ -458,17 +458,25 @@ namespace NuGet.Server.Infrastructure
 
                 Parallel.ForEach(packages, package =>
                 {
-                    // Create server package
-                    var serverPackage = CreateServerPackage(package, enableDelisting);
+                    try
+                    {
+                        // Create server package
+                        var serverPackage = CreateServerPackage(package, enableDelisting);
 
-                    // Add the package to the cache, it should not exist already
-                    if (cachedPackages.Contains(serverPackage))
-                    {
-                        _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
+                        // Add the package to the cache, it should not exist already
+                        if (cachedPackages.Contains(serverPackage))
+                        {
+                            _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
+                        }
+                        else
+                        {
+                            cachedPackages.Add(serverPackage);
+                        }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        cachedPackages.Add(serverPackage);
+                        //Don't kill the server if a server package cannot be created
+                        _logger.Log(LogLevel.Warning, "Unable to create server package - {0} {1}: {2}", package.Id, package.Version, e.Message);
                     }
                 });
 
