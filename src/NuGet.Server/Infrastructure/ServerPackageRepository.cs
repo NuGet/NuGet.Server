@@ -458,11 +458,12 @@ namespace NuGet.Server.Infrastructure
 
                 Parallel.ForEach(packages, package =>
                 {
-                    try
-                    {
-                        // Create server package
-                        var serverPackage = CreateServerPackage(package, enableDelisting);
+                    ServerPackage serverPackage;
 
+                    //Try to create the server package and ignore a bad package if it fails
+                    var couldCreateServerPackage = TryCreateServerPackage(package, enableDelisting, out serverPackage);
+                    if (couldCreateServerPackage)
+                    {
                         // Add the package to the cache, it should not exist already
                         if (cachedPackages.Contains(serverPackage))
                         {
@@ -472,11 +473,6 @@ namespace NuGet.Server.Infrastructure
                         {
                             cachedPackages.Add(serverPackage);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        //Don't kill the server if a server package cannot be created
-                        _logger.Log(LogLevel.Warning, "Unable to create server package - {0} {1}: {2}", package.Id, package.Version, e.Message);
                     }
                 });
 
@@ -552,6 +548,21 @@ namespace NuGet.Server.Infrastructure
             return serverPackage;
         }
 
+        private bool TryCreateServerPackage(IPackage package, bool enableDelisting, out ServerPackage serverPackage)
+        {
+            try
+            {
+                serverPackage = CreateServerPackage(package, enableDelisting);
+                return true;
+            }
+            catch(Exception e)
+            {
+                serverPackage = null;
+                _logger.Log(LogLevel.Warning, "Unable to create server package - {0} {1}: {2}", package.Id, package.Version, e.Message);
+                return false;
+            }
+        }
+        
         /// <summary>
         /// Sets the current cache to null so it will be regenerated next time.
         /// </summary>
