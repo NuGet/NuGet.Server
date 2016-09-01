@@ -45,7 +45,46 @@ namespace NuGet.Server.Tests
                             ExpressionType.Equal,
                             Expression.Constant("1.0.0"),
                             Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _normalizedVersionMember))
-                    }
+                    },
+
+                    new object[]
+                    {
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _versionMember),
+                            Expression.Constant("1.0.0-00test")),
+
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.Constant("1.0.0-00test"),
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _normalizedVersionMember))
+                    },
+
+                    new object[]
+                    {
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _versionMember),
+                            Expression.Constant("1.0.0-00test+tagged")),
+
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.Constant("1.0.0-00test"),
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _normalizedVersionMember))
+                    },
+
+                    new object[]
+                    {
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _versionMember),
+                            Expression.Constant("1.0.0+taggedOnly")),
+
+                        Expression.MakeBinary(
+                            ExpressionType.Equal,
+                            Expression.Constant("1.0.0"),
+                            Expression.MakeMemberAccess(Expression.Parameter(typeof(ODataPackage)), _normalizedVersionMember))
+                    },
                 };
             }
         }
@@ -70,6 +109,7 @@ namespace NuGet.Server.Tests
             // Arrange
             var data = new List<ODataPackage>();
             data.Add(new ODataPackage { Id = "foo", Version = "1.0.0.0.0.0", NormalizedVersion = "1.0.0"});
+            data.Add(new ODataPackage { Id = "foo1", Version = "2.0.0+tagged", NormalizedVersion = "2.0.0" });
 
             var queryable = data.AsQueryable().InterceptWith(new NormalizeVersionInterceptor());
 
@@ -77,11 +117,17 @@ namespace NuGet.Server.Tests
             var result1 = queryable.FirstOrDefault(p => p.Version == "1.0");
             var result2 = queryable.FirstOrDefault(p => p.Version == "1.0.0");
             var result3 = queryable.FirstOrDefault(p => p.Version == "1.0.0.0");
+            var result4 = queryable.FirstOrDefault(p => p.Version == "2.0");
+            var result5 = queryable.FirstOrDefault(p => p.Version == "2.0.0");
+            var result6 = queryable.FirstOrDefault(p => p.Version == "2.0.0+someOtherTag");
 
             // Assert
             Assert.Equal(result1, data[0]);
             Assert.Equal(result2, data[0]);
             Assert.Equal(result3, data[0]);
+            Assert.Equal(result4, data[1]);
+            Assert.Equal(result5, data[1]);
+            Assert.Equal(result6, data[1]);
         }
     }
 }
