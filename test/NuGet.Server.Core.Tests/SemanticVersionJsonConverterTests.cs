@@ -81,15 +81,11 @@ namespace NuGet.Server.Core.Tests
         [InlineData("4.0.0-0test.zero", typeof(SemanticVersion), "4.0.0-0test.zero")]
         [InlineData("4.0.0-0test.zero+tagParses", typeof(SemanticVersion), "4.0.0-0test.zero")]
         [InlineData("4.0.0-test.more.parts+tagsHash", typeof(SemanticVersion), "4.0.0-test.more.parts")]
+        [InlineData("4.0.0+tagsOnly", typeof(SemanticVersion), "4.0.0")]
         [InlineData("1.0.0", typeof(Version), "1.0.0")]
         [InlineData("2.0.0.0", typeof(Version), "2.0.0.0")]
         public void Deserializes(string version, Type type, string expected=null)
         {
-            if (expected == null)
-            {
-                expected = version;
-            }
-
             // Arrange
             using (var reader = new JsonTextReader(new StringReader("\"" + version + "\"")))
             {

@@ -47,7 +47,10 @@ namespace NuGet.Server.Core.Tests
                 {
                     {"test.1.11.nupkg", CreatePackage("test", "1.11")},
                     {"test.1.9.nupkg", CreatePackage("test", "1.9")},
-                    {"test.2.0-alpha.nupkg", CreatePackage("test", "2.0-alpha")}
+                    {"test.2.0-alpha.nupkg", CreatePackage("test", "2.0-alpha")},
+                    {"test.2.0.0.nupkg", CreatePackage("test", "2.0.0")},
+                    {"test.2.0.0-0test.nupkg", CreatePackage("test", "2.0.0-0test")},
+                    {"test.2.0.0-test+tag.nupkg", CreatePackage("test", "2.0.0-test+tag")}
                 };
                 foreach (var packageToAddToDropFolder in packagesToAddToDropFolder)
                 {
@@ -91,20 +94,26 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "1.11"));
                     repository.AddPackage(CreatePackage("test", "1.9"));
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.0.0"));
+                    repository.AddPackage(CreatePackage("test", "2.0.0-0test"));
+                    repository.AddPackage(CreatePackage("test", "2.0.0-test+tag"));
+                    repository.AddPackage(CreatePackage("test", "2.0.1+taggedOnly"));
                 });
 
                 // Act
                 serverRepository.RemovePackage(CreateMockPackage("test", "1.11"));
                 serverRepository.RemovePackage(CreateMockPackage("test", "2.0-alpha"));
+                serverRepository.RemovePackage(CreateMockPackage("test", "2.0.1"));
+                serverRepository.RemovePackage(CreateMockPackage("test", "2.0.0-0test"));
                 var packages = serverRepository.GetPackages();
 
                 // Assert
-                Assert.Equal(1, packages.Count());
+                Assert.Equal(3, packages.Count());
                 Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("1.9", packages.First(p => p.IsLatestVersion).Version.ToString());
+                Assert.Equal("2.0.0", packages.First(p => p.IsLatestVersion).Version.ToString());
 
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("1.9", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal("2.0.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
             }
         }
 
@@ -119,16 +128,23 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "1.0"));
                     repository.AddPackage(CreatePackage("test2", "1.0"));
                     repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test3", "2.0.0"));
                     repository.AddPackage(CreatePackage("test4", "2.0"));
+                    repository.AddPackage(CreatePackage("test5", "1.0.0-0test"));
+                    repository.AddPackage(CreatePackage("test6", "1.2.3+taggedOnly"));
                 });
 
                 // Act
-                var valid = serverRepository.Search("test3", true);
-                var invalid = serverRepository.Search("test3", false);
+                var includePrerelease = serverRepository.Search("test3", true);
+                var excludePrerelease = serverRepository.Search("test3", false);
+                var ignoreTag = serverRepository.Search("test6", false);
 
                 // Assert
-                Assert.Equal("test3", valid.First().Id);
-                Assert.Equal(0, invalid.Count());
+                Assert.Equal("test3", includePrerelease.First().Id);
+                Assert.Equal(2, includePrerelease.Count());
+                Assert.Equal(1, excludePrerelease.Count());
+                Assert.Equal("test6", ignoreTag.First().Id);
+                Assert.Equal(1, ignoreTag.Count());
             }
         }
 
@@ -188,6 +204,8 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test2", "1.0"));
                     repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
                     repository.AddPackage(CreatePackage("test4", "2.0"));
+                    repository.AddPackage(CreatePackage("test4", "3.0.0+tagged"));
+                    repository.AddPackage(CreatePackage("Not5", "4.0"));
                 });
 
                 // Act
@@ -210,16 +228,24 @@ namespace NuGet.Server.Core.Tests
                 {
                     repository.AddPackage(CreatePackage("test", "1.0"));
                     repository.AddPackage(CreatePackage("test2", "1.0"));
-                    repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test3", "1.0.0-alpha"));
                     repository.AddPackage(CreatePackage("test4", "2.0"));
+                    repository.AddPackage(CreatePackage("test4", "3.0.0+tagged"));
+                    repository.AddPackage(CreatePackage("Not5", "4.0.0"));
                 });
 
                 // Act
-                var valid = serverRepository.FindPackage("test", new SemanticVersion("1.0"));
+                var valid = serverRepository.FindPackage("test4", new SemanticVersion("3.0.0"));
+                var valid2 = serverRepository.FindPackage("Not5", new SemanticVersion("4.0"));
+                var validPreRel = serverRepository.FindPackage("test3", new SemanticVersion("1.0.0-alpha"));
+                var invalidPreRel = serverRepository.FindPackage("test3", new SemanticVersion("1.0.0"));
                 var invalid = serverRepository.FindPackage("bad", new SemanticVersion("1.0"));
 
                 // Assert
-                Assert.Equal("test", valid.Id);
+                Assert.Equal("test4", valid.Id);
+                Assert.Equal("Not5", valid2.Id);
+                Assert.Equal("test3", validPreRel.Id);
+                Assert.Null(invalidPreRel);
                 Assert.Null(invalid);
             }
         }
@@ -236,17 +262,20 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "1.0"));
                     repository.AddPackage(CreatePackage("test2", "1.0"));
                     repository.AddPackage(CreatePackage("test3", "1.0-alpha"));
+                    repository.AddPackage(CreatePackage("test3", "2.0.0+taggedOnly"));
                     repository.AddPackage(CreatePackage("test4", "2.0"));
+                    repository.AddPackage(CreatePackage("test4", "3.0.0"));
+                    repository.AddPackage(CreatePackage("test5", "2.0.0-onlyPre+tagged"));
                 });
 
                 // Act
                 var packages = serverRepository.GetPackages();
 
                 // Assert
-                Assert.Equal(4, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal(3, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal(1, packages.Count(p => !p.IsAbsoluteLatestVersion));
-                Assert.Equal(2, packages.Count(p => !p.IsLatestVersion));
+                Assert.Equal(5, packages.Count(p => p.IsAbsoluteLatestVersion));
+                Assert.Equal(4, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal(3, packages.Count(p => !p.IsAbsoluteLatestVersion));
+                Assert.Equal(4, packages.Count(p => !p.IsLatestVersion));
             }
         }
 
@@ -262,6 +291,8 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "2.1-alpha"));
                     repository.AddPackage(CreatePackage("test", "2.2-beta"));
                     repository.AddPackage(CreatePackage("test", "2.3"));
+                    repository.AddPackage(CreatePackage("test", "2.4.0-prerel"));
+                    repository.AddPackage(CreatePackage("test", "3.2.0+taggedOnly"));
                 });
 
                 // Act
@@ -269,7 +300,7 @@ namespace NuGet.Server.Core.Tests
 
                 // Assert
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("2.3", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal("3.2.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
             }
         }
 
@@ -283,7 +314,7 @@ namespace NuGet.Server.Core.Tests
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
                     repository.AddPackage(CreatePackage("test", "2.1-alpha"));
-                    repository.AddPackage(CreatePackage("test", "2.2-beta"));
+                    repository.AddPackage(CreatePackage("test", "2.2-beta+tagged"));
                 });
                 
                 // Act
@@ -305,13 +336,16 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "1.11"));
                     repository.AddPackage(CreatePackage("test", "1.9"));
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test1", "1.0.0"));
+                    repository.AddPackage(CreatePackage("test1", "1.2.0+taggedOnly"));
+                    repository.AddPackage(CreatePackage("test1", "2.0.0-alpha"));
                 });
 
                 // Act
                 var packages = serverRepository.GetPackages();
 
                 // Assert
-                Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal(2, packages.Count(p => p.IsLatestVersion));
                 Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version.ToString());
             }
         }
