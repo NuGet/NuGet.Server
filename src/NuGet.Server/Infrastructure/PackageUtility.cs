@@ -1,13 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Configuration;
-using System.Web;
 using System.Web.Hosting;
-using System.Web.Routing;
-using NuGet.Server.Core.DataServices;
-using NuGet.Server.DataServices;
 
 namespace NuGet.Server.Infrastructure
 {
@@ -21,24 +16,6 @@ namespace NuGet.Server.Infrastructure
             {
                 return _packagePhysicalPath.Value;
             }
-        }
-
-        public static string GetPackageDownloadUrl(ODataPackage package)
-        {
-            var routesValues = new RouteValueDictionary { 
-                { "packageId", package.Id },
-                { "version", package.Version } 
-            };
-
-            var context = HttpContext.Current;
-
-            var route = RouteTable.Routes["DownloadPackage"];
-
-            var vpd = route.GetVirtualPath(context.Request.RequestContext, routesValues);
-
-            var applicationPath = Helpers.EnsureTrailingSlash(context.Request.ApplicationPath);
-
-            return applicationPath + vpd.VirtualPath;
         }
 
         private static string ResolvePackagePath()

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>RouteMagic</id>
+    <version>1.3</version>
+    <authors>Phil Haack</authors>
+    <owners>Phil Haack</owners>
+    <licenseUrl>http://routemagic.codeplex.com/license</licenseUrl>
+    <projectUrl>http://routemagic.codeplex.com</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>RouteMagic is a library of useful Routing helpers. See http://haacked.com/archive/2011/01/30/introducing-routemagic.aspx for more information.</description>
+    <summary>RouteMagic is a library of useful Routing helpers. See http://haacked.com/archive/2011/01/30/introducing-routemagic.aspx for more information.</summary>
+    <releaseNotes>* 1.1.3 Added IncomingOnlyRouteConstraint for routes that should only be used to match
+      incoming HTTP requsets and should not be used for URL generation.
+      * 1.3.0 Added query string re-routing thanks to a contribution by @psantiago https://github.com/Haacked/RouteMagic/pull/12</releaseNotes>
+    <language>en-US</language>
+    <tags>routing asp.net</tags>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Web" targetFramework=".NETFramework4.0" />
+    </frameworkAssemblies>
+  </metadata>
+</package>

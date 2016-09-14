@@ -41,7 +41,7 @@
             To add packages to the feed put package files (.nupkg files) in the folder
             <code><% = PackageUtility.PackagePhysicalPath %></code><br/><br/>
 
-            Click <a href="<%= VirtualPathUtility.ToAbsolute("~/nugetserver/api/clear-cache") %>">here</a> to clear the package cache.
+            Click <a href="<%= VirtualPathUtility.ToAbsolute("~/nuget/clear-cache") %>">here</a> to clear the package cache.
         </fieldset>
         <% } %>
     </div>

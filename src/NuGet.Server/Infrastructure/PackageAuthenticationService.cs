@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Collections.Specialized;
 using System.Security.Principal;
 using System.Web.Configuration;
+using NuGet.Server.Core.Infrastructure;
 
 namespace NuGet.Server.Infrastructure
 {

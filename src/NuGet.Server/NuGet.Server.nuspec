@@ -16,9 +16,10 @@
       <frameworkAssembly assemblyName="System.Data.Services" />
     </frameworkAssemblies>
     <dependencies>
-      <dependency id="NuGet.Core" version="[2.11.1,)" />
       <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
+      <dependency id="NuGet.Core" version="[2.14.0-rtm-830,)" />
       <dependency id="NuGet.Server.Core" version="$version$" />
+      <dependency id="NuGet.Server.V2" version="$version$" />
     </dependencies>
   </metadata>
 </package>

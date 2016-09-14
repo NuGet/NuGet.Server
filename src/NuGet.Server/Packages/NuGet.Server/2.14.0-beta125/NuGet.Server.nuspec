@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+    <metadata minClientVersion="2.6">
+        <id>NuGet.Server</id>
+        <version>2.14.0-beta125</version>
+        <authors>.NET Foundation</authors>
+        <owners>.NET Foundation</owners>
+        <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
+        <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Web Application used to host a simple NuGet feed</description>
+        <copyright>© .NET Foundation. All rights reserved.</copyright>
+        <dependencies>
+            <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
+            <dependency id="NuGet.Core" version="2.14.0-rtm-830" />
+            <dependency id="NuGet.Server.Core" version="2.14.0-beta125" />
+            <dependency id="NuGet.Server.V2" version="2.14.0-beta125" />
+            <dependency id="Microsoft.AspNet.WebApi" version="5.2.3" />
+            <dependency id="Microsoft.AspNet.WebApi.OData" version="5.7.0" />
+            <dependency id="WebActivatorEx" version="2.1.0" />
+        </dependencies>
+        <frameworkAssemblies>
+            <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="" />
+            <frameworkAssembly assemblyName="System.ServiceModel.Web" targetFramework="" />
+            <frameworkAssembly assemblyName="System.ServiceModel.Activation" targetFramework="" />
+            <frameworkAssembly assemblyName="System.Data.Services" targetFramework="" />
+        </frameworkAssemblies>
+    </metadata>
+</package>
