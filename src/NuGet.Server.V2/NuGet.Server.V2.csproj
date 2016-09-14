@@ -105,7 +105,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="NuGet.Server.V2.nuspec" />
+    <None Include="NuGet.Server.V2.nuspec">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

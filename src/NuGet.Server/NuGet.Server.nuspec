@@ -2,7 +2,7 @@
 <package>
   <metadata minClientVersion="2.6">
     <id>$id$</id>
-    <version>$version$</version>
+    <version>$packageVersion$</version>
     <description>$description$</description>
     <authors>.NET Foundation</authors>
     <owners>$author$</owners>
@@ -18,8 +18,8 @@
     <dependencies>
       <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
       <dependency id="NuGet.Core" version="[2.14.0-rtm-830,)" />
-      <dependency id="NuGet.Server.Core" version="$version$" />
-      <dependency id="NuGet.Server.V2" version="$version$" />
+      <dependency id="NuGet.Server.Core" version="$packageVersion$" />
+      <dependency id="NuGet.Server.V2" version="$packageVersion$" />
     </dependencies>
   </metadata>
 </package>
