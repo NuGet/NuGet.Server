@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -451,7 +450,7 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 var cachedPackages = new ConcurrentBag<ServerPackage>();
 
-                bool enableDelisting = EnableDelisting;
+                var enableDelisting = EnableDelisting;
 
                 var packages = _expandedPackageRepository.GetPackages().ToList();
 
@@ -459,14 +458,15 @@ namespace NuGet.Server.Core.Infrastructure
                 {
                     ServerPackage serverPackage;
 
-                    //Try to create the server package and ignore a bad package if it fails
+                    // Try to create the server package and ignore a bad package if it fails
                     var couldCreateServerPackage = TryCreateServerPackage(package, enableDelisting, out serverPackage);
                     if (couldCreateServerPackage)
                     {
                         // Add the package to the cache, it should not exist already
                         if (cachedPackages.Contains(serverPackage))
                         {
-                            _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id, package.Version);
+                            _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id,
+                                package.Version);
                         }
                         else
                         {

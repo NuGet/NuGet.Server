@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +14,7 @@ namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        public static ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
@@ -343,10 +342,12 @@ namespace NuGet.Server.Core.Tests
 
                 // Act
                 var packages = serverRepository.GetPackages();
+                var latestVersions = packages.Where(p => p.IsLatestVersion).Select(p => p.Version.ToString()).ToList();
 
                 // Assert
                 Assert.Equal(2, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version.ToString());
+                Assert.Contains("1.11", latestVersions);
+                Assert.Contains("1.2.0", latestVersions);
             }
         }
 

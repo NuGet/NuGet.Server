@@ -34,6 +34,8 @@ call :ExecuteCmd packages\xunit.runner.console.2.1.0\tools\xunit.console.exe tes
 IF %ERRORLEVEL% NEQ 0 goto error
 call :ExecuteCmd packages\xunit.runner.console.2.1.0\tools\xunit.console.exe test\NuGet.Server.Tests\bin\%config%\NuGet.Server.Tests.dll
 IF %ERRORLEVEL% NEQ 0 goto error
+call :ExecuteCmd packages\xunit.runner.console.2.1.0\tools\xunit.console.exe test\NuGet.Server.V2.Tests\bin\%config%\NuGet.Server.V2.Tests.dll
+IF %ERRORLEVEL% NEQ 0 goto error
 
 
 REM Package
@@ -42,6 +44,8 @@ mkdir artifacts\packages
 call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server.Core\NuGet.Server.Core.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
 IF %ERRORLEVEL% NEQ 0 goto error
 call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server\NuGet.Server.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
+IF %ERRORLEVEL% NEQ 0 goto error
+call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server.V2\NuGet.Server.V2.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
 IF %ERRORLEVEL% NEQ 0 goto error
 
 
