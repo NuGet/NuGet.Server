@@ -9,6 +9,9 @@ set versionPlaceholder=
 if not "%PackageVersion%" == "" (
    set version=-Version %PackageVersion%
    set versionPlaceholder=-p packageVersion=%PackageVersion%
+) else (
+   set version=-Version 1.0.0-build
+   set versionPlaceholder=-p packageVersion=1.0.0-build
 )
 
 
