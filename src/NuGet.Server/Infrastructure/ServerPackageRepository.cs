@@ -262,6 +262,19 @@ namespace NuGet.Server.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
+            if (RetentionRule > 0)
+            {
+                var packages = _expandedPackageRepository.GetPackages();
+                var samePackages = packages.Where(p => p.Id == package.Id).OrderBy(p => p.Version).ToList();
+                if (samePackages.Count >= RetentionRule)
+                {
+                     for (int i = 0; i <= samePackages.Count - RetentionRule; i++)
+                     {
+                         _expandedPackageRepository.RemovePackage(samePackages[i]);
+                     }
+                }
+            }
+
             MonitorFileSystem(false);
             try
             {
@@ -681,6 +694,14 @@ namespace NuGet.Server.Infrastructure
                 return _getSetting("enableDelisting", false);
             }
         }
+        private int RetentionRule
+        {
+            get
+            {
+                // If the setting is misconfigured, treat it as off (backwards compatibility).
+                return GetIntAppSetting("retentionRule", 0);
+            }
+        }
 
         private bool EnableFrameworkFiltering
         {
@@ -696,6 +717,13 @@ namespace NuGet.Server.Infrastructure
             var appSettings = WebConfigurationManager.AppSettings;
             bool value;
             return !Boolean.TryParse(appSettings[key], out value) ? defaultValue : value;
+        }
+
+        private static int GetIntAppSetting(string key, int defaultValue)
+        {
+            var appSettings = WebConfigurationManager.AppSettings;
+            int value;
+            return !int.TryParse(appSettings[key], out value) ? defaultValue : value;
         }
 
         private string GetPackageFileName(string packageId, SemanticVersion version)
