@@ -266,12 +266,12 @@ namespace NuGet.Server.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            if (PackageRetentionRule > 0)
+            if (PackageVersionRetention > 0)
             {
                 var packages = _expandedPackageRepository.FindPackagesById(package.Id).OrderBy(p => p.Version).ToList();
-                if (packages.Count >= PackageRetentionRule)
+                if (packages.Count >= PackageVersionRetention)
                 {
-                     for (int i = 0; i <= packages.Count - PackageRetentionRule; i++)
+                     for (int i = 0; i <= packages.Count - PackageVersionRetention; i++)
                      {
                          _expandedPackageRepository.RemovePackage(packages[i]);
                      }
@@ -701,12 +701,12 @@ namespace NuGet.Server.Infrastructure
                 return _getSetting("enableDelisting", false);
             }
         }
-        private int PackageRetentionRule
-        {
+        private int PackageVersionRetention
+		{
             get
             {
                 // If the setting is misconfigured, treat it as off (backwards compatibility).
-                return _getIntSetting("packageRetentionRule", 0);
+                return _getIntSetting("packageVersionRetention", 0);
             }
         }
 
