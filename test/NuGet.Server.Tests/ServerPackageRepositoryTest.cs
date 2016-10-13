@@ -15,7 +15,7 @@ namespace NuGet.Server.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null, Func<string, int, int> getIntSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
@@ -30,7 +30,8 @@ namespace NuGet.Server.Tests
                 runBackgroundTasks: false,
                 innerRepository: expandedPackageRepository, 
                 logger: new Logging.NullLogger(),
-                getSetting: getSetting);
+                getSetting: getSetting,
+                getIntSetting: getIntSetting);
 
             serverRepository.GetPackages(); // caches the files
 
@@ -105,6 +106,41 @@ namespace NuGet.Server.Tests
 
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
                 Assert.Equal("1.9", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryRetentionRule()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                Func<string, int, int> getIntSetting = (key, defaultValue) =>
+                {
+                    if (key == "packageRetentionRule")
+                    {
+                        return 3;
+                    }
+                    return defaultValue;
+                };
+
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.8"));
+                    repository.AddPackage(CreatePackage("test", "1.9"));
+                    repository.AddPackage(CreatePackage("test", "2.0"));
+                    repository.AddPackage(CreatePackage("test", "2.1"));
+                    repository.AddPackage(CreatePackage("test", "2.2"));
+                }, null, getIntSetting);
+
+                // Act
+                serverRepository.AddPackage(CreatePackage("test", "2.3"));
+                var packages = serverRepository.GetPackages().OrderBy(p => p.Version).ToList();
+
+                // Assert
+                Assert.Equal(3, packages.Count());
+                Assert.Equal("2.1", packages[0].Version.ToString());
+                Assert.Equal("2.3", packages[2].Version.ToString());
             }
         }
 
