@@ -110,7 +110,43 @@ namespace NuGet.Server.Tests
         }
 
         [Fact]
-        public void ServerPackageRepositoryRetentionRule()
+        public void ServerPackageRepositoryRetentionEnabled()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                Func<string, int, int> getIntSetting = (key, defaultValue) =>
+                {
+                    if (key == "packageVersionRetention")
+                    {
+                        return 3;
+                    }
+                    return defaultValue;
+                };
+
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "1.8"));
+                    repository.AddPackage(CreatePackage("test", "1.9"));
+                    repository.AddPackage(CreatePackage("test", "2.0"));
+                    repository.AddPackage(CreatePackage("test", "2.1"));
+                    repository.AddPackage(CreatePackage("test", "2.2"));
+                }, null, getIntSetting);
+
+                // Act
+                serverRepository.AddPackage(CreatePackage("test", "2.3"));
+                var packages = serverRepository.FindPackagesById("test").OrderBy(p => p.Version).ToList();
+
+                // Assert
+                Assert.Equal(3, packages.Count());
+                Assert.Equal("2.1", packages[0].Version.ToString());
+                Assert.Equal("2.2", packages[1].Version.ToString());
+                Assert.Equal("2.3", packages[2].Version.ToString());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryRetentionRuleDisabled()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -119,7 +155,7 @@ namespace NuGet.Server.Tests
                 {
                     if (key == "packageRetentionRule")
                     {
-                        return 3;
+                        return 0;
                     }
                     return defaultValue;
                 };
@@ -138,9 +174,10 @@ namespace NuGet.Server.Tests
                 var packages = serverRepository.GetPackages().OrderBy(p => p.Version).ToList();
 
                 // Assert
-                Assert.Equal(3, packages.Count());
-                Assert.Equal("2.1", packages[0].Version.ToString());
-                Assert.Equal("2.3", packages[2].Version.ToString());
+                Assert.Equal(6, packages.Count());
+                Assert.Equal("1.8", packages[0].Version.ToString());
+                Assert.Equal("1.9", packages[1].Version.ToString());
+                Assert.Equal("2.0", packages[2].Version.ToString());
             }
         }
 

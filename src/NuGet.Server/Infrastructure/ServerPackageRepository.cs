@@ -266,20 +266,6 @@ namespace NuGet.Server.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            if (PackageVersionRetention > 0)
-            {
-                var packages = _expandedPackageRepository.FindPackagesById(package.Id).OrderBy(p => p.Version).ToList();
-                if (packages.Count >= PackageVersionRetention)
-                {
-                     for (int i = 0; i <= packages.Count - PackageVersionRetention; i++)
-                     {
-                         _expandedPackageRepository.RemovePackage(packages[i]);
-                     }
-
-                     RebuildPackageStore();
-                }
-            }
-
             MonitorFileSystem(false);
             try
             {
@@ -291,12 +277,32 @@ namespace NuGet.Server.Infrastructure
                     // Add to metadata store
                     _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
 
+                    // Remove the exceeded package(s) if a package version retention was defined
+                    ApplyPackageVersionRetention(package);
+
                     _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
                 }
             }
             finally
             {
                 MonitorFileSystem(true);
+            }
+        }
+
+        private void ApplyPackageVersionRetention(IPackage package)
+        {
+            if (PackageVersionRetention > 0)
+            {
+                var packages = _expandedPackageRepository.FindPackagesById(package.Id).OrderBy(p => p.Version).ToList();
+                if (packages.Count >= PackageVersionRetention)
+                {
+                    for (int i = 0; i < packages.Count - PackageVersionRetention; i++)
+                    {
+                        _expandedPackageRepository.RemovePackage(packages[i]);
+                    }
+
+                    RebuildPackageStore();
+                }
             }
         }
 
@@ -702,7 +708,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
         private int PackageVersionRetention
-		{
+    {
             get
             {
                 // If the setting is misconfigured, treat it as off (backwards compatibility).
