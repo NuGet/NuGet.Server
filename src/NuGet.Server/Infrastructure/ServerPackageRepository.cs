@@ -707,8 +707,9 @@ namespace NuGet.Server.Infrastructure
                 return _getSetting("enableDelisting", false);
             }
         }
+
         private int PackageVersionRetention
-    {
+        {
             get
             {
                 // If the setting is misconfigured, treat it as off (backwards compatibility).
