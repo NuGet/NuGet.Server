@@ -549,7 +549,7 @@ namespace NuGet.Server.Infrastructure
 
         private void MonitorFileSystem(bool monitor)
         {
-            if (!_runBackgroundTasks)
+            if (!EnableFileSystemMonitoring || !_runBackgroundTasks)
             {
                 return;
             }
@@ -579,7 +579,7 @@ namespace NuGet.Server.Infrastructure
         private void RegisterFileSystemWatcher()
         {
             // When files are moved around, recreate the package cache
-            if (_runBackgroundTasks && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
+            if (EnableFileSystemMonitoring && _runBackgroundTasks && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
             {
                 // ReSharper disable once UseObjectOrCollectionInitializer
                 _fileSystemWatcher = new FileSystemWatcher(Source);
@@ -679,7 +679,16 @@ namespace NuGet.Server.Infrastructure
                 return _getSetting("enableFrameworkFiltering", false);
             }
         }
-        
+
+        private bool EnableFileSystemMonitoring
+        {
+            get
+            {
+                // If the setting is misconfigured, treat it as on (backwards compatibility).
+                return _getSetting("enableFileSystemMonitoring", true);
+            }
+        }
+
         private static bool GetBooleanAppSetting(string key, bool defaultValue)
         {
             var appSettings = WebConfigurationManager.AppSettings;
