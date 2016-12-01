@@ -6,7 +6,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <%
     var service = new Packages();
-    var packages = service.Search(String.Empty, null, true, false).Where(x=>x.Listed).GroupBy(x => new {x.Id}).OrderBy(x=>x.First().Title).Take(50).ToArray();
+    var packages = service.Search(String.Empty, null, true, false).Where(x=>x.Listed).OrderByDescending(x => SemanticVersion.Parse(x.Version)).GroupBy(x => new {x.Id}).OrderBy(x=>x.First().Title).Take(50).ToArray();
 %>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head id="Head1" runat="server">
@@ -109,7 +109,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="/">ahd Nuget Server</a>
+          <a class="navbar-brand" href="/">Nuget Server</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -167,10 +167,9 @@
                 <% foreach (var package in packages)
                    {
                        var stableOnly = false;
-                       var versions = package.OrderByDescending(x => SemanticVersion.Parse(x.Version));
-                       var meta = versions.FirstOrDefault(x=>x.IsLatestVersion);
+                       var meta = package.FirstOrDefault(x=>x.IsLatestVersion);
                        if (meta == null)
-                            meta = versions.First();%>
+                            meta = package.First();%>
                 <div class="panel panel-default" id="<%= meta.Id %>">
                   <div class="panel-heading">
                     <h3 class="panel-title"><%= meta.Title%></h3>
@@ -222,7 +221,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                          <% foreach (var version in versions)
+                          <% foreach (var version in package)
                              {
                                  if (!version.IsPrerelease) stableOnly = true;
                                  if (stableOnly && version.IsPrerelease) continue;
