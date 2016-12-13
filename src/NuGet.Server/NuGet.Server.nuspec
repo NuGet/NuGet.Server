@@ -1,25 +1,47 @@
 <?xml version="1.0"?>
 <package>
   <metadata minClientVersion="2.6">
-    <id>$id$</id>
+    <id>NuGet.Server</id>
     <version>$packageVersion$</version>
-    <description>$description$</description>
+    <description>Web Application used to host a simple NuGet feed</description>
     <authors>.NET Foundation</authors>
-    <owners>$author$</owners>
+    <owners>.NET Foundation</owners>
     <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
-    <copyright>$copyright$</copyright>
+    <copyright>© .NET Foundation. All rights reserved.</copyright>
     <frameworkAssemblies>
-      <frameworkAssembly assemblyName="System.ServiceModel" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Web" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Activation" />
-      <frameworkAssembly assemblyName="System.Data.Services" />
+      <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Web" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Activation" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
     </frameworkAssemblies>
     <dependencies>
-      <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
-      <dependency id="NuGet.Core" version="[2.14.0-rtm-830,)" />
-      <dependency id="NuGet.Server.Core" version="$packageVersion$" />
-      <dependency id="NuGet.Server.V2" version="$packageVersion$" />
+      <group targetFramework="net46">
+        <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
+        <dependency id="NuGet.Core" version="2.14.0" />
+        <dependency id="NuGet.Server.Core" version="$packageVersion$" />
+        <dependency id="NuGet.Server.V2" version="$packageVersion$" />
+        <dependency id="Microsoft.AspNet.WebApi" version="5.2.3" />
+        <dependency id="Microsoft.AspNet.WebApi.OData" version="5.7.0" />
+        <dependency id="WebActivatorEx" version="2.2.0" />
+      </group>
     </dependencies>
   </metadata>
+  <files>
+    <!-- lib\net46 -->
+    <file src="bin\NuGet.Server.dll" target="lib\net46" />
+    <file src="bin\NuGet.Server.pdb" target="lib\net46" />
+    
+    <!-- content\net46 -->
+    <file src="App_Start\NuGetODataConfig.cs.pp" target="content\net46\App_Start" />
+    <file src="Packages\Readme.txt" target="content\net46\Packages" />
+    <file src="Default.aspx" target="content\net46" />
+    <file src="favicon.ico" target="content\net46" />
+    <file src="web.config.install.xdt" target="content\net46" />
+    <file src="bin\Web.config.transform" target="content\net46" />
+    
+    <!-- src -->
+    <file src="**\*.cs" target="src" />
+    <file src="..\CommonAssemblyInfo.cs" target="src\Properties" />
+  </files>
 </package>

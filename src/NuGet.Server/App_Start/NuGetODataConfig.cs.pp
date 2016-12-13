@@ -1,7 +1,8 @@
 ﻿using System.Net.Http;
 using System.Web.Http;
-using NuGet.Server.V2;
 using System.Web.Http.Routing;
+using NuGet.Server;
+using NuGet.Server.V2;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof($rootnamespace$.App_Start.NuGetODataConfig), "Start")]
 

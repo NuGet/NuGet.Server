@@ -5,7 +5,12 @@ using System.Web.Http;
 using System.Web.Http.Routing;
 using NuGet.Server.V2;
 
+// The consuming project executes this logic with its own copy of this class. This is done with a .pp file that is
+// added and transformed upon package install.
+#if DEBUG
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NuGet.Server.App_Start.NuGetODataConfig), "Start")]
+#endif
+
 namespace NuGet.Server.App_Start
 {
     public static class NuGetODataConfig

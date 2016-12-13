@@ -10,20 +10,22 @@
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
     <copyright>$copyright$</copyright>
     <frameworkAssemblies>
-      <frameworkAssembly assemblyName="System.Data.Services" />
+      <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
     </frameworkAssemblies>
     <dependencies>
-      <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
-      <dependency id="Newtonsoft.Json" version="[8.0.3,)" />
-      <dependency id="NuGet.Core" version="[2.14.0-rtm-830,)" />
-      <dependency id="NuGet.Server.Core" version="$packageVersion$" />
+      <group targetFramework="net46">
+        <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
+        <dependency id="Newtonsoft.Json" version="9.0.1" />
+        <dependency id="NuGet.Core" version="2.14.0" />
+        <dependency id="NuGet.Server.Core" version="$packageVersion$" />
 
-      <dependency id="Microsoft.AspNet.WebApi.Client" version="[5.2.3,)" />
-      <dependency id="Microsoft.AspNet.WebApi.Core" version="[5.2.3,)" />
-      <dependency id="Microsoft.AspNet.WebApi.OData" version="[5.7.0,)" />
-      <dependency id="Microsoft.Data.Edm" version="[5.7.0,)" />
-      <dependency id="Microsoft.Data.OData" version="[5.7.0,)" />
-      <dependency id="System.Spatial" version="[5.7.0,)" />
+        <dependency id="Microsoft.AspNet.WebApi.Client" version="5.2.3" />
+        <dependency id="Microsoft.AspNet.WebApi.Core" version="5.2.3" />
+        <dependency id="Microsoft.AspNet.WebApi.OData" version="5.7.0" />
+        <dependency id="Microsoft.Data.Edm" version="5.7.0" />
+        <dependency id="Microsoft.Data.OData" version="5.7.0" />
+        <dependency id="System.Spatial" version="5.7.0" />
+      </group>
     </dependencies>
   </metadata>
 </package>
