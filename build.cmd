@@ -7,6 +7,8 @@ if "%config%" == "" (
 set version=
 if not "%PackageVersion%" == "" (
    set version=-Version %PackageVersion%
+) else (
+   set version=-Version 1.0.0-build
 )
 
 
@@ -37,7 +39,7 @@ IF %ERRORLEVEL% NEQ 0 goto error
 REM Package
 mkdir artifacts
 mkdir artifacts\packages
-call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server\NuGet.Server.csproj" -symbols -o artifacts\packages -p Configuration=%config% %version%
+call :ExecuteCmd tools\nuget.exe pack "src\NuGet.Server\NuGet.Server.nuspec" -symbols -o artifacts\packages -p Configuration=%config% %version%
 IF %ERRORLEVEL% NEQ 0 goto error
 
 
