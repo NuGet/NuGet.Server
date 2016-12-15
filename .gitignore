@@ -203,3 +203,4 @@ DebugConstants.cs
 *.userprefs
 src/VsExtension/source.extension.vsixmanifest
 !packages/Microsoft.Web.Xdt.1.0.0-alpha/
+*.cache.bin
