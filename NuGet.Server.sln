@@ -1,14 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E7B39EAD-EA32-4011-845A-C949A336389A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A2E61590-0069-4746-A44D-4B2B805EDD91}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		build.cmd = build.cmd
 		CodeAnalysisDictionary.xml = CodeAnalysisDictionary.xml
+		NuGet.config = NuGet.config
 		NuGet.ruleset = NuGet.ruleset
 	EndProjectSection
 EndProject
