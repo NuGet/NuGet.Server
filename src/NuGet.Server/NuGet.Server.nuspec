@@ -1,23 +1,46 @@
 <?xml version="1.0"?>
 <package>
   <metadata minClientVersion="2.6">
-    <id>$id$</id>
+    <id>NuGet.Server</id>
     <version>$version$</version>
-    <description>$description$</description>
+    <description>Web Application used to host a simple NuGet feed</description>
     <authors>.NET Foundation</authors>
-    <owners>$author$</owners>
+    <owners>.NET Foundation</owners>
     <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
-    <copyright>$copyright$</copyright>
+    <copyright>© .NET Foundation. All rights reserved.</copyright>
     <frameworkAssemblies>
-      <frameworkAssembly assemblyName="System.ServiceModel" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Web" />
-      <frameworkAssembly assemblyName="System.ServiceModel.Activation" />
-      <frameworkAssembly assemblyName="System.Data.Services" />
+      <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Web" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.ServiceModel.Activation" targetFramework="net46" />
+      <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
     </frameworkAssemblies>
     <dependencies>
-      <dependency id="NuGet.Core" version="[2.11.1,)" />
-      <dependency id="Microsoft.Web.Xdt" version="[2.1.1,)" />
+      <group targetFramework="net46">
+        <dependency id="NuGet.Core" version="2.14.0" />
+        <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
+        <dependency id="Newtonsoft.Json" version="9.0.1" />
+        <dependency id="RouteMagic" version="1.3.0" />
+        <dependency id="WebActivatorEx" version="2.2.0" />
+      </group>
     </dependencies>
   </metadata>
+  <files>
+    <!-- lib\net46 -->
+    <file src="bin\NuGet.Server.dll" target="lib\net46" />
+    <file src="bin\NuGet.Server.pdb" target="lib\net46" />
+    
+    <!-- content\net46 -->
+    <file src="DataServices\Packages.svc" target="content\net46\DataServices" />
+    <file src="DataServices\Routes.cs.pp" target="content\net46\DataServices" />
+    <file src="Packages\Readme.txt" target="content\net46\Packages" />
+    <file src="Default.aspx" target="content\net46" />
+    <file src="favicon.ico" target="content\net46" />
+    <file src="web.config.install.xdt" target="content\net46" />
+    <file src="Web.config" target="content\net46" />
+    
+    <!-- src -->
+    <file src="**\*.cs" target="src" exclude="**\obj\**\*.cs" />
+    <file src="..\CommonAssemblyInfo.cs" target="src\Properties" />
+  </files>
 </package>
