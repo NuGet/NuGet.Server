@@ -56,7 +56,7 @@ namespace NuGet.Server.Infrastructure
                     }
                     catch (Exception ex)
                     {
-                        if (ex is JsonReaderException || ex is SerializationException)
+                        if (ex is JsonException || ex is SerializationException)
                         {
                             // In case this happens, remove the file
                             _fileSystem.DeleteFile(_fileName);
