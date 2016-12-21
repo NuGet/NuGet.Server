@@ -31,6 +31,7 @@ namespace NuGet.Server.Infrastructure
         private readonly ExpandedPackageRepository _expandedPackageRepository;
         private readonly Logging.ILogger _logger;
         private readonly Func<string, bool, bool> _getSetting;
+        private readonly Func<string, int, int> _getIntSetting;
 
         private readonly IServerPackageStore _serverPackageStore;
 
@@ -62,7 +63,7 @@ namespace NuGet.Server.Infrastructure
             _getSetting = GetBooleanAppSetting;
         }
         
-        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null, Func<string, int, int> getIntSetting = null)
         {
             if (fileSystem == null)
             {
@@ -82,6 +83,7 @@ namespace NuGet.Server.Infrastructure
             _serverPackageStore = new ServerPackageStore(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
 
             _getSetting = getSetting ?? GetBooleanAppSetting;
+            _getIntSetting = getIntSetting ?? GetIntAppSetting;
         }
 
         private void SetupBackgroundJobs()
@@ -275,12 +277,32 @@ namespace NuGet.Server.Infrastructure
                     // Add to metadata store
                     _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
 
+                    // Remove the exceeded package(s) if a package version retention was defined
+                    ApplyPackageVersionRetention(package);
+
                     _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
                 }
             }
             finally
             {
                 MonitorFileSystem(true);
+            }
+        }
+
+        private void ApplyPackageVersionRetention(IPackage package)
+        {
+            if (PackageVersionRetention > 0)
+            {
+                var packages = _expandedPackageRepository.FindPackagesById(package.Id).OrderBy(p => p.Version).ToList();
+                if (packages.Count >= PackageVersionRetention)
+                {
+                    for (int i = 0; i < packages.Count - PackageVersionRetention; i++)
+                    {
+                        _expandedPackageRepository.RemovePackage(packages[i]);
+                    }
+
+                    RebuildPackageStore();
+                }
             }
         }
 
@@ -686,6 +708,15 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
+        private int PackageVersionRetention
+        {
+            get
+            {
+                // If the setting is misconfigured, treat it as off (backwards compatibility).
+                return _getIntSetting("packageVersionRetention", 0);
+            }
+        }
+
         private bool EnableFrameworkFiltering
         {
             get
@@ -700,6 +731,13 @@ namespace NuGet.Server.Infrastructure
             var appSettings = WebConfigurationManager.AppSettings;
             bool value;
             return !Boolean.TryParse(appSettings[key], out value) ? defaultValue : value;
+        }
+
+        private static int GetIntAppSetting(string key, int defaultValue)
+        {
+            var appSettings = WebConfigurationManager.AppSettings;
+            int value;
+            return !int.TryParse(appSettings[key], out value) ? defaultValue : value;
         }
 
         private string GetPackageFileName(string packageId, SemanticVersion version)
