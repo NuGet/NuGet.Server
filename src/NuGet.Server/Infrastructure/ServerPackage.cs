@@ -99,9 +99,10 @@ namespace NuGet.Server.Infrastructure
             FullPath = packageDerivedData.FullPath;
         }
 
+        [JsonRequired]
         public string Id { get; set; }
 
-        [JsonConverter(typeof(SemanticVersionJsonConverter))]
+        [JsonRequired, JsonConverter(typeof(SemanticVersionJsonConverter))]
         public SemanticVersion Version { get; set; }
 
         public string Title { get; set; }
