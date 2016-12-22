@@ -19,6 +19,8 @@ namespace NuGet.Server.DataServices
                 return AsODataPackage(serverPackage);
             }
 
+            var utcNow = DateTime.UtcNow;
+
             return new ODataPackage
             {
                 Id = package.Id,
@@ -37,8 +39,8 @@ namespace NuGet.Server.DataServices
                 Description = package.Description,
                 Summary = package.Summary,
                 ReleaseNotes = package.ReleaseNotes,
-                Published = package.Published.HasValue ? package.Published.Value.UtcDateTime : DateTime.UtcNow,
-                LastUpdated = package.Published.HasValue ? package.Published.Value.UtcDateTime : DateTime.UtcNow,
+                Published = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
+                LastUpdated = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
                 Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
                 PackageHash = package.GetHash(Constants.HashAlgorithm),
                 PackageHashAlgorithm = Constants.HashAlgorithm,
@@ -74,7 +76,7 @@ namespace NuGet.Server.DataServices
                 Description = package.Description,
                 Summary = package.Summary,
                 ReleaseNotes = package.ReleaseNotes,
-                Published = package.Published.HasValue ? package.Published.Value.UtcDateTime : DateTime.UtcNow,
+                Published = package.Created.UtcDateTime,
                 LastUpdated = package.LastUpdated.UtcDateTime,
                 Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
                 PackageHash = package.PackageHash,
