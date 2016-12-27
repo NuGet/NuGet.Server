@@ -123,4 +123,7 @@
   <data name="Error_SymbolsPackagesIgnored" xml:space="preserve">
     <value>Package {0} is a symbols package (it contains .pdb files and a /src folder). The server is configured to ignore symbols packages.</value>
   </data>
+  <data name="GetUpdatesParameterMismatch" xml:space="preserve">
+    <value>The 'packages' and 'versionConstraints' parameters must have the same number of elements.</value>
+  </data>
 </root>

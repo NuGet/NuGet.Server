@@ -78,6 +78,7 @@
     <Compile Include="Infrastructure\SemanticVersionJsonConverter.cs" />
     <Compile Include="Infrastructure\ServerPackage.cs" />
     <Compile Include="Infrastructure\ServerPackageRepository.cs" />
+    <Compile Include="Infrastructure\ServerPackageRepositoryExtensions.cs" />
     <Compile Include="Infrastructure\ServerPackageStore.cs" />
     <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Logging\ILogger.cs" />

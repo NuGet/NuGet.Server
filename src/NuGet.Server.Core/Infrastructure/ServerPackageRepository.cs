@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace NuGet.Server.Core.Infrastructure
     /// will clear the cache.
     /// </summary>
     public class ServerPackageRepository
-        : PackageRepositoryBase, IServerPackageRepository, IPackageLookup, IDisposable
+        : IServerPackageRepository, IDisposable
     {
         private const string TemplateNupkgFilename = "{0}\\{1}\\{0}.{1}.nupkg";
         private const string TemplateHashFilename = "{0}\\{1}\\{0}.{1}{2}";
@@ -102,31 +103,44 @@ namespace NuGet.Server.Core.Infrastructure
             _logger.Log(LogLevel.Info, "Finished registering background jobs.");
         }
 
-        public override IQueryable<IPackage> GetPackages()
+        /// <summary>
+        /// Package cache containing packages metadata. 
+        /// This data is generated if it does not exist already.
+        /// </summary>
+        public IQueryable<IPackage> GetPackages()
         {
-            return CachedPackages.AsQueryable();
-        }
+            if (_needsRebuild || !_serverPackageStore.HasPackages())
+            {
+                lock (_syncLock)
+                {
+                    if (_needsRebuild || !_serverPackageStore.HasPackages())
+                    {
+                        RebuildPackageStore();
+                    }
+                }
+            }
 
-        public bool Exists(string packageId, SemanticVersion version)
-        {
-            return FindPackage(packageId, version) != null;
-        }
+            // First time we come here, attach the file system watcher
+            if (_fileSystemWatcher == null)
+            {
+                MonitorFileSystem(true);
+            }
 
-        public IPackage FindPackage(string packageId, SemanticVersion version)
-        {
-            return FindPackagesById(packageId)
-                .FirstOrDefault(p => p.Version.Equals(version));
-        }
+            // First time we come here, setup background jobs
+            if (_persistenceTimer == null)
+            {
+                SetupBackgroundJobs();
+            }
 
-        public IEnumerable<IPackage> FindPackagesById(string packageId)
-        {
-            return GetPackages()
-                .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.Id, packageId) == 0);
+            // Return packages
+            return _serverPackageStore
+                .GetAll()
+                .AsQueryable();
         }
 
         public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
         {
-            var cache = CachedPackages;
+            var cache = GetPackages();
 
             var packages = cache.AsQueryable()
                 .Find(searchTerm)
@@ -148,24 +162,21 @@ namespace NuGet.Server.Core.Infrastructure
             return packages.AsQueryable();
         }
 
-        public IEnumerable<IPackage> GetUpdates(IEnumerable<IPackageName> packages, bool includePrerelease, bool includeAllVersions, IEnumerable<FrameworkName> targetFrameworks, IEnumerable<IVersionSpec> versionConstraints)
+        public IEnumerable<IPackage> GetUpdates(
+            IEnumerable<IPackageName> packages,
+            bool includePrerelease,
+            bool includeAllVersions,
+            IEnumerable<FrameworkName> targetFrameworks,
+            IEnumerable<IVersionSpec> versionConstraints)
         {
             return this.GetUpdatesCore(packages, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints);
         }
 
-        public override string Source
+        public string Source
         {
             get
             {
                 return _expandedPackageRepository.Source;
-            }
-        }
-
-        public override bool SupportsPrereleasePackages
-        {
-            get
-            {
-                return _expandedPackageRepository.SupportsPrereleasePackages;
             }
         }
 
@@ -243,7 +254,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// <summary>
         /// Add a file to the repository.
         /// </summary>
-        public override void AddPackage(IPackage package)
+        public void AddPackage(IPackage package)
         {
             _logger.Log(LogLevel.Info, "Start adding package {0} {1}.", package.Id, package.Version);
 
@@ -255,7 +266,7 @@ namespace NuGet.Server.Core.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            if (!AllowOverrideExistingPackageOnPush && FindPackage(package.Id, package.Version) != null)
+            if (!AllowOverrideExistingPackageOnPush && this.FindPackage(package.Id, package.Version) != null)
             {
                 var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
@@ -278,7 +289,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// <summary>
         /// Unlist or delete a package.
         /// </summary>
-        public override void RemovePackage(IPackage package)
+        public void RemovePackage(IPackage package)
         {
             if (package == null)
             {
@@ -303,7 +314,7 @@ namespace NuGet.Server.Core.Infrastructure
                             File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
 
                             // Update metadata store
-                            var serverPackage = FindPackage(package.Id, package.Version) as ServerPackage;
+                            var serverPackage = this.FindPackage(package.Id, package.Version) as ServerPackage;
                             if (serverPackage != null)
                             {
                                 serverPackage.Listed = false;
@@ -341,7 +352,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// </summary>
         public void RemovePackage(string packageId, SemanticVersion version)
         {
-            var package = FindPackage(packageId, version);
+            var package = this.FindPackage(packageId, version);
 
             RemovePackage(package);
         }
@@ -366,42 +377,6 @@ namespace NuGet.Server.Core.Infrastructure
 
             UnregisterFileSystemWatcher();
             _serverPackageStore.PersistIfDirty();
-        }
-
-        /// <summary>
-        /// Internal package cache containing packages metadata. 
-        /// This data is generated if it does not exist already.
-        /// </summary>
-        private IEnumerable<ServerPackage> CachedPackages
-        {
-            get
-            {
-                if (_needsRebuild || !_serverPackageStore.HasPackages())
-                {
-                    lock (_syncLock)
-                    {
-                        if (_needsRebuild || !_serverPackageStore.HasPackages())
-                        {
-                            RebuildPackageStore();
-                        }
-                    }
-                }
-
-                // First time we come here, attach the file system watcher
-                if (_fileSystemWatcher == null)
-                {
-                    MonitorFileSystem(true);
-                }
-
-                // First time we come here, setup background jobs
-                if (_persistenceTimer == null)
-                {
-                    SetupBackgroundJobs();
-                }
-
-                // Return packages
-                return _serverPackageStore.GetAll();
-            }
         }
 
         private void RebuildPackageStore()
