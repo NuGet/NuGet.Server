@@ -107,7 +107,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// Package cache containing packages metadata. 
         /// This data is generated if it does not exist already.
         /// </summary>
-        public IQueryable<IPackage> GetPackages()
+        public IQueryable<IServerPackage> GetPackages()
         {
             if (_needsRebuild || !_serverPackageStore.HasPackages())
             {
@@ -138,11 +138,12 @@ namespace NuGet.Server.Core.Infrastructure
                 .AsQueryable();
         }
 
-        public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
+        public IQueryable<IServerPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
         {
             var cache = GetPackages();
 
-            var packages = cache.AsQueryable()
+            var packages = cache
+                .AsQueryable()
                 .Find(searchTerm)
                 .FilterByPrerelease(allowPrereleaseVersions);
 
@@ -162,7 +163,7 @@ namespace NuGet.Server.Core.Infrastructure
             return packages.AsQueryable();
         }
 
-        public IEnumerable<IPackage> GetUpdates(
+        public IEnumerable<IServerPackage> GetUpdates(
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
             bool includeAllVersions,
@@ -287,10 +288,12 @@ namespace NuGet.Server.Core.Infrastructure
         }
 
         /// <summary>
-        /// Unlist or delete a package.
+        /// Remove a package from the repository.
         /// </summary>
-        public void RemovePackage(IPackage package)
+        public void RemovePackage(string packageId, SemanticVersion version)
         {
+            var package = this.FindPackage(packageId, version);
+
             if (package == null)
             {
                 return;
@@ -329,7 +332,7 @@ namespace NuGet.Server.Core.Infrastructure
                         else
                         {
                             _logger.Log(LogLevel.Error,
-                                "Error removing package {0} {1} - could not find package file {2}", 
+                                "Error removing package {0} {1} - could not find package file {2}",
                                     package.Id, package.Version, fileName);
                         }
                     }
@@ -345,16 +348,6 @@ namespace NuGet.Server.Core.Infrastructure
                     _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
                 }
             }
-        }
-
-        /// <summary>
-        /// Remove a package from the repository.
-        /// </summary>
-        public void RemovePackage(string packageId, SemanticVersion version)
-        {
-            var package = this.FindPackage(packageId, version);
-
-            RemovePackage(package);
         }
 
         public void Dispose()

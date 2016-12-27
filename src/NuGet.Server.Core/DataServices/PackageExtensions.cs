@@ -1,5 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace NuGet.Server.Core.DataServices
 {
     public static class PackageExtensions
     {
-        public static ODataPackage AsODataPackage(this IPackage package)
+        public static ODataPackage AsODataPackage(this IServerPackage package)
         {
             var serverPackage = package as ServerPackage;
             if (serverPackage != null)

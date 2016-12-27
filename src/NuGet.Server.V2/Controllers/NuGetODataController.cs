@@ -377,14 +377,14 @@ namespace NuGet.Server.V2.Controllers
             return apiKey;
         }
 
-        protected IPackage RetrieveFromRepository(string id, string version)
+        protected IServerPackage RetrieveFromRepository(string id, string version)
         {
             return string.IsNullOrEmpty(version) ?
                                         _serverRepository.FindPackage(id) :
                                         _serverRepository.FindPackage(id, new SemanticVersion(version));
         }
 
-        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)
+        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IServerPackage> packages)
         {
             return packages
                 .Distinct()
@@ -412,7 +412,9 @@ namespace NuGet.Server.V2.Controllers
         /// <param name="options"></param>
         /// <param name="sourceQuery"></param>
         /// <returns></returns>
-        protected virtual IHttpActionResult TransformToQueryResult(ODataQueryOptions<ODataPackage> options, IEnumerable<IPackage> sourceQuery)
+        protected virtual IHttpActionResult TransformToQueryResult(
+            ODataQueryOptions<ODataPackage> options,
+            IEnumerable<IServerPackage> sourceQuery)
         {
             var transformedQuery = TransformPackages(sourceQuery);
             return QueryResult(options, transformedQuery, _maxPageSize);

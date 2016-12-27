@@ -10,14 +10,14 @@ namespace NuGet.Server.Core.Infrastructure
 {
     public static class ServerPackageRepositoryExtensions
     {
-        public static IEnumerable<IPackage> FindPackagesById(this IServerPackageRepository repository, string packageId)
+        public static IEnumerable<IServerPackage> FindPackagesById(this IServerPackageRepository repository, string packageId)
         {
             return repository
                 .GetPackages()
                 .Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, packageId));
         }
 
-        public static IQueryable<IPackage> Search(
+        public static IQueryable<IServerPackage> Search(
             this IServerPackageRepository repository,
             string searchTerm,
             bool allowPrereleaseVersions)
@@ -25,7 +25,7 @@ namespace NuGet.Server.Core.Infrastructure
             return repository.Search(searchTerm, Enumerable.Empty<string>(), allowPrereleaseVersions);
         }
 
-        public static IPackage FindPackage(
+        public static IServerPackage FindPackage(
             this IServerPackageRepository repository,
             string packageId,
             SemanticVersion version)
@@ -35,7 +35,7 @@ namespace NuGet.Server.Core.Infrastructure
                 .FirstOrDefault(p => p.Version.Equals(version));
         }
 
-        public static IPackage FindPackage(this IServerPackageRepository repository, string packageId)
+        public static IServerPackage FindPackage(this IServerPackageRepository repository, string packageId)
         {
             return repository
                 .FindPackagesById(packageId)
@@ -43,7 +43,7 @@ namespace NuGet.Server.Core.Infrastructure
                 .FirstOrDefault();
         }
 
-        public static IEnumerable<IPackage> GetUpdatesCore(
+        public static IEnumerable<IServerPackage> GetUpdatesCore(
             this IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
@@ -55,7 +55,7 @@ namespace NuGet.Server.Core.Infrastructure
 
             if (!packageList.Any())
             {
-                return Enumerable.Empty<IPackage>();
+                return Enumerable.Empty<IServerPackage>();
             }
 
             IList<IVersionSpec> versionConstraintList;
@@ -74,11 +74,11 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             // These are the packages that we need to look at for potential updates.
-            ILookup<string, IPackage> sourcePackages = GetUpdateCandidates(repository, packageList, includePrerelease)
+            ILookup<string, IServerPackage> sourcePackages = GetUpdateCandidates(repository, packageList, includePrerelease)
                 .ToList()
                 .ToLookup(package => package.Id, StringComparer.OrdinalIgnoreCase);
 
-            var results = new List<IPackage>();
+            var results = new List<IServerPackage>();
             for (int i = 0; i < packageList.Count; i++)
             {
                 var package = packageList[i];
@@ -100,7 +100,7 @@ namespace NuGet.Server.Core.Infrastructure
             return results;
         }
 
-        private static bool SupportsTargetFrameworks(IEnumerable<FrameworkName> targetFramework, IPackage package)
+        private static bool SupportsTargetFrameworks(IEnumerable<FrameworkName> targetFramework, IServerPackage package)
         {
             return targetFramework.IsEmpty() || targetFramework.Any(t => VersionUtility.IsCompatible(t, package.GetSupportedFrameworks()));
         }
@@ -108,14 +108,14 @@ namespace NuGet.Server.Core.Infrastructure
         /// <summary>
         /// Collapses the packages by Id picking up the highest version for each Id that it encounters
         /// </summary>
-        private static IEnumerable<IPackage> CollapseById(IEnumerable<IPackage> source)
+        private static IEnumerable<IServerPackage> CollapseById(IEnumerable<IServerPackage> source)
         {
             return source
                 .GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.OrderByDescending(p => p.Version).First());
         }
 
-        private static IQueryable<IPackage> GetUpdateCandidates(
+        private static IQueryable<IServerPackage> GetUpdateCandidates(
             IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
             bool includePrerelease)

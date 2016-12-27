@@ -13,18 +13,16 @@ namespace NuGet.Server.Core.Infrastructure
 
         void AddPackage(IPackage package);
 
-        IQueryable<IPackage> GetPackages();
+        IQueryable<IServerPackage> GetPackages();
 
-        void RemovePackage(IPackage package);
-
-        IEnumerable<IPackage> GetUpdates(
+        IEnumerable<IServerPackage> GetUpdates(
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
             bool includeAllVersions,
             IEnumerable<FrameworkName> targetFrameworks,
             IEnumerable<IVersionSpec> versionConstraints);
 
-        IQueryable<IPackage> Search(
+        IQueryable<IServerPackage> Search(
             string searchTerm,
             IEnumerable<string> targetFrameworks,
             bool allowPrereleaseVersions);
