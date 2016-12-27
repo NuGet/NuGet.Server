@@ -35,7 +35,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         private readonly bool _runBackgroundTasks;
         private FileSystemWatcher _fileSystemWatcher;
-        private bool _isFileSystemWatcherSuppressed = false;
+        private bool _isFileSystemWatcherSuppressed;
         private bool _needsRebuild = true;
 
         private Timer _persistenceTimer;
@@ -118,6 +118,16 @@ namespace NuGet.Server.Core.Infrastructure
         /// </summary>
         public IQueryable<IServerPackage> GetPackages()
         {
+		    /*
+             * We rebuild the package storage under either of two conditions:
+             *
+             * 1. If the "needs rebuild" flag is set to true. This is initially the case when the repository is
+             *    instantiated, if a non-package drop file system event occurred (e.g. a file deletion), or if the
+             *    cache was manually cleared.
+             *
+             * 2. If the store has no packages at all. This is so we pick up initial packages as quickly as
+             *    possible.
+             */
             if (_needsRebuild || !_serverPackageStore.HasPackages())
             {
                 lock (_syncLock)
