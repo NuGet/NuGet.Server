@@ -237,17 +237,12 @@ namespace NuGet.Server.V2.Controllers
 
             if (requestedPackage == null)
                 return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
-
-            var serverPackage = requestedPackage as ServerPackage;
-
+            
             var responseMessage = Request.CreateResponse(HttpStatusCode.OK);
 
             if (Request.Method == HttpMethod.Get)
             {
-                if (serverPackage != null)
-                    responseMessage.Content = new StreamContent(File.OpenRead(serverPackage.FullPath));
-                else
-                    responseMessage.Content = new StreamContent(requestedPackage.GetStream());
+                responseMessage.Content = new StreamContent(File.OpenRead(requestedPackage.FullPath));
             }
             else
             {
@@ -255,17 +250,16 @@ namespace NuGet.Server.V2.Controllers
             }
 
             responseMessage.Content.Headers.ContentType = new MediaTypeWithQualityHeaderValue("binary/octet-stream");
-            if (serverPackage != null)
+            if (requestedPackage != null)
             {
-                responseMessage.Content.Headers.LastModified = serverPackage.LastUpdated;
-                responseMessage.Headers.ETag = new EntityTagHeaderValue('"' + serverPackage.PackageHash + '"');
+                responseMessage.Content.Headers.LastModified = requestedPackage.LastUpdated;
+                responseMessage.Headers.ETag = new EntityTagHeaderValue('"' + requestedPackage.PackageHash + '"');
             }
 
             responseMessage.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(DispositionTypeNames.Attachment)
             {
                 FileName = string.Format("{0}.{1}{2}", requestedPackage.Id, requestedPackage.Version, NuGet.Constants.PackageExtension),
-                Size = serverPackage != null ? (long?)serverPackage.PackageSize : null,
-                CreationDate = requestedPackage.Published,
+                Size = requestedPackage != null ? (long?)requestedPackage.PackageSize : null,
                 ModificationDate = responseMessage.Content.Headers.LastModified,
             };
 
@@ -377,14 +371,14 @@ namespace NuGet.Server.V2.Controllers
             return apiKey;
         }
 
-        protected IPackage RetrieveFromRepository(string id, string version)
+        protected IServerPackage RetrieveFromRepository(string id, string version)
         {
             return string.IsNullOrEmpty(version) ?
                                         _serverRepository.FindPackage(id) :
                                         _serverRepository.FindPackage(id, new SemanticVersion(version));
         }
 
-        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IPackage> packages)
+        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IServerPackage> packages)
         {
             return packages
                 .Distinct()
@@ -412,7 +406,9 @@ namespace NuGet.Server.V2.Controllers
         /// <param name="options"></param>
         /// <param name="sourceQuery"></param>
         /// <returns></returns>
-        protected virtual IHttpActionResult TransformToQueryResult(ODataQueryOptions<ODataPackage> options, IEnumerable<IPackage> sourceQuery)
+        protected virtual IHttpActionResult TransformToQueryResult(
+            ODataQueryOptions<ODataPackage> options,
+            IEnumerable<IServerPackage> sourceQuery)
         {
             var transformedQuery = TransformPackages(sourceQuery);
             return QueryResult(options, transformedQuery, _maxPageSize);

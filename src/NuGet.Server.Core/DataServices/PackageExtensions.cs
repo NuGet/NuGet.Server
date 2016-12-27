@@ -1,5 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,52 +11,7 @@ namespace NuGet.Server.Core.DataServices
 {
     public static class PackageExtensions
     {
-        public static ODataPackage AsODataPackage(this IPackage package)
-        {
-            var serverPackage = package as ServerPackage;
-            if (serverPackage != null)
-            {
-                return AsODataPackage(serverPackage);
-            }
-
-            var utcNow = DateTime.UtcNow;
-
-            return new ODataPackage
-            {
-                Id = package.Id,
-                Version = package.Version.ToString(),
-                NormalizedVersion = package.Version.ToNormalizedString(),
-                IsPrerelease = !package.IsReleaseVersion(),
-                Title = package.Title,
-                Authors = string.Join(",", package.Authors),
-                Owners = string.Join(",", package.Owners),
-                IconUrl = package.IconUrl == null ? null : package.IconUrl.GetComponents(UriComponents.HttpRequestUrl, UriFormat.Unescaped),
-                LicenseUrl = package.LicenseUrl == null ? null : package.LicenseUrl.GetComponents(UriComponents.HttpRequestUrl, UriFormat.Unescaped),
-                ProjectUrl = package.ProjectUrl == null ? null : package.ProjectUrl.GetComponents(UriComponents.HttpRequestUrl, UriFormat.Unescaped),
-                DownloadCount = package.DownloadCount,
-                RequireLicenseAcceptance = package.RequireLicenseAcceptance,
-                DevelopmentDependency = package.DevelopmentDependency,
-                Description = package.Description,
-                Summary = package.Summary,
-                ReleaseNotes = package.ReleaseNotes,
-                Published = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
-                LastUpdated = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
-                Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
-                PackageHash = package.GetHash(Constants.HashAlgorithm),
-                PackageHashAlgorithm = Constants.HashAlgorithm,
-                PackageSize = package.GetStream().Length,
-                Copyright = package.Copyright,
-                Tags = package.Tags,
-                IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion,
-                IsLatestVersion = package.IsLatestVersion,
-                Listed = package.Listed,
-                VersionDownloadCount = package.DownloadCount,
-                MinClientVersion = package.MinClientVersion == null ? null : package.MinClientVersion.ToString(),
-                Language = package.Language
-            };
-        }
-
-        public static ODataPackage AsODataPackage(this ServerPackage package)
+        public static ODataPackage AsODataPackage(this IServerPackage package)
         {
             return new ODataPackage
             {

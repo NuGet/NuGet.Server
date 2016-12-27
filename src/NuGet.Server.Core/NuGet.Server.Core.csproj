@@ -55,6 +55,9 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\HashCodeCombiner.cs">
+      <Link>HashCodeCombiner.cs</Link>
+    </Compile>
     <Compile Include="Core\Constants.cs" />
     <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\PackageExtensions.cs" />
@@ -70,6 +73,7 @@
     <Compile Include="Infrastructure\DefaultSettingsProvider.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\IPackagesSerializer.cs" />
+    <Compile Include="Infrastructure\IServerPackage.cs" />
     <Compile Include="Infrastructure\IServerPackageRepository.cs" />
     <Compile Include="Infrastructure\IServerPackageStore.cs" />
     <Compile Include="Infrastructure\ISettingsProvider.cs" />
@@ -77,7 +81,10 @@
     <Compile Include="Infrastructure\PackageDerivedData.cs" />
     <Compile Include="Infrastructure\SemanticVersionJsonConverter.cs" />
     <Compile Include="Infrastructure\ServerPackage.cs" />
+    <Compile Include="Infrastructure\IdAndVersionEqualityComparer.cs" />
+    <Compile Include="Infrastructure\ServerPackageExtensions.cs" />
     <Compile Include="Infrastructure\ServerPackageRepository.cs" />
+    <Compile Include="Infrastructure\ServerPackageRepositoryExtensions.cs" />
     <Compile Include="Infrastructure\ServerPackageStore.cs" />
     <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Logging\ILogger.cs" />

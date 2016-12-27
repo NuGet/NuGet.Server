@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,13 +12,44 @@ using Newtonsoft.Json;
 namespace NuGet.Server.Core.Infrastructure
 {
     public class ServerPackage
-        : IPackage
+        : IServerPackage
     {
         public ServerPackage()
         {
         }
 
-        public ServerPackage(string id, SemanticVersion version, string title, IEnumerable<string> authors, IEnumerable<string> owners, Uri iconUrl, Uri licenseUrl, Uri projectUrl, bool requireLicenseAcceptance, bool developmentDependency, string description, string summary, string releaseNotes, string language, string tags, string copyright, string dependencies, Version minClientVersion, Uri reportAbuseUrl, int downloadCount, string supportedFrameworks, bool isAbsoluteLatestVersion, bool isLatestVersion, bool listed, DateTimeOffset? published, long packageSize, string packageHash, string packageHashAlgorithm, DateTimeOffset lastUpdated, DateTimeOffset created, string path, string fullPath)
+        public ServerPackage(
+            string id,
+            SemanticVersion version,
+            string title,
+            IEnumerable<string> authors,
+            IEnumerable<string> owners,
+            Uri iconUrl,
+            Uri licenseUrl,
+            Uri projectUrl,
+            bool requireLicenseAcceptance,
+            bool developmentDependency,
+            string description,
+            string summary,
+            string releaseNotes, 
+            string language, 
+            string tags, 
+            string copyright, 
+            string dependencies, 
+            Version minClientVersion, 
+            Uri reportAbuseUrl, 
+            int downloadCount, 
+            string supportedFrameworks, 
+            bool isAbsoluteLatestVersion, 
+            bool isLatestVersion, 
+            bool listed, 
+            DateTimeOffset? published, 
+            long packageSize,
+            string packageHash, 
+            string packageHashAlgorithm, 
+            DateTimeOffset lastUpdated, 
+            DateTimeOffset created,
+            string fullPath)
         {
             Id = id;
             Version = version;
@@ -43,13 +75,11 @@ namespace NuGet.Server.Core.Infrastructure
             IsAbsoluteLatestVersion = isAbsoluteLatestVersion;
             IsLatestVersion = isLatestVersion;
             Listed = listed;
-            Published = published;
             PackageSize = packageSize;
             PackageHash = packageHash;
             PackageHashAlgorithm = packageHashAlgorithm;
             LastUpdated = lastUpdated;
             Created = created;
-            Path = path;
             FullPath = fullPath;
 
             // Preload collections
@@ -81,7 +111,6 @@ namespace NuGet.Server.Core.Infrastructure
             IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion;
             IsLatestVersion = package.IsLatestVersion;
             Listed = package.Listed;
-            Published = package.Published;
 
             _dependencySets = package.DependencySets.ToList();
             Dependencies = DependencySetsAsString(package.DependencySets);
@@ -94,7 +123,6 @@ namespace NuGet.Server.Core.Infrastructure
             PackageHashAlgorithm = packageDerivedData.PackageHashAlgorithm;
             LastUpdated = packageDerivedData.LastUpdated;
             Created = packageDerivedData.Created;
-            Path = packageDerivedData.Path;
             FullPath = packageDerivedData.FullPath;
         }
 
@@ -190,9 +218,6 @@ namespace NuGet.Server.Core.Infrastructure
 
         public bool Listed { get; set; }
 
-        public DateTimeOffset? Published { get; set; }
-
-        
         public long PackageSize { get; set; }
 
         public string PackageHash { get; set; }
@@ -202,8 +227,6 @@ namespace NuGet.Server.Core.Infrastructure
         public DateTimeOffset LastUpdated { get; set; }
 
         public DateTimeOffset Created { get; set; }
-
-        public string Path { get; set; }
 
         public string FullPath { get; set; }
 
@@ -287,52 +310,5 @@ namespace NuGet.Server.Core.Infrastructure
 
             return Tuple.Create(id, versionSpec, targetFramework);
         }
-
-
-        #region Unsupported operations
-
-        public IEnumerable<IPackageFile> GetFiles()
-        {
-            throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support getting files.");
-        }
-
-        public Stream GetStream()
-        {
-            throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support getting a stream.");
-        }
-
-        public void ExtractContents(IFileSystem fileSystem, string extractPath)
-        {
-            throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support extracting contents.");
-        }
-        
-        [JsonIgnore]
-        public IEnumerable<FrameworkAssemblyReference> FrameworkAssemblies
-        {
-            get
-            {
-                throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support enumerating FrameworkAssemblies.");
-            }
-        }
-
-        [JsonIgnore]
-        public ICollection<PackageReferenceSet> PackageAssemblyReferences
-        {
-            get
-            {
-                throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support enumerating PackageAssemblyReferences.");
-            }
-        }
-
-        [JsonIgnore]
-        public IEnumerable<IPackageAssemblyReference> AssemblyReferences
-        {
-            get
-            {
-                throw new NotImplementedException("The NuGet.Server.ServerPackage type does not support enumerating AssemblyReferences.");
-            }
-        }
-
-        #endregion
     }
 }

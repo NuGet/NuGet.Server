@@ -100,10 +100,10 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                serverRepository.RemovePackage(CreateMockPackage("test", "1.11"));
-                serverRepository.RemovePackage(CreateMockPackage("test", "2.0-alpha"));
-                serverRepository.RemovePackage(CreateMockPackage("test", "2.0.1"));
-                serverRepository.RemovePackage(CreateMockPackage("test", "2.0.0-0test"));
+                serverRepository.RemovePackage("test", new SemanticVersion("1.11"));
+                serverRepository.RemovePackage("test", new SemanticVersion("2.0-alpha"));
+                serverRepository.RemovePackage("test", new SemanticVersion("2.0.1"));
+                serverRepository.RemovePackage("test", new SemanticVersion("2.0.0-0test"));
                 var packages = serverRepository.GetPackages();
 
                 // Assert

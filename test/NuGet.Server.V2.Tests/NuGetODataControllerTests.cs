@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -44,11 +45,11 @@ namespace NuGet.Server.V2.Tests
         public class PackagesCollection
         {
             [Theory]
-            [InlineData("Id eq 'Foo'", 100, 2, new[] { "Foo", "Foo" }, new[] { "1.0.0", "1.0.1-a" })]
-            [InlineData("Id eq 'Bar'", 1, 1, new[] { "Bar" }, new[] { "1.0.0" })]
-            [InlineData("Id eq 'Bar' and IsPrerelease eq true", 100, 2, new[] { "Bar", "Bar" }, new[] { "2.0.1-a", "2.0.1-b" })]
-            [InlineData("Id eq 'Bar' or Id eq 'Foo'", 100, 6, new[] { "Foo", "Foo", "Bar", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a", "2.0.1-b" })]
-            public void PackagesReturnsCollection(string filter, int top, int expectedNumberOfPackages, string[] expectedIds, string[] expectedVersions)
+            [InlineData("Id eq 'Foo'", 100, new[] { "Foo", "Foo" }, new[] { "1.0.0", "1.0.1-a" })]
+            [InlineData("Id eq 'Bar'", 1, new[] { "Bar" }, new[] { "1.0.0" })]
+            [InlineData("Id eq 'Bar' and IsPrerelease eq true", 100, new[] { "Bar", "Bar" }, new[] { "2.0.1-a", "2.0.1-b" })]
+            [InlineData("Id eq 'Bar' or Id eq 'Foo'", 100, new[] { "Foo", "Foo", "Bar", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a", "2.0.1-b" })]
+            public void PackagesReturnsCollection(string filter, int top, string[] expectedIds, string[] expectedVersions)
             {
                 // Arrange
                 var repo = ControllerTestHelpers.SetupTestPackageRepository();
@@ -64,7 +65,8 @@ namespace NuGet.Server.V2.Tests
                     .ToArray();
 
                 // Assert
-                Assert.Equal(expectedNumberOfPackages, result.Length);
+                Assert.Equal(expectedIds.Length, result.Length);
+                Assert.Equal(expectedVersions.Length, result.Length);
                 for (var i = 0; i < expectedIds.Length; i++)
                 {
                     var expectedId = expectedIds[i];
@@ -779,12 +781,13 @@ namespace NuGet.Server.V2.Tests
         public class SearchMethod
         {
             [Theory]
-            [InlineData("Foo", false, 1, new[] { "Foo" }, new[] { "1.0.0" })]
-            [InlineData("Bar", false, 2, new[] { "Bar", "Bar" }, new[] { "1.0.0", "2.0.0" })]
-            [InlineData("", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
-            [InlineData("CommonTag", false, 3, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
-            [InlineData("", true, 5, new[] { "Foo", "Foo", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a" })]
-            public void SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages, string[] expectedIds, string[] expectedVersions)
+            [InlineData("Foo", false, new[] { "Foo" }, new[] { "1.0.0" })]
+            [InlineData("Bar", false, new[] { "Bar", "Bar" }, new[] { "1.0.0", "2.0.0" })]
+            [InlineData("", false, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
+            [InlineData("CommonTag", false, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
+            [InlineData("CommonTag CommonTag2", false, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
+            [InlineData("", true, new[] { "Foo", "Foo", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a" })]
+            public void SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, string[] expectedIds, string[] expectedVersions)
             {
                 using (var temporaryDirectory = new TemporaryDirectory())
                 {
@@ -807,7 +810,8 @@ namespace NuGet.Server.V2.Tests
 
 
                     // Assert
-                    Assert.Equal(expectedNumberOfPackages, result.Length);
+                    Assert.Equal(expectedIds.Length, result.Length);
+                    Assert.Equal(expectedVersions.Length, result.Length);
                     for (var i = 0; i < expectedIds.Length; i++)
                     {
                         var expectedId = expectedIds[i];
@@ -853,11 +857,11 @@ namespace NuGet.Server.V2.Tests
             {
                 return ServerPackageRepositoryTest.CreateServerPackageRepository(temporaryDirectory.Path, repository =>
                 {
-                    repository.AddPackage(CreatePackage("Foo", "1.0.0", new[] { "Foo", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Foo", "1.0.1-a", new[] { "Foo", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Bar", "1.0.0", new[] { "Bar", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Bar", "2.0.0", new[] { "Bar", "CommonTag" }));
-                    repository.AddPackage(CreatePackage("Bar", "2.0.1-a", new[] { "Bar", "CommonTag" }));
+                    repository.AddPackage(CreatePackage("Foo", "1.0.0", new[] { "Foo", "CommonTag", "CommonTag2" }));
+                    repository.AddPackage(CreatePackage("Foo", "1.0.1-a", new[] { "Foo", "CommonTag", "CommonTag2" }));
+                    repository.AddPackage(CreatePackage("Bar", "1.0.0", new[] { "Bar", "CommonTag", "CommonTag2" }));
+                    repository.AddPackage(CreatePackage("Bar", "2.0.0", new[] { "Bar", "CommonTag", "CommonTag2" }));
+                    repository.AddPackage(CreatePackage("Bar", "2.0.1-a", new[] { "Bar", "CommonTag", "CommonTag2" }));
                 });
             }
 
@@ -887,9 +891,5 @@ namespace NuGet.Server.V2.Tests
                 return new ZipPackage(packageStream);
             }
         }
-
     }
-
-
-
 }
