@@ -128,7 +128,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             // for updates, we never consider unlisted packages
-            query = query.Where(p => NuGet.PackageExtensions.IsListed(p));
+            query = query.Where(p => p.Listed);
 
             return query;
         }

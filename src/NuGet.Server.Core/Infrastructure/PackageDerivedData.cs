@@ -16,7 +16,6 @@ namespace NuGet.Server.Core.Infrastructure
         public string PackageHashAlgorithm { get; set; }
         public DateTimeOffset LastUpdated { get; set; }
         public DateTimeOffset Created { get; set; }
-        public string Path { get; set; }
         public string FullPath { get; set; }
     }
 }

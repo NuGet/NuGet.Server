@@ -41,7 +41,11 @@ namespace NuGet.Server.Core.Infrastructure
         private Timer _persistenceTimer;
         private Timer _rebuildTimer;
 
-        public ServerPackageRepository(string path, IHashProvider hashProvider, ISettingsProvider settingsProvider = null, Logging.ILogger logger = null)
+        public ServerPackageRepository(
+            string path,
+            IHashProvider hashProvider,
+            ISettingsProvider settingsProvider = null,
+            Logging.ILogger logger = null)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -61,7 +65,12 @@ namespace NuGet.Server.Core.Infrastructure
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
         }
 
-        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, ISettingsProvider settingsProvider = null, Logging.ILogger logger = null)
+        internal ServerPackageRepository(
+            IFileSystem fileSystem,
+            bool runBackgroundTasks,
+            ExpandedPackageRepository innerRepository,
+            ISettingsProvider settingsProvider = null,
+            Logging.ILogger logger = null)
         {
             if (fileSystem == null)
             {
@@ -189,7 +198,7 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 try
                 {
-                    var serverPackages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
+                    var serverPackages = new HashSet<ServerPackage>(IdAndVersionEqualityComparer.Instance);
 
                     foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", false))
                     {
@@ -340,7 +349,11 @@ namespace NuGet.Server.Core.Infrastructure
                 else
                 {
                     // Remove from filesystem
-                    _expandedPackageRepository.RemovePackage(package);
+                    var existingPackage =_expandedPackageRepository.FindPackage(package.Id, package.Version);
+                    if (existingPackage != null)
+                    {
+                        _expandedPackageRepository.RemovePackage(existingPackage);
+                    }
 
                     // Update metadata store
                     _serverPackageStore.Remove(package.Id, package.Version);
@@ -434,7 +447,7 @@ namespace NuGet.Server.Core.Infrastructure
                     });
 
                     _logger.Log(LogLevel.Info, "Finished reading packages from disk.");
-                    return new HashSet<ServerPackage>(cachedPackages, PackageEqualityComparer.IdAndVersion);
+                    return new HashSet<ServerPackage>(cachedPackages, IdAndVersionEqualityComparer.Instance);
                 }
                 catch (Exception ex)
                 {
@@ -472,7 +485,6 @@ namespace NuGet.Server.Core.Infrastructure
 
                 packageDerivedData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
                 packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
-                packageDerivedData.Path = packageFileName;
                 packageDerivedData.FullPath = _fileSystem.GetFullPath(packageFileName);
 
                 if (enableDelisting && localPackage != null)

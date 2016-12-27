@@ -23,7 +23,7 @@ namespace NuGet.Server.Core.Infrastructure
         private readonly IFileSystem _fileSystem;
         private readonly string _fileName;
 
-        private readonly HashSet<ServerPackage> _packages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
+        private readonly HashSet<ServerPackage> _packages = new HashSet<ServerPackage>(IdAndVersionEqualityComparer.Instance);
 
         public ServerPackageStore(IFileSystem fileSystem, string fileName)
         {
