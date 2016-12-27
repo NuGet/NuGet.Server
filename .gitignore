@@ -196,7 +196,9 @@ FakesAssemblies/
 
 *.orig
 *.vs10x
-src/NuGet.Server/Packages/*.nupkg
+src/NuGet.Server/Packages/**/*.nupkg
+src/NuGet.Server/Packages/**/*.sha512
+src/NuGet.Server/Packages/**/*.nuspec
 src/NuGet.Server/Server.Publish.xml
 DebugConstants.cs
 *.log

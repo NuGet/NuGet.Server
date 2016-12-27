@@ -34,6 +34,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         private readonly bool _runBackgroundTasks;
         private FileSystemWatcher _fileSystemWatcher;
+        private bool _isFileSystemWatcherSuppressed;
 
         private Timer _persistenceTimer;
         private Timer _rebuildTimer;
@@ -171,71 +172,70 @@ namespace NuGet.Server.Core.Infrastructure
         {
             _logger.Log(LogLevel.Info, "Start adding packages from drop folder.");
 
-            MonitorFileSystem(false);
-
-            try
+            using (LockAndSuppressFileSystemWatcher())
             {
-                var serverPackages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
-
-                foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", false))
+                try
                 {
-                    try
-                    {
-                        // Create package
-                        var package = new OptimizedZipPackage(_fileSystem, packageFile);
+                    var serverPackages = new HashSet<ServerPackage>(PackageEqualityComparer.IdAndVersion);
 
-                        // Is it a symbols package?
-                        if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
+                    foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", false))
+                    {
+                        try
                         {
-                            var message = string.Format(Strings.Error_SymbolsPackagesIgnored, package);
+                            // Create package
+                            var package = new OptimizedZipPackage(_fileSystem, packageFile);
 
-                            _logger.Log(LogLevel.Error, message);
+                            // Is it a symbols package?
+                            if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
+                            {
+                                var message = string.Format(Strings.Error_SymbolsPackagesIgnored, package);
 
-                            continue;
+                                _logger.Log(LogLevel.Error, message);
+
+                                continue;
+                            }
+
+                            // Allow overwriting package? If not, skip this one.
+                            if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
+                            {
+                                var message = string.Format(Strings.Error_PackageAlreadyExists, package);
+
+                                _logger.Log(LogLevel.Error, message);
+
+                                continue;
+                            }
+
+                            // Copy to correct filesystem location
+                            _expandedPackageRepository.AddPackage(package);
+
+                            // Mark for addition to metadata store
+                            serverPackages.Add(CreateServerPackage(package, EnableDelisting));
+
+                            // Remove file from drop folder
+                            _fileSystem.DeleteFile(packageFile);
                         }
-
-                        // Allow overwriting package? If not, skip this one.
-                        if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
+                        catch (UnauthorizedAccessException ex)
                         {
-                            var message = string.Format(Strings.Error_PackageAlreadyExists, package);
-
-                            _logger.Log(LogLevel.Error, message);
-
-                            continue;
+                            // The file may be in use (still being copied) - ignore the error
+                            _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
                         }
-
-                        // Copy to correct filesystem location
-                        _expandedPackageRepository.AddPackage(package);
-
-                        // Mark for addition to metadata store
-                        serverPackages.Add(CreateServerPackage(package, EnableDelisting));
-
-                        // Remove file from drop folder
-                        _fileSystem.DeleteFile(packageFile);
+                        catch (IOException ex)
+                        {
+                            // The file may be in use (still being copied) - ignore the error
+                            _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
+                        }
                     }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        // The file may be in use (still being copied) - ignore the error
-                        _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
-                    }
-                    catch (IOException ex)
-                    {
-                        // The file may be in use (still being copied) - ignore the error
-                        _logger.Log(LogLevel.Error, "Error adding package file {0} from drop folder: {1}", packageFile, ex.Message);
-                    }
+
+                    // Add packages to metadata store in bulk
+                    _serverPackageStore.StoreRange(serverPackages);
+                    _serverPackageStore.PersistIfDirty();
+
+                    _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
                 }
-
-                // Add packages to metadata store in bulk
-                _serverPackageStore.StoreRange(serverPackages);
-                _serverPackageStore.PersistIfDirty();
-
-                _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
-            }
-            finally
-            {
-                OptimizedZipPackage.PurgeCache();
-
-                MonitorFileSystem(true);
+                finally
+                {
+                    OptimizedZipPackage.PurgeCache();
+                }
             }
         }
 
@@ -262,23 +262,15 @@ namespace NuGet.Server.Core.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            MonitorFileSystem(false);
-            try
+            using (LockAndSuppressFileSystemWatcher())
             {
-                lock (_syncLock)
-                {
-                    // Copy to correct filesystem location
-                    _expandedPackageRepository.AddPackage(package);
+                // Copy to correct filesystem location
+                _expandedPackageRepository.AddPackage(package);
 
-                    // Add to metadata store
-                    _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
+                // Add to metadata store
+                _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
 
-                    _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
-                }
-            }
-            finally
-            {
-                MonitorFileSystem(true);
+                _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
             }
         }
 
@@ -287,64 +279,58 @@ namespace NuGet.Server.Core.Infrastructure
         /// </summary>
         public override void RemovePackage(IPackage package)
         {
-            if (package != null)
+            if (package == null)
             {
-                MonitorFileSystem(false);
-                try
+                return;
+            }
+
+            using (LockAndSuppressFileSystemWatcher())
+            {
+                _logger.Log(LogLevel.Info, "Start removing package {0} {1}.", package.Id, package.Version);
+
+                if (EnableDelisting)
                 {
-                    lock (_syncLock)
+                    var physicalFileSystem = _fileSystem as PhysicalFileSystem;
+                    if (physicalFileSystem != null)
                     {
-                        _logger.Log(LogLevel.Info, "Start removing package {0} {1}.", package.Id, package.Version);
+                        var fileName = physicalFileSystem.GetFullPath(
+                            GetPackageFileName(package.Id, package.Version));
 
-                        if (EnableDelisting)
+                        if (File.Exists(fileName))
                         {
-                            var physicalFileSystem = _fileSystem as PhysicalFileSystem;
-                            if (physicalFileSystem != null)
+                            // Set "unlisted"
+                            File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
+
+                            // Update metadata store
+                            var serverPackage = FindPackage(package.Id, package.Version) as ServerPackage;
+                            if (serverPackage != null)
                             {
-                                var fileName = physicalFileSystem.GetFullPath(
-                                    GetPackageFileName(package.Id, package.Version));
-
-                                if (File.Exists(fileName))
-                                {
-                                    // Set "unlisted"
-                                    File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
-
-                                    // Update metadata store
-                                    var serverPackage = FindPackage(package.Id, package.Version) as ServerPackage;
-                                    if (serverPackage != null)
-                                    {
-                                        serverPackage.Listed = false;
-                                        _serverPackageStore.Store(serverPackage);
-                                    }
-
-                                    // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
-                                    // Also, no need to flip hidden attribute on these since only the one from the nupkg is queried.
-
-                                    _logger.Log(LogLevel.Info, "Unlisted package {0} {1}.", package.Id, package.Version);
-                                }
-                                else
-                                {
-                                    _logger.Log(LogLevel.Error,
-                                        "Error removing package {0} {1} - could not find package file {2}",
-                                            package.Id, package.Version, fileName);
-                                }
+                                serverPackage.Listed = false;
+                                _serverPackageStore.Store(serverPackage);
                             }
+
+                            // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
+                            // Also, no need to flip hidden attribute on these since only the one from the nupkg is queried.
+
+                            _logger.Log(LogLevel.Info, "Unlisted package {0} {1}.", package.Id, package.Version);
                         }
                         else
                         {
-                            // Remove from filesystem
-                            _expandedPackageRepository.RemovePackage(package);
-
-                            // Update metadata store
-                            _serverPackageStore.Remove(package.Id, package.Version);
-
-                            _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
+                            _logger.Log(LogLevel.Error,
+                                "Error removing package {0} {1} - could not find package file {2}", 
+                                    package.Id, package.Version, fileName);
                         }
                     }
                 }
-                finally
+                else
                 {
-                    MonitorFileSystem(true);
+                    // Remove from filesystem
+                    _expandedPackageRepository.RemovePackage(package);
+
+                    // Update metadata store
+                    _serverPackageStore.Remove(package.Id, package.Version);
+
+                    _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
                 }
             }
         }
@@ -444,48 +430,46 @@ namespace NuGet.Server.Core.Infrastructure
         private HashSet<ServerPackage> ReadPackagesFromDisk()
         {
             _logger.Log(LogLevel.Info, "Start reading packages from disk...");
-            MonitorFileSystem(false);
 
-            try
+            using (LockAndSuppressFileSystemWatcher())
             {
-                var cachedPackages = new ConcurrentBag<ServerPackage>();
-
-                var enableDelisting = EnableDelisting;
-
-                var packages = _expandedPackageRepository.GetPackages().ToList();
-
-                Parallel.ForEach(packages, package =>
+                try
                 {
-                    ServerPackage serverPackage;
+                    var cachedPackages = new ConcurrentBag<ServerPackage>();
 
-                    // Try to create the server package and ignore a bad package if it fails
-                    var couldCreateServerPackage = TryCreateServerPackage(package, enableDelisting, out serverPackage);
-                    if (couldCreateServerPackage)
+                    var enableDelisting = EnableDelisting;
+
+                    var packages = _expandedPackageRepository.GetPackages().ToList();
+
+                    Parallel.ForEach(packages, package =>
                     {
-                        // Add the package to the cache, it should not exist already
-                        if (cachedPackages.Contains(serverPackage))
-                        {
-                            _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id,
-                                package.Version);
-                        }
-                        else
-                        {
-                            cachedPackages.Add(serverPackage);
-                        }
-                    }
-                });
+                        ServerPackage serverPackage;
 
-                _logger.Log(LogLevel.Info, "Finished reading packages from disk.");
-                return new HashSet<ServerPackage>(cachedPackages, PackageEqualityComparer.IdAndVersion);
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(LogLevel.Error, "Error while reading packages from disk: {0} {1}", ex.Message, ex.StackTrace);
-                throw;
-            }
-            finally
-            {
-                MonitorFileSystem(true);
+                        // Try to create the server package and ignore a bad package if it fails
+                        var couldCreateServerPackage = TryCreateServerPackage(package, enableDelisting, out serverPackage);
+                        if (couldCreateServerPackage)
+                        {
+                            // Add the package to the cache, it should not exist already
+                            if (cachedPackages.Contains(serverPackage))
+                            {
+                                _logger.Log(LogLevel.Warning, "Duplicate package found - {0} {1}", package.Id,
+                                    package.Version);
+                            }
+                            else
+                            {
+                                cachedPackages.Add(serverPackage);
+                            }
+                        }
+                    });
+
+                    _logger.Log(LogLevel.Info, "Finished reading packages from disk.");
+                    return new HashSet<ServerPackage>(cachedPackages, PackageEqualityComparer.IdAndVersion);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Log(LogLevel.Error, "Error while reading packages from disk: {0} {1}", ex.Message, ex.StackTrace);
+                    throw;
+                }
             }
         }
 
@@ -567,21 +551,13 @@ namespace NuGet.Server.Core.Infrastructure
         /// </summary>
         public void ClearCache()
         {
-            MonitorFileSystem(false);
-            try
+            using (LockAndSuppressFileSystemWatcher())
             {
-                lock (_syncLock)
-                {
-                    OptimizedZipPackage.PurgeCache();
+                OptimizedZipPackage.PurgeCache();
 
-                    _serverPackageStore.Clear();
-                    _serverPackageStore.Persist();
-                    _logger.Log(LogLevel.Info, "Cleared package cache.");
-                }
-            }
-            finally
-            {
-                MonitorFileSystem(true);
+                _serverPackageStore.Clear();
+                _serverPackageStore.Persist();
+                _logger.Log(LogLevel.Info, "Cleared package cache.");
             }
         }
 
@@ -656,6 +632,11 @@ namespace NuGet.Server.Core.Infrastructure
 
         private void FileSystemChanged(object sender, FileSystemEventArgs e)
         {
+            if (_isFileSystemWatcherSuppressed)
+            {
+                return;
+            }
+
             _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
 
             // 1) If a .nupkg is dropped in the root, add it as a package
@@ -730,6 +711,52 @@ namespace NuGet.Server.Core.Infrastructure
         private string GetHashFileName(string packageId, SemanticVersion version)
         {
             return string.Format(TemplateHashFilename, packageId, version.ToNormalizedString(), NuGet.Constants.HashFileExtension);
+        }
+        
+        private IDisposable LockAndSuppressFileSystemWatcher()
+        {
+            return new SupressedFileSystemWatcher(this);
+        }
+
+        private class SupressedFileSystemWatcher : IDisposable
+        {
+            private readonly ServerPackageRepository _repository;
+
+            public SupressedFileSystemWatcher(ServerPackageRepository repository)
+            {
+                if (repository == null)
+                {
+                    throw new ArgumentNullException(nameof(repository));
+                }
+
+                _repository = repository;
+
+                // Lock the repository.
+                bool lockTaken = false;
+                try
+                {
+                    Monitor.Enter(_repository._syncLock, ref lockTaken);
+                }
+                catch
+                {
+                    if (lockTaken)
+                    {
+                        Monitor.Exit(_repository._syncLock);
+                    }
+
+                    throw;
+                }
+
+                // Suppress the file system events.
+                _repository._isFileSystemWatcherSuppressed = true;
+            }
+
+            public void Dispose()
+            {
+                Monitor.Exit(_repository._syncLock);
+
+                _repository._isFileSystemWatcherSuppressed = false;
+            }
         }
     }
 }
