@@ -55,6 +55,9 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\HashCodeCombiner.cs">
+      <Link>HashCodeCombiner.cs</Link>
+    </Compile>
     <Compile Include="Core\Constants.cs" />
     <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\PackageExtensions.cs" />
@@ -66,7 +69,6 @@
     <Compile Include="DataServices\QueryableExtensions.cs" />
     <Compile Include="DataServices\QueryTranslator.cs" />
     <Compile Include="DataServices\QueryTranslatorProvider.cs" />
-    <Compile Include="HashCodeCombiner.cs" />
     <Compile Include="Infrastructure\ApiKeyPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\DefaultSettingsProvider.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
