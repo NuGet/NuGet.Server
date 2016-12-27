@@ -36,7 +36,8 @@ namespace NuGet.Server.Infrastructure
 
         private readonly bool _runBackgroundTasks;
         private FileSystemWatcher _fileSystemWatcher;
-        private bool _isFileSystemWatcherSuppressed;
+        private bool _isFileSystemWatcherSuppressed = false;
+        private bool _needsRebuild = true;
 
         private Timer _persistenceTimer;
         private Timer _rebuildTimer;
@@ -377,11 +378,11 @@ namespace NuGet.Server.Infrastructure
         {
             get
             {
-                if (!_serverPackageStore.HasPackages())
+                if (_needsRebuild || !_serverPackageStore.HasPackages())
                 {
                     lock (_syncLock)
                     {
-                        if (!_serverPackageStore.HasPackages())
+                        if (_needsRebuild || !_serverPackageStore.HasPackages())
                         {
                             RebuildPackageStore();
                         }
@@ -421,6 +422,8 @@ namespace NuGet.Server.Infrastructure
 
                 // Persist
                 _serverPackageStore.PersistIfDirty();
+
+                _needsRebuild = false;
 
                 _logger.Log(LogLevel.Info, "Finished rebuilding package store.");
             }
@@ -539,6 +542,7 @@ namespace NuGet.Server.Infrastructure
 
                 _serverPackageStore.Clear();
                 _serverPackageStore.Persist();
+                _needsRebuild = true;
                 _logger.Log(LogLevel.Info, "Cleared package cache.");
             }
         }
