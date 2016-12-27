@@ -79,6 +79,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiKeyPackageAuthenticationServiceTest.cs" />
+    <Compile Include="IdAndVersionEqualityComparerTest.cs" />
     <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
     <Compile Include="Infrastructure\FuncSettingsProvider.cs" />
     <Compile Include="Infrastructure\NullLogger.cs" />
