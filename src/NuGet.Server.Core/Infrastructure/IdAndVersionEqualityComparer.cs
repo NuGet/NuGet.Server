@@ -9,7 +9,7 @@ namespace NuGet.Server.Core.Infrastructure
 {
     public class IdAndVersionEqualityComparer : IEqualityComparer<IServerPackage>
     {
-        private static IdAndVersionEqualityComparer _instance = new IdAndVersionEqualityComparer();
+        private static readonly IdAndVersionEqualityComparer _instance = new IdAndVersionEqualityComparer();
         public static IdAndVersionEqualityComparer Instance => _instance;
 
         public bool Equals(IServerPackage x, IServerPackage y)
