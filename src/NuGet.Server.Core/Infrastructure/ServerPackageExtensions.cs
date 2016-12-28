@@ -14,7 +14,7 @@ namespace NuGet.Server.Core.Infrastructure
             return string.IsNullOrEmpty(package.Version.SpecialVersion);
         }
 
-        public static IQueryable<T> FilterByPrerelease<T>(this IQueryable<T> packages, bool allowPrerelease)
+        public static IEnumerable<T> FilterByPrerelease<T>(this IEnumerable<T> packages, bool allowPrerelease)
             where T : IServerPackage
         {
             if (packages == null)
@@ -30,7 +30,7 @@ namespace NuGet.Server.Core.Infrastructure
             return packages;
         }
         
-        public static IQueryable<T> Find<T>(this IQueryable<T> packages, string searchText)
+        public static IEnumerable<T> Find<T>(this IEnumerable<T> packages, string searchText)
             where T : IServerPackage
         {
             var terms = searchText

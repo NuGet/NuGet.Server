@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NuGet.Server.Core.Infrastructure
 {
@@ -16,7 +18,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         bool Exists(string id, SemanticVersion version);
 
-        HashSet<ServerPackage> GetAll(bool enableDelisting);
+        Task<HashSet<ServerPackage>> GetAllAsync(bool enableDelisting, CancellationToken token);
 
         void Remove(string id, SemanticVersion version, bool enableDelisting);
     }

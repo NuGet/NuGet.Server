@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 using System.Linq;
+using System.Threading;
 using Moq;
 using NuGet.Server.Core.Infrastructure;
 
@@ -15,7 +16,7 @@ namespace NuGet.Server.V2.Tests.Infrastructure
             //var bazPackage = new PackageRegistration { Id = "Baz" };
 
             var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-            repo.Setup(r => r.GetPackages()).Returns(new[]
+            repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
             {
                 new ServerPackage
                 {

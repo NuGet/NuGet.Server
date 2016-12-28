@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.OData;
@@ -50,24 +52,33 @@ namespace NuGet.Server.V2.Controllers
         // Probably required to be OData compliant?
         [HttpGet]
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
-        public virtual IHttpActionResult Get(ODataQueryOptions<ODataPackage> options)
+        public virtual async Task<IHttpActionResult> Get(
+            ODataQueryOptions<ODataPackage> options,
+            CancellationToken token)
         {
-            var sourceQuery = _serverRepository.GetPackages();
+            var sourceQuery = await _serverRepository.GetPackagesAsync(token);
+
             return TransformToQueryResult(options, sourceQuery);
         }
 
         // GET /Packages/$count
         [HttpGet]
-        public virtual IHttpActionResult GetCount(ODataQueryOptions<ODataPackage> options)
+        public virtual async Task<IHttpActionResult> GetCount(
+            ODataQueryOptions<ODataPackage> options,
+            CancellationToken token)
         {
-            return (Get(options)).FormattedAsCountResult<ODataPackage>();
+            return (await Get(options, token)).FormattedAsCountResult<ODataPackage>();
         }
 
         // GET /Packages(Id=,Version=)
         [HttpGet]
-        public virtual IHttpActionResult Get(ODataQueryOptions<ODataPackage> options, string id, string version)
+        public virtual async Task<IHttpActionResult> Get(
+            ODataQueryOptions<ODataPackage> options,
+            string id,
+            string version,
+            CancellationToken token)
         {
-            var package = RetrieveFromRepository(id, version);
+            var package = await RetrieveFromRepositoryAsync(id, version, token);
 
             if (package == null)
             {
@@ -81,7 +92,10 @@ namespace NuGet.Server.V2.Controllers
         // GET/POST /FindPackagesById()?id=
         [HttpGet]
         [HttpPost]
-        public virtual IHttpActionResult FindPackagesById(ODataQueryOptions<ODataPackage> options, [FromODataUri]string id)
+        public virtual async Task<IHttpActionResult> FindPackagesById(
+            ODataQueryOptions<ODataPackage> options,
+            [FromODataUri]string id,
+            CancellationToken token)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -89,7 +103,8 @@ namespace NuGet.Server.V2.Controllers
                 return QueryResult(options, emptyResult, _maxPageSize);
             }
 
-            var sourceQuery = _serverRepository.FindPackagesById(id);
+            var sourceQuery = await _serverRepository.FindPackagesByIdAsync(id, token);
+
             return TransformToQueryResult(options, sourceQuery);
         }
 
@@ -110,44 +125,50 @@ namespace NuGet.Server.V2.Controllers
         // GET/POST /Search()?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
         [HttpPost]
-        public virtual IHttpActionResult Search(
+        public virtual async Task<IHttpActionResult> Search(
             ODataQueryOptions<ODataPackage> options,
             [FromODataUri] string searchTerm = "", 
             [FromODataUri] string targetFramework ="", 
             [FromODataUri] bool includePrerelease = false,
-            [FromODataUri] bool includeDelisted=false)
+            [FromODataUri] bool includeDelisted = false,
+            CancellationToken token = default(CancellationToken))
         {
             var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
 
-            var sourceQuery = _serverRepository
-                .Search(searchTerm, targetFrameworks, includePrerelease);
+            var sourceQuery = await _serverRepository.SearchAsync(
+                searchTerm,
+                targetFrameworks,
+                includePrerelease,
+                token);
 
             return TransformToQueryResult(options, sourceQuery);
         }
 
         // GET /Search()/$count?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
-        public virtual IHttpActionResult SearchCount(
+        public virtual async Task<IHttpActionResult> SearchCount(
             ODataQueryOptions<ODataPackage> options,
             [FromODataUri]string searchTerm = "",
             [FromODataUri]string targetFramework = "",
             [FromODataUri]bool includePrerelease = false)
         {
-            var searchResults = Search(options, searchTerm, targetFramework, includePrerelease);
+            var searchResults = await Search(options, searchTerm, targetFramework, includePrerelease);
+
             return searchResults.FormattedAsCountResult<ODataPackage>();
         }
 
         // GET/POST /GetUpdates()?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
         [HttpGet]
         [HttpPost]
-        public virtual IHttpActionResult GetUpdates(
+        public virtual async Task<IHttpActionResult> GetUpdates(
             ODataQueryOptions<ODataPackage> options,
             [FromODataUri]string packageIds,
             [FromODataUri]string versions,
             [FromODataUri]bool includePrerelease,
             [FromODataUri]bool includeAllVersions,
             [FromODataUri]string targetFrameworks = "",
-            [FromODataUri]string versionConstraints = "")
+            [FromODataUri]string versionConstraints = "",
+            CancellationToken token = default(CancellationToken))
         {
             if (string.IsNullOrEmpty(packageIds) || string.IsNullOrEmpty(versions))
             {
@@ -202,8 +223,13 @@ namespace NuGet.Server.V2.Controllers
                 }
             }
 
-            var sourceQuery = _serverRepository
-                .GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList);
+            var sourceQuery = await _serverRepository.GetUpdatesAsync(
+                packagesToUpdate,
+                includePrerelease,
+                includeAllVersions,
+                targetFrameworkValues,
+                versionConstraintsList,
+                token);
 
             return TransformToQueryResult(options, sourceQuery);
         }
@@ -211,17 +237,27 @@ namespace NuGet.Server.V2.Controllers
         // /api/v2/GetUpdates()/$count?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
         [HttpGet]
         [HttpPost]
-        public virtual IHttpActionResult GetUpdatesCount(
+        public virtual async Task<IHttpActionResult> GetUpdatesCount(
             ODataQueryOptions<ODataPackage> options,
             [FromODataUri]string packageIds,
             [FromODataUri]string versions,
             [FromODataUri]bool includePrerelease,
             [FromODataUri]bool includeAllVersions,
             [FromODataUri]string targetFrameworks = "",
-            [FromODataUri]string versionConstraints = "")
+            [FromODataUri]string versionConstraints = "",
+            CancellationToken token = default(CancellationToken))
         {
-            return GetUpdates(options, packageIds, versions, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints)
-                .FormattedAsCountResult<ODataPackage>();
+            var updates = await GetUpdates(
+                options,
+                packageIds,
+                versions,
+                includePrerelease,
+                includeAllVersions,
+                targetFrameworks,
+                versionConstraints,
+                token);
+
+            return updates.FormattedAsCountResult<ODataPackage>();
         }
 
         /// <summary>
@@ -232,9 +268,12 @@ namespace NuGet.Server.V2.Controllers
         /// <param name="version"></param>
         /// <returns></returns>
         [HttpGet, HttpHead]
-        public virtual HttpResponseMessage Download(string id, string version = "")
+        public virtual async Task<HttpResponseMessage> Download(
+            string id,
+            string version = "",
+            CancellationToken token = default(CancellationToken))
         {
-            var requestedPackage = RetrieveFromRepository(id, version);
+            var requestedPackage = await RetrieveFromRepositoryAsync(id, version, token);
 
             if (requestedPackage == null)
                 return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
@@ -275,14 +314,17 @@ namespace NuGet.Server.V2.Controllers
         /// <param name="version"></param>
         /// <returns></returns>
         [HttpDelete]
-        public virtual HttpResponseMessage DeletePackage(string id, string version)
+        public virtual async Task<HttpResponseMessage> DeletePackage(
+            string id,
+            string version,
+            CancellationToken token)
         {
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package delete is not allowed");
 
             var apiKey = GetApiKeyFromHeader();
 
-            var requestedPackage = RetrieveFromRepository(id, version);
+            var requestedPackage = await RetrieveFromRepositoryAsync(id, version, token);
 
             if (requestedPackage == null || !requestedPackage.Listed)
             {
@@ -293,7 +335,7 @@ namespace NuGet.Server.V2.Controllers
             // Make sure the user can access this package
             if (_authenticationService.IsAuthenticated(User, apiKey, requestedPackage.Id))
             {
-                _serverRepository.RemovePackage(requestedPackage.Id, requestedPackage.Version);
+                await _serverRepository.RemovePackageAsync(requestedPackage.Id, requestedPackage.Version, token);
                 return Request.CreateResponse(HttpStatusCode.NoContent);
             }
             else
@@ -308,7 +350,7 @@ namespace NuGet.Server.V2.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPut]
-        public virtual async Task<HttpResponseMessage> UploadPackage()
+        public virtual async Task<HttpResponseMessage> UploadPackage(CancellationToken token)
         {
             if (_authenticationService == null)
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package upload is not allowed");
@@ -336,7 +378,7 @@ namespace NuGet.Server.V2.Controllers
             HttpResponseMessage retValue;
             if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
             {
-                _serverRepository.AddPackage(package);
+                await _serverRepository.AddPackageAsync(package, token);
                 retValue = Request.CreateResponse(HttpStatusCode.Created);
             }
             else
@@ -372,11 +414,14 @@ namespace NuGet.Server.V2.Controllers
             return apiKey;
         }
 
-        protected IServerPackage RetrieveFromRepository(string id, string version)
+        protected async Task<IServerPackage> RetrieveFromRepositoryAsync(
+            string id,
+            string version,
+            CancellationToken token)
         {
             return string.IsNullOrEmpty(version) ?
-                                        _serverRepository.FindPackage(id) :
-                                        _serverRepository.FindPackage(id, new SemanticVersion(version));
+                                        await _serverRepository.FindPackageAsync(id, token) :
+                                        await _serverRepository.FindPackageAsync(id, new SemanticVersion(version), token);
         }
 
         protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IServerPackage> packages)
