@@ -10,7 +10,7 @@ using Xunit;
 
 namespace NuGet.Server.Core.Tests
 {
-    public class ServerPackageStoreTest
+    public class ServerPackageCacheTest
     {
         [Theory]
         [InlineData("[")]
@@ -34,7 +34,7 @@ namespace NuGet.Server.Core.Tests
                 .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(content)));
 
             // Act
-            var actual = new ServerPackageStore(fileSystem.Object, fileName);
+            var actual = new ServerPackageCache(fileSystem.Object, fileName);
 
             // Assert
             Assert.Empty(actual.GetAll());
@@ -57,7 +57,7 @@ namespace NuGet.Server.Core.Tests
                 .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(content)));
 
             // Act
-            var actual = new ServerPackageStore(fileSystem.Object, fileName);
+            var actual = new ServerPackageCache(fileSystem.Object, fileName);
 
             // Assert
             Assert.Equal(count, actual.GetAll().Count());

@@ -90,7 +90,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SemanticVersionJsonConverterTests.cs" />
     <Compile Include="ServerPackageRepositoryTest.cs" />
-    <Compile Include="ServerPackageStoreTest.cs" />
+    <Compile Include="ServerPackageCacheTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">

@@ -72,39 +72,43 @@ namespace NuGet.Server.Core.Tests
 
             for (var i = 0; i < count; i++)
             {
-                var package = new ServerPackage(
-                    id: "Package" + i,
-                    version: new SemanticVersion(1, 0, i, 0),
-                    title: "Title" + i,
-                    authors: new [] { "Author" + i },
-                    owners: new [] { "Owner" + i },
-                    iconUrl: new Uri("urn:icon"),
-                    licenseUrl: new Uri("urn:license"),
-                    projectUrl: new Uri("urn:project"),
-                    requireLicenseAcceptance: true,
-                    developmentDependency: true,
-                    description: "Description" + i,
-                    summary: "Summary" + i,
-                    releaseNotes: "ReleaseNotes" + i,
-                    language: "Language" + i,
-                    tags: "Tags" + i,
-                    copyright: "Copyright" + i,
-                    minClientVersion: null,
-                    reportAbuseUrl: new Uri("urn:abuse"),
-                    downloadCount: 0,
-                    isAbsoluteLatestVersion: true,
-                    isLatestVersion: true,
-                    listed: true,
-                    published: null,
-                    dependencies: string.Empty,
-                    supportedFrameworks: string.Empty,
-                    packageSize: 1234,
-                    packageHash: "Hash" + i,
-                    packageHashAlgorithm: "HashAlgorithm" + i,
-                    lastUpdated: DateTimeOffset.UtcNow,
-                    created: DateTimeOffset.UtcNow,
-                    fullPath: "FullPath" + i
-                    );
+                var package = new ServerPackage
+                {
+                    Id = "Package" + i,
+                    Version = new SemanticVersion(1, 0, i, 0),
+                    Title = "Title" + i,
+                    Authors = new[] { "Author" + i },
+                    Owners = new[] { "Owner" + i },
+                    IconUrl = new Uri("urn:icon"),
+                    LicenseUrl = new Uri("urn:license"),
+                    ProjectUrl = new Uri("urn:project"),
+                    RequireLicenseAcceptance = true,
+                    DevelopmentDependency = true,
+                    Description = "Description" + i,
+                    Summary = "Summary" + i,
+                    ReleaseNotes = "ReleaseNotes" + i,
+                    Language = "Language" + i,
+                    Tags = "Tags" + i,
+                    Copyright = "Copyright" + i,
+                    MinClientVersion = null,
+                    ReportAbuseUrl = new Uri("urn:abuse"),
+                    DownloadCount = 0,
+                    IsAbsoluteLatestVersion = true,
+                    IsLatestVersion = true,
+                    Listed = true,
+                    Dependencies = string.Empty,
+                    SupportedFrameworks = string.Empty,
+                    PackageSize = 1234,
+                    PackageHash = "Hash" + i,
+                    PackageHashAlgorithm = "HashAlgorithm" + i,
+                    LastUpdated = DateTimeOffset.UtcNow,
+                    Created = DateTimeOffset.UtcNow,
+                    FullPath = "FullPath" + i
+                };
+
+                // Preload collections
+                package.DependencySets.Any();
+                package.SupportedFrameworks.Any();
 
                 originalPackages.Add(package);
             }

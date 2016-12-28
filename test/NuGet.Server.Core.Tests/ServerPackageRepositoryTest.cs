@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,15 +15,15 @@ namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        public static ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        public static ServerPackageRepository CreateServerPackageRepository(
+            string path,
+            Action<ExpandedPackageRepository> setupRepository = null,
+            Func<string, bool, bool> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
 
-            if (setupRepository != null)
-            {
-                setupRepository(expandedPackageRepository);
-            }
+            setupRepository?.Invoke(expandedPackageRepository);
 
             var serverRepository = new ServerPackageRepository(
                 fileSystem,
@@ -113,6 +114,34 @@ namespace NuGet.Server.Core.Tests
 
                 Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
                 Assert.Equal("2.0.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryNeedsRebuild()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path,
+                    repository =>
+                    {
+                        repository.AddPackage(CreatePackage("test", "1.0"));
+                        repository.AddPackage(CreatePackage("test", "1.1"));
+                    });
+
+                // Act
+                serverRepository.ClearCache();
+                serverRepository.AddPackage(CreatePackage("test", "1.2"));
+                var packages = serverRepository.GetPackages();
+
+                // Assert
+                packages = packages.OrderBy(p => p.Version);
+
+                Assert.Equal(3, packages.Count());
+                Assert.Equal(new SemanticVersion("1.0.0"), packages.ElementAt(0).Version);
+                Assert.Equal(new SemanticVersion("1.1.0"), packages.ElementAt(1).Version);
+                Assert.Equal(new SemanticVersion("1.2.0"), packages.ElementAt(2).Version);
             }
         }
 
@@ -365,9 +394,9 @@ namespace NuGet.Server.Core.Tests
 
                 // Act
                 var packages = serverRepository.GetPackages();
-                var singlePackage = packages.Single() as ServerPackage;
 
                 // Assert
+                var singlePackage = packages.Single();
                 Assert.NotNull(singlePackage);
                 Assert.Equal(package.GetStream().Length, singlePackage.PackageSize);
             }
@@ -387,7 +416,12 @@ namespace NuGet.Server.Core.Tests
                 var findPackagesById = serverRepository.FindPackagesById("test");
                 var getPackages = serverRepository.GetPackages().ToList();
                 var getPackagesWithDerivedData = serverRepository.GetPackages().ToList();
-                var getUpdates = serverRepository.GetUpdates(Enumerable.Empty<IPackageName>(), true, true, Enumerable.Empty<FrameworkName>(), Enumerable.Empty<IVersionSpec>());
+                var getUpdates = serverRepository.GetUpdates(
+                    Enumerable.Empty<IPackageName>(),
+                    true,
+                    true,
+                    Enumerable.Empty<FrameworkName>(),
+                    Enumerable.Empty<IVersionSpec>());
                 var search = serverRepository.Search("test", true).ToList();
                 var source = serverRepository.Source;
 
