@@ -168,6 +168,8 @@ namespace NuGet.Server.Core.Infrastructure
 
         private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages)
         {
+            // TODO: this should respect the Listed property on the package.
+            // https://github.com/NuGet/NuGetGallery/issues/3434
             var absoluteLatest = new ConcurrentDictionary<string, ServerPackage>();
             var latest = new ConcurrentDictionary<string, ServerPackage>();
 
