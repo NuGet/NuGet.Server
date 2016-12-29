@@ -30,19 +30,80 @@ namespace NuGet.Server.Core.Tests
                 var repository = new ExpandedPackageRepository(fileSystem);
                 var logger = new Infrastructure.NullLogger();
 
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
+
                 var target = new ServerPackageStore(fileSystem, repository, logger);
 
                 // Act
                 target.Remove(PackageId, PackageVersion, enableDelisting: true);
+
+                // Assert
+                var package = target.GetAll(enableDelisting: true).SingleOrDefault();
+                Assert.NotNull(package);
+                Assert.Equal(PackageId, package.Id);
+                Assert.Equal(PackageVersion, package.Version);
+                Assert.False(package.Listed);
+
+                var fileInfo = new FileInfo(package.FullPath);
+                Assert.True(fileInfo.Exists);
+                Assert.Equal(FileAttributes.Hidden, fileInfo.Attributes & FileAttributes.Hidden);
+            }
+        }
+
+        [Fact]
+        public void Remove_SupportsDisabledUnlisting()
+        {
+            // Arrange
+            using (var directory = new TemporaryDirectory())
+            {
+                var fileSystem = new PhysicalFileSystem(directory);
+                var repository = new ExpandedPackageRepository(fileSystem);
+                var logger = new Infrastructure.NullLogger();
+
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
+
+                var target = new ServerPackageStore(fileSystem, repository, logger);
+
+                // Act
+                target.Remove(PackageId, PackageVersion, enableDelisting: false);
+
+                // Assert
+                Assert.Empty(target.GetAll(enableDelisting: false));
+                Assert.Empty(repository.GetPackages());
+            }
+        }
+
+        [Fact]
+        public void Remove_NoOpsWhenPackageDoesNotExist()
+        {
+            // Arrange
+            using (var directory = new TemporaryDirectory())
+            {
+                var fileSystem = new PhysicalFileSystem(directory);
+                var repository = new ExpandedPackageRepository(fileSystem);
+                var logger = new Infrastructure.NullLogger();
+
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
+
+                var target = new ServerPackageStore(fileSystem, repository, logger);
+
+                // Act
+                target.Remove("Foo", PackageVersion, enableDelisting: false);
+
+                // Assert
+                var package = target.GetAll(enableDelisting: false).FirstOrDefault();
+                Assert.NotNull(package);
+                Assert.Equal(PackageId, package.Id);
+                Assert.Equal(PackageVersion, package.Version);
+                Assert.True(package.Listed);
             }
         }
 
         private IPackage CreatePackage(string id, SemanticVersion version)
         {
             var file = new Mock<IPackageFile>();
-            file.Setup(x => x.EffectivePath).Returns("lib/net40");
             file.Setup(x => x.GetStream()).Returns(() => Stream.Null);
-            file.Setup(x => x.Path).Returns($"test.dll");
+            file.Setup(x => x.Path).Returns($"lib/net40/test.dll");
 
             var builder = new PackageBuilder
             {
