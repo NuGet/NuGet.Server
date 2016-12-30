@@ -125,6 +125,12 @@ namespace NuGet.Server.Core.Infrastructure
         {
             var query = repository.GetPackages();
 
+            var ids = new HashSet<string>(
+                packages.Select(p => p.Id),
+                StringComparer.OrdinalIgnoreCase);
+
+            query = query.Where(p => ids.Contains(p.Id));
+
             if (!includePrerelease)
             {
                 query = query.Where(p => p.IsReleaseVersion());

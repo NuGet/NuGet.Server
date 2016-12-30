@@ -443,6 +443,43 @@ namespace NuGet.Server.V2.Tests
                 AssertPackage(new { Id = "Qux", Version = "2.0" }, result[2]);
             }
 
+            [Fact]
+            public void GetUpdatesIgnoresPackagesNotRequested()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackages()).Returns(
+                    new[]
+                {
+                        CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.2.0-alpha", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true),
+                        CreatePackageWithDefaults("Qux", "2.0", listed: true) ,
+                }.AsQueryable());
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = v2Service.GetUpdates(
+                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                    "Foo",
+                    "1.0.0",
+                    includePrerelease: false,
+                    includeAllVersions: true,
+                    targetFrameworks: null,
+                    versionConstraints: null)
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
+                    .ToArray();
+
+                // Assert
+                Assert.Equal(2, result.Length);
+                AssertPackage(new { Id = "Foo", Version = "1.1.0" }, result[0]);
+                AssertPackage(new { Id = "Foo", Version = "1.2.0" }, result[1]);
+            }
+
             [Theory]
             [InlineData("2.3|3.5|(1.0,2.3)")]
             [InlineData("2.3")]
