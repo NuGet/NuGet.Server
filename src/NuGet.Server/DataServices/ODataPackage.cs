@@ -9,6 +9,7 @@ namespace NuGet.Server.DataServices
     [DataServiceKey("Id", "Version")]
     [EntityPropertyMapping("Id", SyndicationItemProperty.Title, SyndicationTextContentKind.Plaintext, keepInContent: false)]
     [EntityPropertyMapping("Authors", SyndicationItemProperty.AuthorName, SyndicationTextContentKind.Plaintext, keepInContent: false)]
+    [EntityPropertyMapping("Published", SyndicationItemProperty.Published, SyndicationTextContentKind.Plaintext, keepInContent: false)]
     [EntityPropertyMapping("LastUpdated", SyndicationItemProperty.Updated, SyndicationTextContentKind.Plaintext, keepInContent: false)]
     [EntityPropertyMapping("Summary", SyndicationItemProperty.Summary, SyndicationTextContentKind.Plaintext, keepInContent: false)]
     [HasStream]

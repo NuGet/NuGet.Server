@@ -77,5 +77,14 @@ namespace NuGet.Server {
                 return ResourceManager.GetString("Error_SymbolsPackagesIgnored", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &apos;packages&apos; and &apos;versionConstraints&apos; parameters must have the same number of elements..
+        /// </summary>
+        internal static string GetUpdatesParameterMismatch {
+            get {
+                return ResourceManager.GetString("GetUpdatesParameterMismatch", resourceCulture);
+            }
+        }
     }
 }

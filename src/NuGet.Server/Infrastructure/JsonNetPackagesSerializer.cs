@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -12,6 +13,8 @@ namespace NuGet.Server.Infrastructure
     public class JsonNetPackagesSerializer
         : IPackagesSerializer
     {
+        private static readonly SemanticVersion CurrentSchemaVersion = new SemanticVersion("2.0.0");
+
         private readonly JsonSerializer _serializer = new JsonSerializer
         {
             Formatting = Formatting.None
@@ -21,7 +24,13 @@ namespace NuGet.Server.Infrastructure
         {
             using (var writer = new JsonTextWriter(new StreamWriter(stream, Encoding.UTF8, 1024, true)))
             {
-                _serializer.Serialize(writer, packages.ToList());
+                _serializer.Serialize(
+                    writer,
+                    new SerializedServerPackages
+                    {
+                        SchemaVersion = CurrentSchemaVersion,
+                        Packages = packages.ToList()
+                    });
             }
         }
 
@@ -29,7 +38,16 @@ namespace NuGet.Server.Infrastructure
         {
             using (var reader = new JsonTextReader(new StreamReader(stream, Encoding.UTF8, false, 1024, true)))
             {
-                return _serializer.Deserialize<List<ServerPackage>>(reader);
+                var packages = _serializer.Deserialize<SerializedServerPackages>(reader);
+
+                if (packages.SchemaVersion != CurrentSchemaVersion)
+                {
+                    throw new SerializationException(
+                        $"The expected schema version of the packages file is '{CurrentSchemaVersion}', not " +
+                        $"'{packages.SchemaVersion}'.");
+                }
+                
+                return packages.Packages;
             }
         }
     }

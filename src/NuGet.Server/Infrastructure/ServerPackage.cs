@@ -18,46 +18,6 @@ namespace NuGet.Server.Infrastructure
         {
         }
 
-        public ServerPackage(string id, SemanticVersion version, string title, IEnumerable<string> authors, IEnumerable<string> owners, Uri iconUrl, Uri licenseUrl, Uri projectUrl, bool requireLicenseAcceptance, bool developmentDependency, string description, string summary, string releaseNotes, string language, string tags, string copyright, string dependencies, Version minClientVersion, Uri reportAbuseUrl, int downloadCount, string supportedFrameworks, bool isAbsoluteLatestVersion, bool isLatestVersion, bool listed, DateTimeOffset? published, long packageSize, string packageHash, string packageHashAlgorithm, DateTimeOffset lastUpdated, DateTimeOffset created, string path, string fullPath)
-        {
-            Id = id;
-            Version = version;
-            Title = title;
-            Authors = authors;
-            Owners = owners;
-            IconUrl = iconUrl;
-            LicenseUrl = licenseUrl;
-            ProjectUrl = projectUrl;
-            RequireLicenseAcceptance = requireLicenseAcceptance;
-            DevelopmentDependency = developmentDependency;
-            Description = description;
-            Summary = summary;
-            ReleaseNotes = releaseNotes;
-            Language = language;
-            Tags = tags;
-            Copyright = copyright;
-            Dependencies = dependencies;
-            MinClientVersion = minClientVersion;
-            ReportAbuseUrl = reportAbuseUrl;
-            DownloadCount = downloadCount;
-            SupportedFrameworks = supportedFrameworks;
-            IsAbsoluteLatestVersion = isAbsoluteLatestVersion;
-            IsLatestVersion = isLatestVersion;
-            Listed = listed;
-            Published = published;
-            PackageSize = packageSize;
-            PackageHash = packageHash;
-            PackageHashAlgorithm = packageHashAlgorithm;
-            LastUpdated = lastUpdated;
-            Created = created;
-            Path = path;
-            FullPath = fullPath;
-
-            // Preload collections
-            DependencySets.Any();
-            SupportedFrameworks.Any();
-        }
-
         public ServerPackage(IPackage package, PackageDerivedData packageDerivedData)
         {
             Id = package.Id;
@@ -79,8 +39,10 @@ namespace NuGet.Server.Infrastructure
             MinClientVersion = package.MinClientVersion;
             ReportAbuseUrl = package.ReportAbuseUrl;
             DownloadCount = package.DownloadCount;
-            IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion;
-            IsLatestVersion = package.IsLatestVersion;
+            SemVer1IsAbsoluteLatest = false;
+            SemVer1IsLatest = false;
+            SemVer2IsAbsoluteLatest = false;
+            SemVer2IsLatest = false;
             Listed = package.Listed;
             Published = package.Published;
 
@@ -185,9 +147,17 @@ namespace NuGet.Server.Infrastructure
             return _supportedFrameworks;
         }
 
-        public bool IsAbsoluteLatestVersion { get; set; }
+        public bool IsAbsoluteLatestVersion => SemVer2IsAbsoluteLatest;
 
-        public bool IsLatestVersion { get; set; }
+        public bool IsLatestVersion => SemVer2IsLatest;
+
+        public bool SemVer1IsAbsoluteLatest { get; set; }
+
+        public bool SemVer1IsLatest { get; set; }
+
+        public bool SemVer2IsAbsoluteLatest { get; set; }
+
+        public bool SemVer2IsLatest { get; set; }
 
         public bool Listed { get; set; }
 

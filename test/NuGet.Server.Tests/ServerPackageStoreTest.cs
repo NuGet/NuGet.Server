@@ -19,8 +19,13 @@ namespace NuGet.Server.Tests
         [InlineData("}")]
         [InlineData("[{")]
         [InlineData("[{}")]
-        [InlineData("{}")]
+        [InlineData("[]")]
         [InlineData("[{\"foo\": \"bar\"}]")]
+        [InlineData("{\"SchemaVersion\":null,\"Packages\":[]}")]
+        [InlineData("{\"SchemaVersion\":\"1.0.0\",\"Packages\":null}")]
+        [InlineData("{\"SchemaVersion\":\"3.0.0\",\"Packages\":[]}")]
+        [InlineData("{\"Packages\":[]}")]
+        [InlineData("{\"SchemaVersion\":\"2.0.0\"}")]
         public void Constructor_IgnoresAndDeletesInvalidCacheFile(string content)
         {
             // Arrange
@@ -42,8 +47,8 @@ namespace NuGet.Server.Tests
         }
 
         [Theory]
-        [InlineData("[]", 0)]
-        [InlineData("[{\"Id\":\"NuGet.Versioning\",\"Version\":\"3.5.0\"}]", 1)]
+        [InlineData("{\"SchemaVersion\":\"2.0.0\",\"Packages\":[]}", 0)]
+        [InlineData("{\"SchemaVersion\":\"2.0.0\",\"Packages\":[{\"Id\":\"NuGet.Versioning\",\"Version\":\"3.5.0\"}]}", 1)]
         public void Constructor_LeavesValidCacheFile(string content, int count)
         {
             // Arrange

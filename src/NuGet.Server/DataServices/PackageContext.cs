@@ -9,18 +9,21 @@ namespace NuGet.Server.DataServices
     public class PackageContext
     {
         private readonly IServerPackageRepository _repository;
+
         public PackageContext(IServerPackageRepository repository)
         {
             _repository = repository;
         }
+
+        public ClientCompatibility ClientCompatibility { get; set; } = ClientCompatibility.Default;
 
         public IQueryable<ODataPackage> Packages
         {
             get
             {
                 return _repository
-                    .GetPackages()
-                    .Select(package => package.AsODataPackage())
+                    .GetPackages(ClientCompatibility)
+                    .Select(package => package.AsODataPackage(ClientCompatibility))
                     .AsQueryable()
                     .InterceptWith(new IgnoreCaseForPackageIdInterceptor(), new NormalizeVersionInterceptor());
             }

@@ -9,6 +9,7 @@ using System.Data.Services.Providers;
 using System.IO;
 using System.Linq;
 using System.ServiceModel.Web;
+using System.Text.RegularExpressions;
 using System.Web;
 using NuGet.Server.Infrastructure;
 
@@ -43,6 +44,17 @@ namespace NuGet.Server.DataServices
             config.SetServiceOperationAccessRule("Search", ServiceOperationRights.AllRead);
             config.SetServiceOperationAccessRule("FindPackagesById", ServiceOperationRights.AllRead);
             config.SetServiceOperationAccessRule("GetUpdates", ServiceOperationRights.AllRead);
+        }
+
+        protected override void OnStartProcessingRequest(ProcessRequestArgs args)
+        {
+            base.OnStartProcessingRequest(args);
+
+            // Determine the client compatibility based on the request URI. Note that the request URI may not be
+            // exactly the same as the URI for the HTTP request itself. This edge case occurs when a batch request is
+            // made. In batching, this method is called for each operation in the batch (which each have their own
+            // request URI.
+            CurrentDataSource.ClientCompatibility = ClientCompatibilityFactory.FromUri(args?.RequestUri);
         }
 
         protected override PackageContext CreateDataSource()
@@ -112,31 +124,49 @@ namespace NuGet.Server.DataServices
         }
 
         [WebGet]
-        public IQueryable<ODataPackage> Search(string searchTerm, string targetFramework, bool includePrerelease, bool? includeDelisted)
+        public IQueryable<ODataPackage> Search(
+            string searchTerm,
+            string targetFramework,
+            bool includePrerelease,
+            bool? includeDelisted,
+            string semVerLevel)
         {
-            var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+            var targetFrameworks = string.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
 
             return Repository
-                .Search(searchTerm, targetFrameworks, includePrerelease)
-                .Select(package => package.AsODataPackage())
+                .Search(
+                    searchTerm,
+                    targetFrameworks,
+                    includePrerelease,
+                    clientCompatibility)
+                .Select(package => package.AsODataPackage(clientCompatibility))
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
         }
 
         [WebGet]
-        public IQueryable<ODataPackage> FindPackagesById(string id)
+        public IQueryable<ODataPackage> FindPackagesById(string id, string semVerLevel)
         {
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+
             return Repository
-                .FindPackagesById(id)
+                .FindPackagesById(id, clientCompatibility)
                 .Where(package => package.Listed)
-                .Select(package => package.AsODataPackage())
+                .Select(package => package.AsODataPackage(clientCompatibility))
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
         }
 
         [WebGet]
         public IQueryable<ODataPackage> GetUpdates(
-            string packageIds, string versions, bool includePrerelease, bool includeAllVersions, string targetFrameworks, string versionConstraints)
+            string packageIds,
+            string versions,
+            bool includePrerelease,
+            bool includeAllVersions,
+            string targetFrameworks,
+            string versionConstraints,
+            string semVerLevel)
         {
             if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
             {
@@ -172,9 +202,17 @@ namespace NuGet.Server.DataServices
                 }
             }
 
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+
             return Repository
-                .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList)
-                .Select(package => package.AsODataPackage())
+                .GetUpdatesCore(
+                    packagesToUpdate,
+                    includePrerelease,
+                    includeAllVersions,
+                    targetFrameworkValues,
+                    versionConstraintsList,
+                    clientCompatibility)
+                .Select(package => package.AsODataPackage(clientCompatibility))
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
         }

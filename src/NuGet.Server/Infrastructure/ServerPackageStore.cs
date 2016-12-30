@@ -170,41 +170,75 @@ namespace NuGet.Server.Infrastructure
 
         private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages)
         {
-            var absoluteLatest = new ConcurrentDictionary<string, ServerPackage>();
-            var latest = new ConcurrentDictionary<string, ServerPackage>();
+            var semVer1AbsoluteLatest = InitializePackageDictionary();
+            var semVer1Latest = InitializePackageDictionary();
+            var semVer2AbsoluteLatest = InitializePackageDictionary();
+            var semVer2Latest = InitializePackageDictionary();
 
             // Visit packages
             Parallel.ForEach(packages, package =>
             {
-                // Update package
-                package.IsAbsoluteLatestVersion = false;
-                package.IsLatestVersion = false;
+                // Reset the package.
+                package.SemVer1IsAbsoluteLatest = false;
+                package.SemVer1IsLatest = false;
+                package.SemVer2IsAbsoluteLatest = false;
+                package.SemVer2IsLatest = false;
 
-                // Find the latest versions
-                string id = package.Id.ToLowerInvariant();
+                // Update the SemVer1 views.
+                if (!package.Version.IsSemVer2())
+                {
+                    UpdateLatestDictionary(semVer1AbsoluteLatest, package);
 
-                // Update with the highest version
-                absoluteLatest.AddOrUpdate(id, package,
-                    (oldId, oldEntry) => oldEntry.Version < package.Version ? package : oldEntry);
+                    if (package.IsReleaseVersion())
+                    {
+                        UpdateLatestDictionary(semVer1Latest, package);
+                    }
+                }
 
-                // Update latest for release versions
+                // Update the SemVer1 + SemVer2 views.
+                UpdateLatestDictionary(semVer2AbsoluteLatest, package);
+
                 if (package.IsReleaseVersion())
                 {
-                    latest.AddOrUpdate(id, package,
-                        (oldId, oldEntry) => oldEntry.Version < package.Version ? package : oldEntry);
+                    UpdateLatestDictionary(semVer2Latest, package);
                 }
             });
 
             // Set version properties
-            foreach (var entry in absoluteLatest.Values)
+            foreach (var entry in semVer1AbsoluteLatest.Values)
             {
-                entry.IsAbsoluteLatestVersion = true;
+                entry.SemVer1IsAbsoluteLatest = true;
             }
 
-            foreach (var entry in latest.Values)
+            foreach (var entry in semVer1Latest.Values)
             {
-                entry.IsLatestVersion = true;
+                entry.SemVer1IsLatest = true;
             }
+
+            foreach (var entry in semVer2AbsoluteLatest.Values)
+            {
+                entry.SemVer2IsAbsoluteLatest = true;
+            }
+
+            foreach (var entry in semVer2Latest.Values)
+            {
+                entry.SemVer2IsLatest = true;
+            }
+        }
+
+        private static ConcurrentDictionary<string, ServerPackage> InitializePackageDictionary()
+        {
+            return new ConcurrentDictionary<string, ServerPackage>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static void UpdateLatestDictionary(
+            ConcurrentDictionary<string, ServerPackage> dictionary,
+            ServerPackage package)
+        {
+            dictionary.AddOrUpdate(
+                package.Id,
+                package,
+                (oldId, oldEntry) => oldEntry.Version < package.Version ? package : oldEntry);
         }
 
         public void Persist()

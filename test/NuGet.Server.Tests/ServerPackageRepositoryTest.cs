@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Versioning;
 using Moq;
@@ -15,15 +16,15 @@ namespace NuGet.Server.Tests
 {
     public class ServerPackageRepositoryTest
     {
-        public ServerPackageRepository CreateServerPackageRepository(string path, Action<ExpandedPackageRepository> setupRepository = null, Func<string, bool, bool> getSetting = null)
+        public ServerPackageRepository CreateServerPackageRepository(
+            string path,
+            Action<ExpandedPackageRepository> setupRepository = null,
+            Func<string, bool, bool> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
 
-            if (setupRepository != null)
-            {
-                setupRepository(expandedPackageRepository);
-            }
+            setupRepository?.Invoke(expandedPackageRepository);
 
             var serverRepository = new ServerPackageRepository(
                 fileSystem,
@@ -35,6 +36,17 @@ namespace NuGet.Server.Tests
             serverRepository.GetPackages(); // caches the files
 
             return serverRepository;
+        }
+
+        private ServerPackageRepository CreateServerPackageRepositoryWithSemVer2(TemporaryDirectory temporaryDirectory)
+        {
+            return CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+            {
+                repository.AddPackage(CreatePackage("test1", "1.0"));
+                repository.AddPackage(CreatePackage("test2", "1.0-beta"));
+                repository.AddPackage(CreatePackage("test3", "1.0-beta.1"));
+                repository.AddPackage(CreatePackage("test4", "1.0-beta+foo"));
+            });
         }
 
         [Fact]
@@ -64,7 +76,7 @@ namespace NuGet.Server.Tests
                 var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
 
                 // Act
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
 
                 // Assert
                 Assert.Equal(packagesToAddToDropFolder.Count, packages.Count());
@@ -105,15 +117,15 @@ namespace NuGet.Server.Tests
                 serverRepository.RemovePackage(CreateMockPackage("test", "2.0-alpha"));
                 serverRepository.RemovePackage(CreateMockPackage("test", "2.0.1"));
                 serverRepository.RemovePackage(CreateMockPackage("test", "2.0.0-0test"));
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
 
                 // Assert
                 Assert.Equal(3, packages.Count());
-                Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("2.0.0", packages.First(p => p.IsLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal("2.0.0", packages.First(p => p.SemVer2IsLatest).Version.ToString());
 
-                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("2.0.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal("2.0.0", packages.First(p => p.SemVer2IsAbsoluteLatest).Version.ToString());
             }
         }
 
@@ -135,9 +147,21 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var includePrerelease = serverRepository.Search("test3", true);
-                var excludePrerelease = serverRepository.Search("test3", false);
-                var ignoreTag = serverRepository.Search("test6", false);
+                var includePrerelease = serverRepository.Search(
+                    "test3",
+                    targetFrameworks: Enumerable.Empty<string>(),
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Max);
+                var excludePrerelease = serverRepository.Search(
+                    "test3",
+                    targetFrameworks: Enumerable.Empty<string>(),
+                    allowPrereleaseVersions: false,
+                    compatibility: ClientCompatibility.Max);
+                var ignoreTag = serverRepository.Search(
+                    "test6",
+                    targetFrameworks: Enumerable.Empty<string>(),
+                    allowPrereleaseVersions: false,
+                    compatibility: ClientCompatibility.Max);
 
                 // Assert
                 Assert.Equal("test3", includePrerelease.First().Id);
@@ -145,6 +169,29 @@ namespace NuGet.Server.Tests
                 Assert.Equal(1, excludePrerelease.Count());
                 Assert.Equal("test6", ignoreTag.First().Id);
                 Assert.Equal(1, ignoreTag.Count());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositorySearchSupportsFilteringOutSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepositoryWithSemVer2(temporaryDirectory);
+
+                // Act
+                var actual = serverRepository.Search(
+                    "test",
+                    targetFrameworks: Enumerable.Empty<string>(),
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Default);
+
+                // Assert
+                var packages = actual.OrderBy(p => p.Id).ToList();
+                Assert.Equal(2, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("test2", packages[1].Id);
             }
         }
 
@@ -219,6 +266,22 @@ namespace NuGet.Server.Tests
         }
 
         [Fact]
+        public void ServerPackageRepositoryFindPackageByIdSupportsFilteringOutSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepositoryWithSemVer2(temporaryDirectory);
+
+                // Act
+                var actual = serverRepository.FindPackagesById("test3");
+
+                // Assert
+                Assert.Empty(actual);
+            }
+        }
+
+        [Fact]
         public void ServerPackageRepositoryFindPackage()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
@@ -269,18 +332,18 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
 
                 // Assert
-                Assert.Equal(5, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal(4, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal(3, packages.Count(p => !p.IsAbsoluteLatestVersion));
-                Assert.Equal(4, packages.Count(p => !p.IsLatestVersion));
+                Assert.Equal(5, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal(4, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal(3, packages.Count(p => !p.SemVer2IsAbsoluteLatest));
+                Assert.Equal(4, packages.Count(p => !p.SemVer2IsLatest));
             }
         }
 
         [Fact]
-        public void ServerPackageRepositoryIsAbsoluteLatest()
+        public void ServerPackageRepositorySemVer1IsAbsoluteLatest()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -296,16 +359,41 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Default);
 
                 // Assert
-                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("3.2.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer1IsAbsoluteLatest));
+                Assert.Equal("2.4.0-prerel", packages.First(p => p.SemVer1IsAbsoluteLatest).Version.ToString());
             }
         }
 
         [Fact]
-        public void ServerPackageRepositoryIsLatestOnlyPreRel()
+        public void ServerPackageRepositorySemVer2IsAbsoluteLatest()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.1-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.2-beta"));
+                    repository.AddPackage(CreatePackage("test", "2.3"));
+                    repository.AddPackage(CreatePackage("test", "2.4.0-prerel"));
+                    repository.AddPackage(CreatePackage("test", "3.2.0+taggedOnly"));
+                });
+
+                // Act
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
+
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal("3.2.0", packages.First(p => p.SemVer2IsAbsoluteLatest).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositorySemVer2IsLatestOnlyPreRel()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -318,15 +406,37 @@ namespace NuGet.Server.Tests
                 });
                 
                 // Act
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
 
                 // Assert
-                Assert.Equal(0, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal(0, packages.Count(p => p.SemVer2IsLatest));
             }
         }
 
         [Fact]
-        public void ServerPackageRepositoryIsLatest()
+        public void ServerPackageRepositorySemVer1IsLatest()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0.0"));
+                    repository.AddPackage(CreatePackage("test1", "1.2.0+taggedOnly"));
+                    repository.AddPackage(CreatePackage("test1", "2.0.0-alpha"));
+                });
+
+                // Act
+                var packages = serverRepository.GetPackages(ClientCompatibility.Default);
+
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.SemVer1IsLatest));
+                Assert.Equal("1.0.0", packages.First(p => p.SemVer1IsLatest).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositorySemVer2IsLatest()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -342,11 +452,15 @@ namespace NuGet.Server.Tests
                 });
 
                 // Act
-                var packages = serverRepository.GetPackages();
+                var packages = serverRepository.GetPackages(ClientCompatibility.Max);
 
                 // Assert
-                Assert.Equal(2, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("1.11", packages.First(p => p.IsLatestVersion).Version.ToString());
+                Assert.Equal(2, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal("1.11", packages
+                    .OrderBy(p => p.Id)
+                    .First(p => p.SemVer2IsLatest)
+                    .Version
+                    .ToString());
             }
         }
 
@@ -400,13 +514,89 @@ namespace NuGet.Server.Tests
                 Assert.NotEmpty(source);
             }
         }
-        
+
+        [Fact]
+        public void ServerPackageRepositoryAddPackage()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
+
+                // Act
+                serverRepository.AddPackage(CreatePackage("Foo", "1.0.0"));
+
+                // Assert
+                Assert.True(serverRepository.Exists("Foo", new SemanticVersion("1.0.0")));
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryAddPackageSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
+
+                // Act
+                serverRepository.AddPackage(CreatePackage("Foo", "1.0.0+foo"));
+
+                // Assert
+                Assert.True(serverRepository.Exists("Foo", new SemanticVersion("1.0.0")));
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryRemovePackageSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(temporaryDirectory.Path);
+                serverRepository.AddPackage(CreatePackage("Foo", "1.0.0+foo"));
+
+                // Act
+                serverRepository.RemovePackage("Foo", new SemanticVersion("1.0.0+bar"));
+
+                // Assert
+                Assert.False(serverRepository.Exists("Foo", new SemanticVersion("1.0.0")));
+            }
+        }
+
+        [Fact]
+        public void ServerPackageRepositoryAddPackageRejectsDuplicatesWithSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = CreateServerPackageRepository(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "allowOverrideExistingPackageOnPush")
+                        {
+                            return false;
+                        }
+
+                        return defaultValue;
+                    });
+                serverRepository.AddPackage(CreatePackage("Foo", "1.0.0-beta.1+foo"));
+
+                // Act & Assert
+                var actual = Assert.Throws<InvalidOperationException>(() =>
+                    serverRepository.AddPackage(CreatePackage("Foo", "1.0.0-beta.1+bar")));
+                Assert.Equal(
+                    "Package Foo 1.0.0-beta.1 already exists. The server is configured to not allow overwriting packages that already exist.",
+                    actual.Message);
+            }
+        }
+
         private static IPackage CreateMockPackage(string id, string version)
         {
             var package = new Mock<IPackage>();
             package.Setup(p => p.Id).Returns(id);
             package.Setup(p => p.Version).Returns(new SemanticVersion(version));
-            package.Setup(p => p.IsLatestVersion).Returns(true);
             package.Setup(p => p.Listed).Returns(true);
 
             return package.Object;
@@ -414,10 +604,11 @@ namespace NuGet.Server.Tests
 
         private IPackage CreatePackage(string id, string version)
         {
-            var package = new PackageBuilder
+            var parsedVersion = new SemanticVersion(version);
+            var packageBuilder = new PackageBuilder
             {
                 Id = id,
-                Version = new SemanticVersion(version),
+                Version = parsedVersion,
                 Description = "Description",
                 Authors = { "Test Author" }
             };
@@ -425,13 +616,34 @@ namespace NuGet.Server.Tests
             var mockFile = new Mock<IPackageFile>();
             mockFile.Setup(m => m.Path).Returns("foo");
             mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
-            package.Files.Add(mockFile.Object);
+            packageBuilder.Files.Add(mockFile.Object);
 
             var packageStream = new MemoryStream();
-            package.Save(packageStream);
-            packageStream.Seek(0, SeekOrigin.Begin);
+            packageBuilder.Save(packageStream);
 
-            return new ZipPackage(packageStream);
+            // NuGet.Core package builder strips SemVer2 metadata when saving the output package. Fix up the version
+            // in the actual manifest.
+            packageStream.Seek(0, SeekOrigin.Begin);
+            using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Update, leaveOpen: true))
+            {
+                var manifestFile = zipArchive
+                    .Entries
+                    .First(f => Path.GetExtension(f.FullName) == NuGet.Constants.ManifestExtension);
+                
+                using (var manifestStream = manifestFile.Open())
+                {
+                    var manifest = Manifest.ReadFrom(manifestStream, validateSchema: false);
+                    manifest.Metadata.Version = version;
+
+                    manifestStream.SetLength(0);
+                    manifest.Save(manifestStream);
+                }
+            }
+
+            packageStream.Seek(0, SeekOrigin.Begin);
+            var outputPackage = new ZipPackage(packageStream);
+
+            return outputPackage;
         }
     }
 }

@@ -11,12 +11,12 @@ namespace NuGet.Server.DataServices
 {
     public static class PackageExtensions
     {
-        public static ODataPackage AsODataPackage(this IPackage package)
+        public static ODataPackage AsODataPackage(this IPackage package, ClientCompatibility compatibility)
         {
             var serverPackage = package as ServerPackage;
             if (serverPackage != null)
             {
-                return AsODataPackage(serverPackage);
+                return AsODataPackage(serverPackage, compatibility);
             }
 
             var utcNow = DateTime.UtcNow;
@@ -56,7 +56,7 @@ namespace NuGet.Server.DataServices
             };
         }
 
-        public static ODataPackage AsODataPackage(this ServerPackage package)
+        public static ODataPackage AsODataPackage(this ServerPackage package, ClientCompatibility compatibility)
         {
             return new ODataPackage
             {
@@ -84,8 +84,8 @@ namespace NuGet.Server.DataServices
                 PackageSize = package.PackageSize,
                 Copyright = package.Copyright,
                 Tags = package.Tags,
-                IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion,
-                IsLatestVersion = package.IsLatestVersion,
+                IsAbsoluteLatestVersion = compatibility.AllowSemVer2 ? package.SemVer2IsAbsoluteLatest : package.SemVer1IsAbsoluteLatest,
+                IsLatestVersion = compatibility.AllowSemVer2 ? package.SemVer2IsLatest : package.SemVer1IsLatest,
                 Listed = package.Listed,
                 VersionDownloadCount = package.DownloadCount,
                 MinClientVersion = package.MinClientVersion == null ? null : package.MinClientVersion.ToString(),

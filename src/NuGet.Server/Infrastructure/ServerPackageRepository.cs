@@ -64,7 +64,12 @@ namespace NuGet.Server.Infrastructure
             _getSetting = GetBooleanAppSetting;
         }
         
-        internal ServerPackageRepository(IFileSystem fileSystem, bool runBackgroundTasks, ExpandedPackageRepository innerRepository, Logging.ILogger logger = null, Func<string, bool, bool> getSetting = null)
+        internal ServerPackageRepository(
+            IFileSystem fileSystem,
+            bool runBackgroundTasks,
+            ExpandedPackageRepository innerRepository,
+            Logging.ILogger logger = null,
+            Func<string, bool, bool> getSetting = null)
         {
             if (fileSystem == null)
             {
@@ -108,7 +113,19 @@ namespace NuGet.Server.Infrastructure
 
         public override IQueryable<IPackage> GetPackages()
         {
-            return CachedPackages.AsQueryable();
+            return GetPackages(ClientCompatibility.Default);
+        }
+
+        public IQueryable<ServerPackage> GetPackages(ClientCompatibility compatibility)
+        {
+            var cache = CachedPackages.AsQueryable();
+
+            if (!compatibility.AllowSemVer2)
+            {
+                cache = cache.Where(p => !p.Version.IsSemVer2());
+            }
+
+            return cache;
         }
 
         public bool Exists(string packageId, SemanticVersion version)
@@ -118,21 +135,37 @@ namespace NuGet.Server.Infrastructure
 
         public IPackage FindPackage(string packageId, SemanticVersion version)
         {
-            return FindPackagesById(packageId)
+            return FindPackagesById(packageId, ClientCompatibility.Max)
                 .FirstOrDefault(p => p.Version.Equals(version));
+        }
+
+        public IEnumerable<ServerPackage> FindPackagesById(string packageId, ClientCompatibility compatibility)
+        {
+            return GetPackages(compatibility)
+                .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.Id, packageId) == 0);
         }
 
         public IEnumerable<IPackage> FindPackagesById(string packageId)
         {
-            return GetPackages()
-                .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.Id, packageId) == 0);
+            return FindPackagesById(packageId, ClientCompatibility.Default);
         }
         
-        public IQueryable<IPackage> Search(string searchTerm, IEnumerable<string> targetFrameworks, bool allowPrereleaseVersions)
+        public IQueryable<IPackage> Search(
+            string searchTerm,
+            IEnumerable<string> targetFrameworks,
+            bool allowPrereleaseVersions)
         {
-            var cache = CachedPackages;
+            return Search(searchTerm, targetFrameworks, allowPrereleaseVersions, ClientCompatibility.Default);
+        }
 
-            var packages = cache.AsQueryable()
+        public IQueryable<IPackage> Search(
+            string searchTerm,
+            IEnumerable<string> targetFrameworks,
+            bool allowPrereleaseVersions,
+            ClientCompatibility compatibility)
+        {
+            var packages = GetPackages(compatibility)
+                .AsQueryable()
                 .Find(searchTerm)
                 .FilterByPrerelease(allowPrereleaseVersions);
 
@@ -144,17 +177,32 @@ namespace NuGet.Server.Infrastructure
             if (EnableFrameworkFiltering && targetFrameworks.Any())
             {
                 // Get the list of framework names
-                var frameworkNames = targetFrameworks.Select(frameworkName => VersionUtility.ParseFrameworkName(frameworkName));
+                var frameworkNames = targetFrameworks
+                    .Select(frameworkName => VersionUtility.ParseFrameworkName(frameworkName));
 
-                packages = packages.Where(package => frameworkNames.Any(frameworkName => VersionUtility.IsCompatible(frameworkName, package.GetSupportedFrameworks())));
+                packages = packages
+                    .Where(package => frameworkNames
+                        .Any(frameworkName => VersionUtility
+                            .IsCompatible(frameworkName, package.GetSupportedFrameworks())));
             }
 
             return packages.AsQueryable();
         }
 
-        public IEnumerable<IPackage> GetUpdates(IEnumerable<IPackageName> packages, bool includePrerelease, bool includeAllVersions, IEnumerable<FrameworkName> targetFrameworks, IEnumerable<IVersionSpec> versionConstraints)
+        public IEnumerable<IPackage> GetUpdates(
+            IEnumerable<IPackageName> packages,
+            bool includePrerelease,
+            bool includeAllVersions,
+            IEnumerable<FrameworkName> targetFrameworks,
+            IEnumerable<IVersionSpec> versionConstraints)
         {
-            return this.GetUpdatesCore(packages, includePrerelease, includeAllVersions, targetFrameworks, versionConstraints);
+            return this.GetUpdatesCore(
+                packages,
+                includePrerelease,
+                includeAllVersions,
+                targetFrameworks,
+                versionConstraints,
+                ClientCompatibility.Default);
         }
 
         public override string Source
@@ -201,7 +249,7 @@ namespace NuGet.Server.Infrastructure
                             }
 
                             // Allow overwriting package? If not, skip this one.
-                            if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.FindPackage(package.Id, package.Version) != null)
+                            if (!AllowOverrideExistingPackageOnPush && _expandedPackageRepository.Exists(package.Id, package.Version))
                             {
                                 var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
@@ -257,7 +305,7 @@ namespace NuGet.Server.Infrastructure
                 throw new InvalidOperationException(message);
             }
 
-            if (!AllowOverrideExistingPackageOnPush && FindPackage(package.Id, package.Version) != null)
+            if (!AllowOverrideExistingPackageOnPush && Exists(package.Id, package.Version))
             {
                 var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
@@ -536,8 +584,6 @@ namespace NuGet.Server.Infrastructure
 
             // Build entry
             var serverPackage = new ServerPackage(package, packageDerivedData);
-            serverPackage.IsAbsoluteLatestVersion = false;
-            serverPackage.IsLatestVersion = false;
             return serverPackage;
         }
 
