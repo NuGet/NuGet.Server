@@ -163,9 +163,9 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var includePrerelease = serverRepository.Search("test3", true);
-                var excludePrerelease = serverRepository.Search("test3", false);
-                var ignoreTag = serverRepository.Search("test6", false);
+                var includePrerelease = serverRepository.Search("test3", allowPrereleaseVersions: true);
+                var excludePrerelease = serverRepository.Search("test3", allowPrereleaseVersions: false);
+                var ignoreTag = serverRepository.Search("test6", allowPrereleaseVersions: false);
 
                 // Assert
                 Assert.Equal("test3", includePrerelease.First().Id);
@@ -197,7 +197,7 @@ namespace NuGet.Server.Core.Tests
                 }, getSetting);
 
                 // Assert base setup
-                var packages = serverRepository.Search("test1", true).ToList();
+                var packages = serverRepository.Search("test1", allowPrereleaseVersions: true).ToList();
                 Assert.Equal(1, packages.Count);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
@@ -396,7 +396,7 @@ namespace NuGet.Server.Core.Tests
                 var packages = serverRepository.GetPackages();
 
                 // Assert
-                var singlePackage = packages.Single();
+                var singlePackage = packages.SingleOrDefault();
                 Assert.NotNull(singlePackage);
                 Assert.Equal(package.GetStream().Length, singlePackage.PackageSize);
             }
@@ -418,10 +418,10 @@ namespace NuGet.Server.Core.Tests
                 var getPackagesWithDerivedData = serverRepository.GetPackages().ToList();
                 var getUpdates = serverRepository.GetUpdates(
                     Enumerable.Empty<IPackageName>(),
-                    true,
-                    true,
-                    Enumerable.Empty<FrameworkName>(),
-                    Enumerable.Empty<IVersionSpec>());
+                    includePrerelease: true,
+                    includeAllVersions: true,
+                    targetFramework: Enumerable.Empty<FrameworkName>(),
+                    versionConstraints: Enumerable.Empty<IVersionSpec>());
                 var search = serverRepository.Search("test", true).ToList();
                 var source = serverRepository.Source;
 

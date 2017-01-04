@@ -74,7 +74,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        public bool HasPackages()
+        public bool IsEmpty()
         {
             _syncLock.EnterReadLock();
             try
@@ -145,7 +145,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        public void StoreRange(IEnumerable<ServerPackage> entities)
+        public void AddRange(IEnumerable<ServerPackage> entities)
         {
             _syncLock.EnterWriteLock();
             try

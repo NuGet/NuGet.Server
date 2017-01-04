@@ -49,6 +49,7 @@ namespace NuGet.Server.Core.Tests
         }
 
         [Theory]
+        [InlineData("", 0)]
         [InlineData("[]", 0)]
         [InlineData(MinimalCacheFile, 1)]
         public void Constructor_LeavesValidCacheFile(string content, int count)

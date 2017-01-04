@@ -11,9 +11,11 @@ using NuGet.Server.Core.Logging;
 namespace NuGet.Server.Core.Infrastructure
 {
     /// <summary>
-    /// ServerPackageRepository represents a folder of nupkgs on disk. All packages are cached during the first request in order
-    /// to correctly determine attributes such as IsAbsoluteLatestVersion. Adding, removing, or making changes to packages on disk 
-    /// will clear the cache.
+    /// ServerPackageRepository represents a folder of nupkgs on disk. All packages are cached during the first request
+    /// in order to correctly determine attributes such as IsAbsoluteLatestVersion. Adding, removing, or making changes
+    /// to packages on disk will clear the cache. This implementation is the core business logic for dealing with
+    /// packages on the server side and deals with the the underlying concerns of storing packages both on disk
+    /// and in memory (<see cref="IServerPackageStore"/> and <see cref="IServerPackageCache"/>, respectively).
     /// </summary>
     public class ServerPackageRepository
         : IServerPackageRepository, IDisposable
@@ -128,11 +130,11 @@ namespace NuGet.Server.Core.Infrastructure
              * 2. If the store has no packages at all. This is so we pick up initial packages as quickly as
              *    possible.
              */
-            if (_needsRebuild || !_serverPackageCache.HasPackages())
+            if (_needsRebuild || !_serverPackageCache.IsEmpty())
             {
                 lock (_syncLock)
                 {
-                    if (_needsRebuild || !_serverPackageCache.HasPackages())
+                    if (_needsRebuild || !_serverPackageCache.IsEmpty())
                     {
                         RebuildPackageStore();
                     }
@@ -234,7 +236,7 @@ namespace NuGet.Server.Core.Infrastructure
                     }
 
                     // Add packages to metadata store in bulk
-                    _serverPackageCache.StoreRange(serverPackages);
+                    _serverPackageCache.AddRange(serverPackages);
                     _serverPackageCache.PersistIfDirty();
 
                     _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
@@ -271,7 +273,6 @@ namespace NuGet.Server.Core.Infrastructure
 
         private bool CanPackageBeAdded(IPackage package, bool shouldThrow)
         {
-            // Is it a symbols package?
             if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
             {
                 var message = string.Format(Strings.Error_SymbolsPackagesIgnored, package);
@@ -370,7 +371,7 @@ namespace NuGet.Server.Core.Infrastructure
                 // Build cache
                 var packages = ReadPackagesFromDisk();
                 _serverPackageCache.Clear();
-                _serverPackageCache.StoreRange(packages);
+                _serverPackageCache.AddRange(packages);
 
                 // Add packages from drop folder
                 AddPackagesFromDropFolder();

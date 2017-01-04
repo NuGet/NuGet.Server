@@ -5,11 +5,19 @@ using System.Collections.Generic;
 
 namespace NuGet.Server.Core.Infrastructure
 {
+    /// <summary>
+    /// This interface provides a way to add and remove packages from disk. This store is meant to be the definitive
+    /// collection of packages available. If the metadata cache (see <see cref="IServerPackageCache"/>) is out of date
+    /// or corrupted, all metadata should be able to be rebuilt by enumerating a reading packages in this store.
+    /// </summary>
     public interface IServerPackageStore
     {
         ServerPackage Add(IPackage package, bool enableDelisting);
+
         bool Exists(string id, SemanticVersion version);
+
         HashSet<ServerPackage> GetAll(bool enableDelisting);
+
         void Remove(string id, SemanticVersion version, bool enableDelisting);
     }
 }
