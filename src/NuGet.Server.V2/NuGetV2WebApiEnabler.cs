@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+using System;
 using System.Linq;
 using System.Net.Http;
 using System.Web.Http;
@@ -66,11 +67,14 @@ namespace NuGet.Server.V2
         {
             var builder = new ODataConventionModelBuilder();
 
+            builder.DataServiceVersion = new Version(2, 0);
+            builder.MaxDataServiceVersion = builder.DataServiceVersion;
+
             var packagesCollection = builder.EntitySet<ODataPackage>("Packages");
             packagesCollection.EntityType.HasKey(pkg => pkg.Id);
             packagesCollection.EntityType.HasKey(pkg => pkg.Version);
+
             var downloadPackageAction = packagesCollection.EntityType.Action("Download");
-            downloadPackageAction.Returns<HttpResponseMessage>();
 
             var searchAction = builder.Action("Search");
             searchAction.Parameter<string>("searchTerm");

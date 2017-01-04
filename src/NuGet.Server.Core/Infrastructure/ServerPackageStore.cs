@@ -1,250 +1,207 @@
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using NuGet.Server.Core.Logging;
 
 namespace NuGet.Server.Core.Infrastructure
 {
     public class ServerPackageStore
         : IServerPackageStore
     {
-        private readonly IPackagesSerializer _packagesSerializer = new JsonNetPackagesSerializer();
-        
-        private readonly ReaderWriterLockSlim _syncLock = new ReaderWriterLockSlim();
-
-        private bool _isDirty;
-
         private readonly IFileSystem _fileSystem;
-        private readonly string _fileName;
+        private readonly ExpandedPackageRepository _repository;
+        private readonly Logging.ILogger _logger;
 
-        private readonly HashSet<ServerPackage> _packages = new HashSet<ServerPackage>(IdAndVersionEqualityComparer.Instance);
-
-        public ServerPackageStore(IFileSystem fileSystem, string fileName)
+        public ServerPackageStore(
+            IFileSystem fileSystem,
+            ExpandedPackageRepository repository,
+            Logging.ILogger logger)
         {
             _fileSystem = fileSystem;
-            _fileName = fileName;
-
-            Load();
+            _repository = repository;
+            _logger = logger;
         }
 
-        private void Load()
+        public bool Exists(string id, SemanticVersion version)
         {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                if (_fileSystem.FileExists(_fileName))
-                {
-                    _packages.Clear();
+            return _repository.Exists(id, version);
+        }
 
-                    try
+        public ServerPackage Add(IPackage package, bool enableDelisting)
+        {
+            _repository.AddPackage(package);
+
+            return CreateServerPackage(package, enableDelisting);
+        }
+
+        public void Remove(string id, SemanticVersion version, bool enableDelisting)
+        {
+            if (enableDelisting)
+            {
+                var physicalFileSystem = _fileSystem as PhysicalFileSystem;
+
+                if (physicalFileSystem != null)
+                {
+                    var fileName = physicalFileSystem.GetFullPath(
+                        GetPackageFileName(id, version.ToNormalizedString()));
+
+                    if (File.Exists(fileName))
                     {
-                        using (var stream = _fileSystem.OpenFile(_fileName))
-                        {
-                            var deserializedPackages = _packagesSerializer.Deserialize(stream);
-                            if (deserializedPackages != null)
-                            {
-                                _packages.AddRange(deserializedPackages);
-                            }
-                        }
+                        File.SetAttributes(fileName, File.GetAttributes(fileName) | FileAttributes.Hidden);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        if (ex is JsonException || ex is SerializationException)
-                        {
-                            // In case this happens, remove the file
-                            _fileSystem.DeleteFile(_fileName);
-                        }
-                        else
-                        {
-                            throw;
-                        }
+                        _logger.Log(
+                            LogLevel.Error,
+                            "Error removing package {0} {1} - could not find package file {2}",
+                            id,
+                            version,
+                            fileName);
                     }
                 }
             }
-            finally
+            else
             {
-                _syncLock.ExitWriteLock();
-            }
-        }
+                var package = _repository.FindPackage(id, version);
 
-        public bool HasPackages()
-        {
-            return GetAll().Any();
-        }
-
-        public IQueryable<ServerPackage> GetAll()
-        {
-            _syncLock.EnterReadLock();
-            try
-            {
-                return _packages.ToList().AsQueryable();
-            }
-            finally
-            {
-                _syncLock.ExitReadLock();
-            }
-        }
-        
-        public void Remove(ServerPackage entity)
-        {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                _packages.Remove(entity);
-
-                UpdateLatestVersions(_packages.Where(package =>
-                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)));
-
-                _isDirty = true;
-            }
-            finally
-            {
-                _syncLock.ExitWriteLock();
-            }
-        }
-
-        public void Remove(string id, SemanticVersion version)
-        {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                _packages.RemoveWhere(package =>
-                    String.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase) && package.Version == version);
-
-                UpdateLatestVersions(_packages);
-
-                _isDirty = true;
-            }
-            finally
-            {
-                _syncLock.ExitWriteLock();
-            }
-        }
-
-        public void Store(ServerPackage entity)
-        {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                _packages.Remove(entity);
-                _packages.Add(entity);
-
-                UpdateLatestVersions(_packages.Where(package =>
-                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)));
-
-                _isDirty = true;
-            }
-            finally
-            {
-                _syncLock.ExitWriteLock();
-            }
-        }
-
-        public void StoreRange(IEnumerable<ServerPackage> entities)
-        {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                foreach (var entity in entities)
+                if (package != null)
                 {
-                    _packages.Remove(entity);
-                    _packages.Add(entity);
+                    _repository.RemovePackage(package);
                 }
-
-                UpdateLatestVersions(_packages);
-
-                _isDirty = true;
-            }
-            finally
-            {
-                _syncLock.ExitWriteLock();
             }
         }
 
-        private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages)
+        public HashSet<ServerPackage> GetAll(bool enableDelisting)
         {
-            var absoluteLatest = new ConcurrentDictionary<string, ServerPackage>();
-            var latest = new ConcurrentDictionary<string, ServerPackage>();
-
-            // Visit packages
-            Parallel.ForEach(packages, package =>
+            var allPackages = new ConcurrentBag<ServerPackage>();
+            
+            Parallel.ForEach(_repository.GetPackages(), package =>
             {
-                // Update package
-                package.IsAbsoluteLatestVersion = false;
-                package.IsLatestVersion = false;
+                ServerPackage serverPackage;
 
-                // Find the latest versions
-                var id = package.Id.ToLowerInvariant();
-
-                // Update with the highest version
-                absoluteLatest.AddOrUpdate(id, package,
-                    (oldId, oldEntry) => oldEntry.Version < package.Version ? package : oldEntry);
-
-                // Update latest for release versions
-                if (package.IsReleaseVersion())
+                // Try to create the server package and ignore a bad package if it fails.
+                if (TryCreateServerPackage(package, enableDelisting, out serverPackage))
                 {
-                    latest.AddOrUpdate(id, package,
-                        (oldId, oldEntry) => oldEntry.Version < package.Version ? package : oldEntry);
+                    allPackages.Add(serverPackage);
                 }
             });
 
-            // Set version properties
-            foreach (var entry in absoluteLatest.Values)
-            {
-                entry.IsAbsoluteLatestVersion = true;
-            }
+            // Only return unique packages.
+            return new HashSet<ServerPackage>(allPackages, IdAndVersionEqualityComparer.Instance);
+        }
 
-            foreach (var entry in latest.Values)
+        private bool TryCreateServerPackage(IPackage package, bool enableDelisting, out ServerPackage serverPackage)
+        {
+            try
             {
-                entry.IsLatestVersion = true;
+                serverPackage = CreateServerPackage(package, enableDelisting);
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                serverPackage = null;
+
+                _logger.Log(
+                    LogLevel.Warning,
+                    "Unable to create server package - {0} {1}: {2}",
+                    package.Id,
+                    package.Version,
+                    e.Message);
+
+                return false;
             }
         }
 
-        public void Persist()
+        private ServerPackage CreateServerPackage(
+            IPackage package,
+            bool enableDelisting)
         {
-            _syncLock.EnterWriteLock();
-            try
+            var packageDerivedData = GetPackageDerivedData(package, enableDelisting);
+            
+            var serverPackage = new ServerPackage(
+                package,
+                packageDerivedData);
+
+            serverPackage.IsAbsoluteLatestVersion = false;
+            serverPackage.IsLatestVersion = false;
+
+            return serverPackage;
+        }
+
+        private PackageDerivedData GetPackageDerivedData(IPackage package, bool enableDelisting)
+        {
+            // File names
+            var normalizedVersion = package.Version.ToNormalizedString();
+            var packageFileName = GetPackageFileName(package.Id, normalizedVersion);
+            var hashFileName = GetHashFileName(package.Id, normalizedVersion);
+
+            // File system
+            var physicalFileSystem = _fileSystem as PhysicalFileSystem;
+
+            // Build package info
+            var packageDerivedData = new PackageDerivedData();
+
+            // Read package hash
+            using (var reader = new StreamReader(_fileSystem.OpenFile(hashFileName)))
             {
-                using (var stream = _fileSystem.CreateFile(_fileName))
+                packageDerivedData.PackageHash = reader.ReadToEnd().Trim();
+            }
+
+            // Read package info
+            var localPackage = package as LocalPackage;
+            if (physicalFileSystem != null)
+            {
+                // Read package info from file system
+                var fullPath = _fileSystem.GetFullPath(packageFileName);
+                var fileInfo = new FileInfo(fullPath);
+                packageDerivedData.PackageSize = fileInfo.Length;
+
+                packageDerivedData.LastUpdated = _fileSystem.GetLastModified(packageFileName);
+                packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
+                packageDerivedData.FullPath = fullPath;
+
+                if (enableDelisting && localPackage != null)
                 {
-                    _packagesSerializer.Serialize(_packages, stream);
+                    // hidden packages are considered delisted
+                    localPackage.Listed = !fileInfo.Attributes.HasFlag(FileAttributes.Hidden);
+                }
+            }
+            else
+            {
+                // Read package info from package (slower)
+                using (var stream = package.GetStream())
+                {
+                    packageDerivedData.PackageSize = stream.Length;
                 }
 
-                _isDirty = false;
+                packageDerivedData.LastUpdated = DateTime.MinValue;
+                packageDerivedData.Created = DateTime.MinValue;
             }
-            finally
-            {
-                _syncLock.ExitWriteLock();
-            }
+
+            return packageDerivedData;
         }
 
-        public void PersistIfDirty()
+        private static string GetPackageFileName(string id, string normalizedVersion)
         {
-            if (_isDirty)
-            {
-                Persist();
-            }
+            return Path.Combine(
+                id,
+                normalizedVersion,
+                $"{id}.{normalizedVersion}.nupkg");
         }
 
-        public void Clear()
+        private static string GetHashFileName(string id, string normalizedVersion)
         {
-            _syncLock.EnterWriteLock();
-            try
-            {
-                _packages.Clear();
-
-                _isDirty = true;
-            }
-            finally
-            {
-                _syncLock.ExitWriteLock();
-            }
+            return Path.Combine(
+                id,
+                normalizedVersion,
+                $"{id}.{normalizedVersion}{NuGet.Constants.HashFileExtension}");
         }
     }
 }

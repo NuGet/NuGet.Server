@@ -1,5 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.IO;
 
@@ -24,6 +25,11 @@ namespace NuGet.Server.Core.Tests.Infrastructure
             {
                 Directory.Delete(Path, true);
             }
+        }
+
+        public static implicit operator string(TemporaryDirectory directory)
+        {
+            return directory.Path;
         }
     }
 }

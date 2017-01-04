@@ -3,65 +3,118 @@
 
 using System.IO;
 using System.Linq;
-using System.Text;
 using Moq;
 using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Tests.Infrastructure;
 using Xunit;
 
 namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageStoreTest
     {
-        [Theory]
-        [InlineData("[")]
-        [InlineData("]")]
-        [InlineData("{")]
-        [InlineData("}")]
-        [InlineData("[{")]
-        [InlineData("[{}")]
-        [InlineData("{}")]
-        [InlineData("[{\"foo\": \"bar\"}]")]
-        public void Constructor_IgnoresAndDeletesInvalidCacheFile(string content)
+        private const string PackageId = "NuGet.Versioning";
+        private const string PackageVersionString = "3.5.0";
+        private static readonly SemanticVersion PackageVersion = new SemanticVersion(PackageVersionString);
+
+        [Fact]
+        public void Remove_SupportsEnabledUnlisting()
         {
             // Arrange
-            var fileName = "store.json";
-            var fileSystem = new Mock<IFileSystem>();
-            fileSystem
-                .Setup(x => x.FileExists(fileName))
-                .Returns(true);
-            fileSystem
-                .Setup(x => x.OpenFile(fileName))
-                .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(content)));
+            using (var directory = new TemporaryDirectory())
+            {
+                var fileSystem = new PhysicalFileSystem(directory);
+                var repository = new ExpandedPackageRepository(fileSystem);
+                var logger = new Infrastructure.NullLogger();
 
-            // Act
-            var actual = new ServerPackageStore(fileSystem.Object, fileName);
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
 
-            // Assert
-            Assert.Empty(actual.GetAll());
-            fileSystem.Verify(x => x.DeleteFile(fileName), Times.Once);
+                var target = new ServerPackageStore(fileSystem, repository, logger);
+
+                // Act
+                target.Remove(PackageId, PackageVersion, enableDelisting: true);
+
+                // Assert
+                var package = target.GetAll(enableDelisting: true).SingleOrDefault();
+                Assert.NotNull(package);
+                Assert.Equal(PackageId, package.Id);
+                Assert.Equal(PackageVersion, package.Version);
+                Assert.False(package.Listed);
+
+                var fileInfo = new FileInfo(package.FullPath);
+                Assert.True(fileInfo.Exists);
+                Assert.Equal(FileAttributes.Hidden, fileInfo.Attributes & FileAttributes.Hidden);
+            }
         }
 
-        [Theory]
-        [InlineData("[]", 0)]
-        [InlineData("[{\"Id\":\"NuGet.Versioning\",\"Version\":\"3.5.0\"}]", 1)]
-        public void Constructor_LeavesValidCacheFile(string content, int count)
+        [Fact]
+        public void Remove_SupportsDisabledUnlisting()
         {
             // Arrange
-            var fileName = "store.json";
-            var fileSystem = new Mock<IFileSystem>();
-            fileSystem
-                .Setup(x => x.FileExists(fileName))
-                .Returns(true);
-            fileSystem
-                .Setup(x => x.OpenFile(fileName))
-                .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(content)));
+            using (var directory = new TemporaryDirectory())
+            {
+                var fileSystem = new PhysicalFileSystem(directory);
+                var repository = new ExpandedPackageRepository(fileSystem);
+                var logger = new Infrastructure.NullLogger();
 
-            // Act
-            var actual = new ServerPackageStore(fileSystem.Object, fileName);
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
 
-            // Assert
-            Assert.Equal(count, actual.GetAll().Count());
-            fileSystem.Verify(x => x.DeleteFile(It.IsAny<string>()), Times.Never);
+                var target = new ServerPackageStore(fileSystem, repository, logger);
+
+                // Act
+                target.Remove(PackageId, PackageVersion, enableDelisting: false);
+
+                // Assert
+                Assert.Empty(target.GetAll(enableDelisting: false));
+                Assert.Empty(repository.GetPackages());
+            }
+        }
+
+        [Fact]
+        public void Remove_NoOpsWhenPackageDoesNotExist()
+        {
+            // Arrange
+            using (var directory = new TemporaryDirectory())
+            {
+                var fileSystem = new PhysicalFileSystem(directory);
+                var repository = new ExpandedPackageRepository(fileSystem);
+                var logger = new Infrastructure.NullLogger();
+
+                repository.AddPackage(CreatePackage(PackageId, PackageVersion));
+
+                var target = new ServerPackageStore(fileSystem, repository, logger);
+
+                // Act
+                target.Remove("Foo", PackageVersion, enableDelisting: false);
+
+                // Assert
+                var package = target.GetAll(enableDelisting: false).FirstOrDefault();
+                Assert.NotNull(package);
+                Assert.Equal(PackageId, package.Id);
+                Assert.Equal(PackageVersion, package.Version);
+                Assert.True(package.Listed);
+            }
+        }
+
+        private IPackage CreatePackage(string id, SemanticVersion version)
+        {
+            var file = new Mock<IPackageFile>();
+            file.Setup(x => x.GetStream()).Returns(() => Stream.Null);
+            file.Setup(x => x.Path).Returns($"lib/net40/test.dll");
+
+            var builder = new PackageBuilder
+            {
+                Id = id,
+                Version = version,
+                Description = id,
+                Authors = { id },
+                Files = { file.Object }
+            };
+
+            var memoryStream = new MemoryStream();
+            builder.Save(memoryStream);
+            memoryStream.Position = 0;
+
+            return new ZipPackage(memoryStream);
         }
     }
 }

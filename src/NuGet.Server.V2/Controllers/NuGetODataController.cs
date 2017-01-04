@@ -70,11 +70,12 @@ namespace NuGet.Server.V2.Controllers
             var package = RetrieveFromRepository(id, version);
 
             if (package == null)
+            {
                 return NotFound();
+            }
 
-            var queryable = (new[] { package.AsODataPackage() }).AsQueryable();
-            var queryResult = QueryResult(options, queryable, _maxPageSize);
-            return queryResult.FormattedAsSingleResult<ODataPackage>();
+            return TransformToQueryResult(options, new[] { package })
+                .FormattedAsSingleResult<ODataPackage>();
         }
 
         // GET/POST /FindPackagesById()?id=
@@ -202,7 +203,7 @@ namespace NuGet.Server.V2.Controllers
             }
 
             var sourceQuery = _serverRepository
-                .GetUpdatesCore(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList);
+                .GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworkValues, versionConstraintsList);
 
             return TransformToQueryResult(options, sourceQuery);
         }
@@ -413,6 +414,5 @@ namespace NuGet.Server.V2.Controllers
             var transformedQuery = TransformPackages(sourceQuery);
             return QueryResult(options, transformedQuery, _maxPageSize);
         }
-
     }
 }

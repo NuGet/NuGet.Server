@@ -1,14 +1,22 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.V2.Controllers;
 
 namespace NuGet.Server.DataServices
 {
-    public class PackagesODataController : NuGet.Server.V2.Controllers.NuGetODataController
+    public class PackagesODataController : NuGetODataController
     {
+        public PackagesODataController()
+            : base(Repository, AuthenticationService)
+        {
+            _maxPageSize = 100;
+        }
+
         private static IServerPackageRepository Repository
         {
             get
@@ -29,17 +37,11 @@ namespace NuGet.Server.DataServices
             }
         }
 
-        public PackagesODataController()
-            :base (Repository, AuthenticationService)
-        {
-            _maxPageSize = 100;
-        }
-
         [HttpGet]
         // Exposed through ordinary Web API route. Bypasses OData pipeline.
         public HttpResponseMessage ClearCache()
         {
-            if (this.RequestContext.IsLocal)
+            if (RequestContext.IsLocal)
             {
                 _serverRepository.ClearCache();
                 return CreateStringResponse(HttpStatusCode.OK, "Server cache has been cleared.");
@@ -49,6 +51,5 @@ namespace NuGet.Server.DataServices
                 return CreateStringResponse(HttpStatusCode.Forbidden, "Clear cache is only supported for local requests.");
             }
         }
-
     }
 }

@@ -4,7 +4,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Query;
 using System.Web.Http.Results;
@@ -22,15 +24,21 @@ namespace NuGet.Server.V2.Tests
 {
     public class NuGetODataControllerTests
     {
-        internal static ServerPackage CreatePackageWithDefaults(string id, string version, bool listed=true, string supportedFrameWorks=null, IEnumerable<string> authors=null, IEnumerable<string> owners=null)
+        internal static ServerPackage CreatePackageWithDefaults(
+            string id,
+            string version,
+            bool listed = true,
+            string supportedFrameworks = null,
+            IEnumerable<string> authors = null,
+            IEnumerable<string> owners = null)
         {
             var serverPackage = new ServerPackage()
             {
-                Id=id,
+                Id = id,
                 Version = SemanticVersion.Parse(version),
                 Listed = listed,
-                SupportedFrameworks=supportedFrameWorks,
-                Authors= authors ?? Enumerable.Empty<string>(),
+                SupportedFrameworks = supportedFrameworks,
+                Authors = authors ?? Enumerable.Empty<string>(),
                 Owners = owners ?? Enumerable.Empty<string>(),
             };
             return serverPackage;
@@ -138,6 +146,92 @@ namespace NuGet.Server.V2.Tests
                 //// Act
                 v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request), expectedId, expectedVersion)
                     .ExpectResult<NotFoundResult>();
+            }
+        }
+
+        public class DownloadMethod
+        {
+            [Fact]
+            public async Task DownloadReturnsContentOfExistingPackage()
+            {
+                // Arrange
+                using (var temporaryDirectory = new TemporaryDirectory())
+                {
+                    var packageContent = "package";
+                    var packagePath = Path.Combine(temporaryDirectory.Path, "test.nupkg");
+                    File.WriteAllText(packagePath, packageContent);
+
+                    var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                    repo.Setup(r => r.GetPackages()).Returns(
+                        new[]
+                        {
+                            new ServerPackage
+                                {
+                                    Id = "Foo",
+                                    Version = SemanticVersion.Parse("1.0.0"),
+                                    Listed = false,
+                                    Authors = new [] { string.Empty },
+                                    Owners = new [] { string.Empty },
+                                    Description = string.Empty,
+                                    Summary = string.Empty,
+                                    Tags = string.Empty,
+                                    FullPath = packagePath
+                                }
+                        }.AsQueryable());
+
+                    var v2Service = new TestableNuGetODataController(repo.Object);
+                    v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                    // Act
+                    using (var result = v2Service.Download("Foo", "1.0.0"))
+                    {
+                        // Assert
+                        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+                        Assert.Equal("binary/octet-stream", result.Content.Headers.ContentType.ToString());
+                        var actualContent = await result.Content.ReadAsStringAsync();
+                        Assert.Equal(packageContent, actualContent);
+                    }
+                }
+            }
+
+            [Fact]
+            public void DownloadReturnsNotFoundOnMissingPackage()
+            {
+                // Arrange
+                using (var temporaryDirectory = new TemporaryDirectory())
+                {
+                    var packageContent = "package";
+                    var packagePath = Path.Combine(temporaryDirectory.Path, "test.nupkg");
+                    File.WriteAllText(packagePath, packageContent);
+
+                    var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                    repo.Setup(r => r.GetPackages()).Returns(
+                        new[]
+                        {
+                            new ServerPackage
+                                {
+                                    Id = "Foo",
+                                    Version = SemanticVersion.Parse("1.0.0"),
+                                    Listed = false,
+                                    Authors = new [] { string.Empty },
+                                    Owners = new [] { string.Empty },
+                                    Description = string.Empty,
+                                    Summary = string.Empty,
+                                    Tags = string.Empty,
+                                    FullPath = packagePath
+                                }
+                        }.AsQueryable());
+
+                    var v2Service = new TestableNuGetODataController(repo.Object);
+                    v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                    // Act
+                    using (var result = v2Service.Download("Bar", "1.0.0"))
+                    {
+                        // Assert
+                        Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
+                    }
+                }
             }
         }
 
@@ -347,6 +441,43 @@ namespace NuGet.Server.V2.Tests
                 AssertPackage(new { Id = "Foo", Version = "1.1.0" }, result[0]);
                 AssertPackage(new { Id = "Foo", Version = "1.2.0" }, result[1]);
                 AssertPackage(new { Id = "Qux", Version = "2.0" }, result[2]);
+            }
+
+            [Fact]
+            public void GetUpdatesIgnoresPackagesNotRequested()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackages()).Returns(
+                    new[]
+                {
+                        CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.2.0-alpha", listed: true),
+                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true),
+                        CreatePackageWithDefaults("Qux", "2.0", listed: true) ,
+                }.AsQueryable());
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = v2Service.GetUpdates(
+                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                    "Foo",
+                    "1.0.0",
+                    includePrerelease: false,
+                    includeAllVersions: true,
+                    targetFrameworks: null,
+                    versionConstraints: null)
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
+                    .ToArray();
+
+                // Assert
+                Assert.Equal(2, result.Length);
+                AssertPackage(new { Id = "Foo", Version = "1.1.0" }, result[0]);
+                AssertPackage(new { Id = "Foo", Version = "1.2.0" }, result[1]);
             }
 
             [Theory]
@@ -709,9 +840,9 @@ namespace NuGet.Server.V2.Tests
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
-                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5|WinRT"),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameworks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameworks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameworks: "SL5|WinRT"),
                         CreatePackageWithDefaults("Qux", "2.0", listed: true),
                 }.AsQueryable());
 
@@ -747,10 +878,10 @@ namespace NuGet.Server.V2.Tests
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
-                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameWorks: "SL5|Net40-Full"),
-                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameWorks: "SL5|WinRT"),
+                        CreatePackageWithDefaults("Foo", "1.1.0", listed: true, supportedFrameworks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.2.0", listed: true, supportedFrameworks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "1.3.0-alpha", listed: true, supportedFrameworks: "SL5|Net40-Full"),
+                        CreatePackageWithDefaults("Foo", "2.0.0", listed: true, supportedFrameworks: "SL5|WinRT"),
                         CreatePackageWithDefaults("Qux", "2.0", listed: true),
                 }.AsQueryable());
 

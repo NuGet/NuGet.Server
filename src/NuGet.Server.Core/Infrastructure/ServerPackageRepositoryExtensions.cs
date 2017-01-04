@@ -10,11 +10,13 @@ namespace NuGet.Server.Core.Infrastructure
 {
     public static class ServerPackageRepositoryExtensions
     {
-        public static IEnumerable<IServerPackage> FindPackagesById(this IServerPackageRepository repository, string packageId)
+        public static IQueryable<IServerPackage> FindPackagesById(
+            this IServerPackageRepository repository,
+            string id)
         {
             return repository
                 .GetPackages()
-                .Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, packageId));
+                .Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, id));
         }
 
         public static IQueryable<IServerPackage> Search(
@@ -27,23 +29,23 @@ namespace NuGet.Server.Core.Infrastructure
 
         public static IServerPackage FindPackage(
             this IServerPackageRepository repository,
-            string packageId,
+            string id,
             SemanticVersion version)
         {
             return repository
-                .FindPackagesById(packageId)
+                .FindPackagesById(id)
                 .FirstOrDefault(p => p.Version.Equals(version));
         }
 
-        public static IServerPackage FindPackage(this IServerPackageRepository repository, string packageId)
+        public static IServerPackage FindPackage(this IServerPackageRepository repository, string id)
         {
             return repository
-                .FindPackagesById(packageId)
+                .FindPackagesById(id)
                 .OrderByDescending(p => p.Version)
                 .FirstOrDefault();
         }
 
-        public static IEnumerable<IServerPackage> GetUpdatesCore(
+        public static IEnumerable<IServerPackage> GetUpdates(
             this IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
@@ -102,7 +104,8 @@ namespace NuGet.Server.Core.Infrastructure
 
         private static bool SupportsTargetFrameworks(IEnumerable<FrameworkName> targetFramework, IServerPackage package)
         {
-            return targetFramework.IsEmpty() || targetFramework.Any(t => VersionUtility.IsCompatible(t, package.GetSupportedFrameworks()));
+            return targetFramework.IsEmpty() ||
+                   targetFramework.Any(t => VersionUtility.IsCompatible(t, package.GetSupportedFrameworks()));
         }
 
         /// <summary>
@@ -121,6 +124,12 @@ namespace NuGet.Server.Core.Infrastructure
             bool includePrerelease)
         {
             var query = repository.GetPackages();
+
+            var ids = new HashSet<string>(
+                packages.Select(p => p.Id),
+                StringComparer.OrdinalIgnoreCase);
+
+            query = query.Where(p => ids.Contains(p.Id));
 
             if (!includePrerelease)
             {

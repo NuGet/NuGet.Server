@@ -32,6 +32,7 @@ namespace NuGet.Server.V2.OData.Serializers
         private void TryAnnotateV2FeedPackage(ODataEntry entry, EntityInstanceContext entityInstanceContext)
         {
             var instance = entityInstanceContext.EntityInstance as ODataPackage;
+
             if (instance != null)
             {
                 // Set Atom entry metadata
@@ -44,6 +45,10 @@ namespace NuGet.Server.V2.OData.Serializers
                 if (instance.LastUpdated > DateTime.MinValue)
                 {
                     atomEntryMetadata.Updated = instance.LastUpdated;
+                }
+                if (instance.Published > DateTime.MinValue)
+                {
+                    atomEntryMetadata.Published = instance.Published;
                 }
                 if (!string.IsNullOrEmpty(instance.Summary))
                 {

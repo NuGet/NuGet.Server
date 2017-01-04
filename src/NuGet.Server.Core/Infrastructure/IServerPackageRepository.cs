@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Versioning;
 
 namespace NuGet.Server.Core.Infrastructure
 {
@@ -14,13 +13,6 @@ namespace NuGet.Server.Core.Infrastructure
         void AddPackage(IPackage package);
 
         IQueryable<IServerPackage> GetPackages();
-
-        IEnumerable<IServerPackage> GetUpdates(
-            IEnumerable<IPackageName> packages,
-            bool includePrerelease,
-            bool includeAllVersions,
-            IEnumerable<FrameworkName> targetFrameworks,
-            IEnumerable<IVersionSpec> versionConstraints);
 
         IQueryable<IServerPackage> Search(
             string searchTerm,

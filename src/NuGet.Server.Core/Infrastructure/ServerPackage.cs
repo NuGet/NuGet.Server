@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using Newtonsoft.Json;
@@ -19,75 +18,8 @@ namespace NuGet.Server.Core.Infrastructure
         }
 
         public ServerPackage(
-            string id,
-            SemanticVersion version,
-            string title,
-            IEnumerable<string> authors,
-            IEnumerable<string> owners,
-            Uri iconUrl,
-            Uri licenseUrl,
-            Uri projectUrl,
-            bool requireLicenseAcceptance,
-            bool developmentDependency,
-            string description,
-            string summary,
-            string releaseNotes, 
-            string language, 
-            string tags, 
-            string copyright, 
-            string dependencies, 
-            Version minClientVersion, 
-            Uri reportAbuseUrl, 
-            int downloadCount, 
-            string supportedFrameworks, 
-            bool isAbsoluteLatestVersion, 
-            bool isLatestVersion, 
-            bool listed, 
-            DateTimeOffset? published, 
-            long packageSize,
-            string packageHash, 
-            string packageHashAlgorithm, 
-            DateTimeOffset lastUpdated, 
-            DateTimeOffset created,
-            string fullPath)
-        {
-            Id = id;
-            Version = version;
-            Title = title;
-            Authors = authors;
-            Owners = owners;
-            IconUrl = iconUrl;
-            LicenseUrl = licenseUrl;
-            ProjectUrl = projectUrl;
-            RequireLicenseAcceptance = requireLicenseAcceptance;
-            DevelopmentDependency = developmentDependency;
-            Description = description;
-            Summary = summary;
-            ReleaseNotes = releaseNotes;
-            Language = language;
-            Tags = tags;
-            Copyright = copyright;
-            Dependencies = dependencies;
-            MinClientVersion = minClientVersion;
-            ReportAbuseUrl = reportAbuseUrl;
-            DownloadCount = downloadCount;
-            SupportedFrameworks = supportedFrameworks;
-            IsAbsoluteLatestVersion = isAbsoluteLatestVersion;
-            IsLatestVersion = isLatestVersion;
-            Listed = listed;
-            PackageSize = packageSize;
-            PackageHash = packageHash;
-            PackageHashAlgorithm = packageHashAlgorithm;
-            LastUpdated = lastUpdated;
-            Created = created;
-            FullPath = fullPath;
-
-            // Preload collections
-            DependencySets.Any();
-            SupportedFrameworks.Any();
-        }
-
-        public ServerPackage(IPackage package, PackageDerivedData packageDerivedData)
+            IPackage package,
+            PackageDerivedData packageDerivedData)
         {
             Id = package.Id;
             Version = package.Version;

@@ -45,8 +45,6 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.Services" />
-    <Reference Include="System.Data.Services.Client" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
@@ -64,18 +62,19 @@
     <Compile Include="DataServices\IgnoreCaseForPackageIdInterceptor.cs" />
     <Compile Include="DataServices\NormalizeVersionInterceptor.cs" />
     <Compile Include="DataServices\ODataPackage.cs" />
-    <Compile Include="DataServices\PackageContext.cs" />
     <Compile Include="DataServices\PackageExtensions.cs" />
     <Compile Include="DataServices\QueryableExtensions.cs" />
     <Compile Include="DataServices\QueryTranslator.cs" />
     <Compile Include="DataServices\QueryTranslatorProvider.cs" />
     <Compile Include="Infrastructure\ApiKeyPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\DefaultSettingsProvider.cs" />
+    <Compile Include="Infrastructure\ServerPackageStore.cs" />
+    <Compile Include="Infrastructure\IServerPackageStore.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />
     <Compile Include="Infrastructure\IPackagesSerializer.cs" />
     <Compile Include="Infrastructure\IServerPackage.cs" />
     <Compile Include="Infrastructure\IServerPackageRepository.cs" />
-    <Compile Include="Infrastructure\IServerPackageStore.cs" />
+    <Compile Include="Infrastructure\IServerPackageCache.cs" />
     <Compile Include="Infrastructure\ISettingsProvider.cs" />
     <Compile Include="Infrastructure\JsonNetPackagesSerializer.cs" />
     <Compile Include="Infrastructure\PackageDerivedData.cs" />
@@ -85,7 +84,7 @@
     <Compile Include="Infrastructure\ServerPackageExtensions.cs" />
     <Compile Include="Infrastructure\ServerPackageRepository.cs" />
     <Compile Include="Infrastructure\ServerPackageRepositoryExtensions.cs" />
-    <Compile Include="Infrastructure\ServerPackageStore.cs" />
+    <Compile Include="Infrastructure\ServerPackageCache.cs" />
     <Compile Include="Logging\ConsoleLogger.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />

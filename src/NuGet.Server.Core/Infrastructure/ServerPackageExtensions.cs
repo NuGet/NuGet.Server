@@ -14,7 +14,7 @@ namespace NuGet.Server.Core.Infrastructure
             return string.IsNullOrEmpty(package.Version.SpecialVersion);
         }
 
-        public static IEnumerable<T> FilterByPrerelease<T>(this IEnumerable<T> packages, bool allowPrerelease)
+        public static IQueryable<T> FilterByPrerelease<T>(this IQueryable<T> packages, bool allowPrerelease)
             where T : IServerPackage
         {
             if (packages == null)
