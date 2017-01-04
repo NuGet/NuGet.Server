@@ -130,11 +130,11 @@ namespace NuGet.Server.Core.Infrastructure
              * 2. If the store has no packages at all. This is so we pick up initial packages as quickly as
              *    possible.
              */
-            if (_needsRebuild || !_serverPackageCache.IsEmpty())
+            if (_needsRebuild || _serverPackageCache.IsEmpty())
             {
                 lock (_syncLock)
                 {
-                    if (_needsRebuild || !_serverPackageCache.IsEmpty())
+                    if (_needsRebuild || _serverPackageCache.IsEmpty())
                     {
                         RebuildPackageStore();
                     }

@@ -79,7 +79,7 @@ namespace NuGet.Server.Core.Infrastructure
             _syncLock.EnterReadLock();
             try
             {
-                return _packages.Count > 0;
+                return _packages.Count == 0;
             }
             finally
             {
