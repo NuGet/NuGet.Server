@@ -11,12 +11,12 @@ namespace NuGet.Server.Core.DataServices
 {
     public static class PackageExtensions
     {
-        public static ODataPackage AsODataPackage(this IServerPackage package)
+        public static ODataPackage AsODataPackage(this IServerPackage package, ClientCompatibility compatibility)
         {
             return new ODataPackage
             {
                 Id = package.Id,
-                Version = package.Version.ToString(),
+                Version = package.Version.ToOriginalString(),
                 NormalizedVersion = package.Version.ToNormalizedString(),
                 IsPrerelease = !package.IsReleaseVersion(),
                 Title = package.Title,
@@ -39,8 +39,8 @@ namespace NuGet.Server.Core.DataServices
                 PackageSize = package.PackageSize,
                 Copyright = package.Copyright,
                 Tags = package.Tags,
-                IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion,
-                IsLatestVersion = package.IsLatestVersion,
+                IsAbsoluteLatestVersion = compatibility.AllowSemVer2 ? package.SemVer2IsAbsoluteLatest : package.SemVer1IsAbsoluteLatest,
+                IsLatestVersion = compatibility.AllowSemVer2 ? package.SemVer2IsLatest : package.SemVer1IsLatest,
                 Listed = package.Listed,
                 VersionDownloadCount = package.DownloadCount,
                 MinClientVersion = package.MinClientVersion == null ? null : package.MinClientVersion.ToString(),

@@ -16,7 +16,9 @@ namespace NuGet.Server.V2.Tests.Infrastructure
             //var bazPackage = new PackageRegistration { Id = "Baz" };
 
             var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-            repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+            repo.Setup(r => r.GetPackagesAsync(
+                It.IsAny<ClientCompatibility>(),
+                It.IsAny<CancellationToken>())).ReturnsAsync(new[]
             {
                 new ServerPackage
                 {
@@ -95,6 +97,45 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                     Description = "Bar",
                     Summary = "Bar",
                     Tags = "Bar CommonTag"
+                },
+                new ServerPackage
+                {
+                    //PackageRegistration = barPackage,
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.1-b.1"),
+                    //IsPrerelease = true,
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
+                },
+                new ServerPackage
+                {
+                    //PackageRegistration = barPackage,
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.2-b+git"),
+                    //IsPrerelease = true,
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
+                },
+                new ServerPackage
+                {
+                    //PackageRegistration = barPackage,
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.2+git"),
+                    //IsPrerelease = true,
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
                 },
                 new ServerPackage
                 {

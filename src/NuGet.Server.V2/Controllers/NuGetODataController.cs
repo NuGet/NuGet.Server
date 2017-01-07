@@ -36,7 +36,9 @@ namespace NuGet.Server.V2.Controllers
         /// </summary>
         /// <param name="repository">Required.</param>
         /// <param name="authenticationService">Optional. If this is not supplied Upload/Delete is not available (requests returns 403 Forbidden)</param>
-        protected NuGetODataController(IServerPackageRepository repository, IPackageAuthenticationService authenticationService=null)
+        protected NuGetODataController(
+            IServerPackageRepository repository,
+            IPackageAuthenticationService authenticationService = null)
         {
             if (repository == null)
             {
@@ -54,20 +56,24 @@ namespace NuGet.Server.V2.Controllers
         [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public virtual async Task<IHttpActionResult> Get(
             ODataQueryOptions<ODataPackage> options,
-            CancellationToken token)
+            [FromUri] string semVerLevel = "",
+            CancellationToken token = default(CancellationToken))
         {
-            var sourceQuery = await _serverRepository.GetPackagesAsync(token);
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
 
-            return TransformToQueryResult(options, sourceQuery);
+            var sourceQuery = await _serverRepository.GetPackagesAsync(clientCompatibility, token);
+
+            return TransformToQueryResult(options, sourceQuery, clientCompatibility);
         }
 
         // GET /Packages/$count
         [HttpGet]
         public virtual async Task<IHttpActionResult> GetCount(
             ODataQueryOptions<ODataPackage> options,
-            CancellationToken token)
+            [FromUri] string semVerLevel = "",
+            CancellationToken token = default(CancellationToken))
         {
-            return (await Get(options, token)).FormattedAsCountResult<ODataPackage>();
+            return (await Get(options, semVerLevel, token)).FormattedAsCountResult<ODataPackage>();
         }
 
         // GET /Packages(Id=,Version=)
@@ -85,7 +91,7 @@ namespace NuGet.Server.V2.Controllers
                 return NotFound();
             }
 
-            return TransformToQueryResult(options, new[] { package })
+            return TransformToQueryResult(options, new[] { package }, ClientCompatibility.Max)
                 .FormattedAsSingleResult<ODataPackage>();
         }
 
@@ -94,8 +100,9 @@ namespace NuGet.Server.V2.Controllers
         [HttpPost]
         public virtual async Task<IHttpActionResult> FindPackagesById(
             ODataQueryOptions<ODataPackage> options,
-            [FromODataUri]string id,
-            CancellationToken token)
+            [FromODataUri] string id,
+            [FromUri] string semVerLevel = "",
+            CancellationToken token = default(CancellationToken))
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -103,9 +110,11 @@ namespace NuGet.Server.V2.Controllers
                 return QueryResult(options, emptyResult, _maxPageSize);
             }
 
-            var sourceQuery = await _serverRepository.FindPackagesByIdAsync(id, token);
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
 
-            return TransformToQueryResult(options, sourceQuery);
+            var sourceQuery = await _serverRepository.FindPackagesByIdAsync(id, clientCompatibility, token);
+
+            return TransformToQueryResult(options, sourceQuery, clientCompatibility);
         }
 
 
@@ -128,31 +137,45 @@ namespace NuGet.Server.V2.Controllers
         public virtual async Task<IHttpActionResult> Search(
             ODataQueryOptions<ODataPackage> options,
             [FromODataUri] string searchTerm = "", 
-            [FromODataUri] string targetFramework ="", 
+            [FromODataUri] string targetFramework = "", 
             [FromODataUri] bool includePrerelease = false,
             [FromODataUri] bool includeDelisted = false,
+            [FromUri] string semVerLevel = "",
             CancellationToken token = default(CancellationToken))
         {
             var targetFrameworks = String.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
+
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
 
             var sourceQuery = await _serverRepository.SearchAsync(
                 searchTerm,
                 targetFrameworks,
                 includePrerelease,
+                clientCompatibility,
                 token);
 
-            return TransformToQueryResult(options, sourceQuery);
+            return TransformToQueryResult(options, sourceQuery, clientCompatibility);
         }
 
         // GET /Search()/$count?searchTerm=&targetFramework=&includePrerelease=
         [HttpGet]
         public virtual async Task<IHttpActionResult> SearchCount(
             ODataQueryOptions<ODataPackage> options,
-            [FromODataUri]string searchTerm = "",
-            [FromODataUri]string targetFramework = "",
-            [FromODataUri]bool includePrerelease = false)
+            [FromODataUri] string searchTerm = "",
+            [FromODataUri] string targetFramework = "",
+            [FromODataUri] bool includePrerelease = false,
+            [FromODataUri] bool includeDelisted = false,
+            [FromUri] string semVerLevel = "",
+            CancellationToken token = default(CancellationToken))
         {
-            var searchResults = await Search(options, searchTerm, targetFramework, includePrerelease);
+            var searchResults = await Search(
+                options,
+                searchTerm,
+                targetFramework,
+                includePrerelease,
+                includeDelisted,
+                semVerLevel,
+                token);
 
             return searchResults.FormattedAsCountResult<ODataPackage>();
         }
@@ -162,12 +185,13 @@ namespace NuGet.Server.V2.Controllers
         [HttpPost]
         public virtual async Task<IHttpActionResult> GetUpdates(
             ODataQueryOptions<ODataPackage> options,
-            [FromODataUri]string packageIds,
-            [FromODataUri]string versions,
-            [FromODataUri]bool includePrerelease,
-            [FromODataUri]bool includeAllVersions,
-            [FromODataUri]string targetFrameworks = "",
-            [FromODataUri]string versionConstraints = "",
+            [FromODataUri] string packageIds,
+            [FromODataUri] string versions,
+            [FromODataUri] bool includePrerelease,
+            [FromODataUri] bool includeAllVersions,
+            [FromODataUri] string targetFrameworks = "",
+            [FromODataUri] string versionConstraints = "",
+            [FromUri] string semVerLevel = "",
             CancellationToken token = default(CancellationToken))
         {
             if (string.IsNullOrEmpty(packageIds) || string.IsNullOrEmpty(versions))
@@ -223,15 +247,18 @@ namespace NuGet.Server.V2.Controllers
                 }
             }
 
+            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+
             var sourceQuery = await _serverRepository.GetUpdatesAsync(
                 packagesToUpdate,
                 includePrerelease,
                 includeAllVersions,
                 targetFrameworkValues,
                 versionConstraintsList,
+                clientCompatibility,
                 token);
 
-            return TransformToQueryResult(options, sourceQuery);
+            return TransformToQueryResult(options, sourceQuery, clientCompatibility);
         }
 
         // /api/v2/GetUpdates()/$count?packageIds=&versions=&includePrerelease=&includeAllVersions=&targetFrameworks=&versionConstraints=
@@ -239,12 +266,13 @@ namespace NuGet.Server.V2.Controllers
         [HttpPost]
         public virtual async Task<IHttpActionResult> GetUpdatesCount(
             ODataQueryOptions<ODataPackage> options,
-            [FromODataUri]string packageIds,
-            [FromODataUri]string versions,
-            [FromODataUri]bool includePrerelease,
-            [FromODataUri]bool includeAllVersions,
-            [FromODataUri]string targetFrameworks = "",
-            [FromODataUri]string versionConstraints = "",
+            [FromODataUri] string packageIds,
+            [FromODataUri] string versions,
+            [FromODataUri] bool includePrerelease,
+            [FromODataUri] bool includeAllVersions,
+            [FromODataUri] string targetFrameworks = "",
+            [FromODataUri] string versionConstraints = "",
+            [FromUri] string semVerLevel = "",
             CancellationToken token = default(CancellationToken))
         {
             var updates = await GetUpdates(
@@ -255,6 +283,7 @@ namespace NuGet.Server.V2.Controllers
                 includeAllVersions,
                 targetFrameworks,
                 versionConstraints,
+                semVerLevel,
                 token);
 
             return updates.FormattedAsCountResult<ODataPackage>();
@@ -276,8 +305,10 @@ namespace NuGet.Server.V2.Controllers
             var requestedPackage = await RetrieveFromRepositoryAsync(id, version, token);
 
             if (requestedPackage == null)
+            {
                 return Request.CreateErrorResponse(HttpStatusCode.NotFound, string.Format("'Package {0} {1}' Not found.", id, version));
-            
+            }
+
             var responseMessage = Request.CreateResponse(HttpStatusCode.OK);
 
             if (Request.Method == HttpMethod.Get)
@@ -320,7 +351,9 @@ namespace NuGet.Server.V2.Controllers
             CancellationToken token)
         {
             if (_authenticationService == null)
+            {
                 return Request.CreateErrorResponse(HttpStatusCode.Forbidden, "Package delete is not allowed");
+            }
 
             var apiKey = GetApiKeyFromHeader();
 
@@ -410,7 +443,10 @@ namespace NuGet.Server.V2.Controllers
             string apiKey = null;
             IEnumerable<string> values;
             if (Request.Headers.TryGetValues(ApiKeyHeader, out values))
+            {
                 apiKey = values.FirstOrDefault();
+            }
+                
             return apiKey;
         }
 
@@ -419,16 +455,21 @@ namespace NuGet.Server.V2.Controllers
             string version,
             CancellationToken token)
         {
-            return string.IsNullOrEmpty(version) ?
-                                        await _serverRepository.FindPackageAsync(id, token) :
-                                        await _serverRepository.FindPackageAsync(id, new SemanticVersion(version), token);
+            if (string.IsNullOrEmpty(version))
+            {
+                return await _serverRepository.FindPackageAsync(id, ClientCompatibility.Max, token);
+            }
+
+            return await _serverRepository.FindPackageAsync(id, new SemanticVersion(version), token);
         }
 
-        protected IQueryable<ODataPackage> TransformPackages(IEnumerable<IServerPackage> packages)
+        protected IQueryable<ODataPackage> TransformPackages(
+            IEnumerable<IServerPackage> packages,
+            ClientCompatibility compatibility)
         {
             return packages
                 .Distinct()
-                .Select(x => x.AsODataPackage())
+                .Select(x => x.AsODataPackage(compatibility))
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());
         }
@@ -454,9 +495,10 @@ namespace NuGet.Server.V2.Controllers
         /// <returns></returns>
         protected virtual IHttpActionResult TransformToQueryResult(
             ODataQueryOptions<ODataPackage> options,
-            IEnumerable<IServerPackage> sourceQuery)
+            IEnumerable<IServerPackage> sourceQuery,
+            ClientCompatibility compatibility)
         {
-            var transformedQuery = TransformPackages(sourceQuery);
+            var transformedQuery = TransformPackages(sourceQuery, compatibility);
             return QueryResult(options, transformedQuery, _maxPageSize);
         }
     }

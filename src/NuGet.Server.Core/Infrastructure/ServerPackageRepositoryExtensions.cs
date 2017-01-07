@@ -15,9 +15,10 @@ namespace NuGet.Server.Core.Infrastructure
         public static async Task<IEnumerable<IServerPackage>> FindPackagesByIdAsync(
             this IServerPackageRepository repository,
             string id,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
-            var packages = await repository.GetPackagesAsync(token);
+            var packages = await repository.GetPackagesAsync(compatibility, token);
 
             return packages.Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, id));
         }
@@ -26,9 +27,15 @@ namespace NuGet.Server.Core.Infrastructure
             this IServerPackageRepository repository,
             string searchTerm,
             bool allowPrereleaseVersions,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
-            return await repository.SearchAsync(searchTerm, Enumerable.Empty<string>(), allowPrereleaseVersions, token);
+            return await repository.SearchAsync(
+                searchTerm,
+                Enumerable.Empty<string>(),
+                allowPrereleaseVersions,
+                compatibility,
+                token);
         }
 
         public static async Task<IServerPackage> FindPackageAsync(
@@ -37,17 +44,29 @@ namespace NuGet.Server.Core.Infrastructure
             SemanticVersion version,
             CancellationToken token)
         {
-            var packages = await repository.FindPackagesByIdAsync(id, token);
+            var packages = await repository.FindPackagesByIdAsync(id, ClientCompatibility.Max, token);
 
             return packages.FirstOrDefault(p => p.Version.Equals(version));
+        }
+
+        public static async Task<bool> ExistsAsync(
+            this IServerPackageRepository repository,
+            string id,
+            SemanticVersion version,
+            CancellationToken token)
+        {
+            var package = await repository.FindPackageAsync(id, version, token);
+
+            return package != null;
         }
 
         public static async Task<IServerPackage> FindPackageAsync(
             this IServerPackageRepository repository,
             string id,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
-            var packages = await repository.FindPackagesByIdAsync(id, token);
+            var packages = await repository.FindPackagesByIdAsync(id, compatibility, token);
 
             return packages
                 .OrderByDescending(p => p.Version)
@@ -61,6 +80,7 @@ namespace NuGet.Server.Core.Infrastructure
             bool includeAllVersions,
             IEnumerable<FrameworkName> targetFramework,
             IEnumerable<IVersionSpec> versionConstraints,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
             List<IPackageName> packageList = packages.ToList();
@@ -90,6 +110,7 @@ namespace NuGet.Server.Core.Infrastructure
                 repository,
                 packageList,
                 includePrerelease,
+                compatibility,
                 token);
 
             ILookup<string, IServerPackage> sourcePackages = candidates
@@ -138,9 +159,10 @@ namespace NuGet.Server.Core.Infrastructure
             IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
-            var query = await repository.GetPackagesAsync(token);
+            var query = await repository.GetPackagesAsync(compatibility, token);
 
             var ids = new HashSet<string>(
                 packages.Select(p => p.Id),

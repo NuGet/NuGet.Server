@@ -73,7 +73,8 @@ namespace NuGet.Server.V2.Tests
                         new ODataQueryOptions<ODataPackage>(
                             new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
                             v2Service.Request),
-                        Token))
+                        semVerLevel: "",
+                        token: Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -89,6 +90,32 @@ namespace NuGet.Server.V2.Tests
 
                     Assert.True(result.Any(p => p.Id == expectedId && p.Version == expectedVersion), string.Format("Search results did not contain {0} {1}", expectedId, expectedVersion));
                 }
+            }
+
+            [Theory]
+            [InlineData("", "1.0.0")]
+            [InlineData("1.0.0", "1.0.0")]
+            [InlineData("2.0.0", "2.0.0")]
+            public async Task PackagesCountSupportsSemVerLevel(string semVerLevel, string expected)
+            {
+                // Arrange
+                var repo = ControllerTestHelpers.SetupTestPackageRepository();
+                var v2Service = new TestableNuGetODataController(repo.Object);
+
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages/$count");
+
+                // Act
+                var result = await v2Service.GetCount(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        semVerLevel: semVerLevel,
+                        token: Token);
+
+                // Assert
+                repo.Verify(x => x.GetPackagesAsync(
+                    It.Is<ClientCompatibility>(c => c.SemVerLevel.Equals(new SemanticVersion(expected))),
+                    It.IsAny<CancellationToken>()));
             }
 
             [Theory]
@@ -109,7 +136,8 @@ namespace NuGet.Server.V2.Tests
                         new ODataQueryOptions<ODataPackage>(
                             new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
                             v2Service.Request),
-                        Token))
+                        semVerLevel: "",
+                        token: Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectResult<PlainTextResult>();
@@ -124,6 +152,9 @@ namespace NuGet.Server.V2.Tests
             [InlineData("Bar", "1.0.0")]
             [InlineData("Bar", "2.0.0")]
             [InlineData("Bar", "2.0.1-b")]
+            [InlineData("Baz", "2.0.1-b.1")]
+            [InlineData("Baz", "2.0.2-b+git")]
+            [InlineData("Baz", "2.0.2+git")]
             public async Task PackagesByIdAndVersionReturnsPackage(string expectedId, string expectedVersion)
             {
                 // Arrange
@@ -152,6 +183,9 @@ namespace NuGet.Server.V2.Tests
             [InlineData("NoFoo", "1.0.0")]
             [InlineData("NoBar", "1.0.0-a")]
             [InlineData("Bar", "9.9.9")]
+            [InlineData("NoBar", "1.0.0-a.1")]
+            [InlineData("NoBar", "1.0.0-a.1+git")]
+            [InlineData("NoBar", "1.0.0+git")]
             public async Task PackagesByIdAndVersionReturnsNotFoundWhenPackageNotFound(string expectedId, string expectedVersion)
             {
                 // Arrange
@@ -174,8 +208,14 @@ namespace NuGet.Server.V2.Tests
 
         public class DownloadMethod
         {
-            [Fact]
-            public async Task DownloadReturnsContentOfExistingPackage()
+            [Theory]
+            [InlineData("1.0.0")]
+            [InlineData("1.0.0-a")]
+            [InlineData("1.0.0-a.1")]
+            [InlineData("1.0.0-a.1+git")]
+            [InlineData("1.0.0-a+git")]
+            [InlineData("1.0.0+git")]
+            public async Task DownloadReturnsContentOfExistingPackage(string version)
             {
                 // Arrange
                 using (var temporaryDirectory = new TemporaryDirectory())
@@ -185,13 +225,13 @@ namespace NuGet.Server.V2.Tests
                     File.WriteAllText(packagePath, packageContent);
 
                     var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                    repo.Setup(r => r.GetPackagesAsync(Token)).ReturnsAsync(
+                    repo.Setup(r => r.GetPackagesAsync(ClientCompatibility.Max, Token)).ReturnsAsync(
                         new[]
                         {
                             new ServerPackage
                                 {
                                     Id = "Foo",
-                                    Version = SemanticVersion.Parse("1.0.0"),
+                                    Version = SemanticVersion.Parse(version),
                                     Listed = false,
                                     Authors = new [] { string.Empty },
                                     Owners = new [] { string.Empty },
@@ -206,7 +246,7 @@ namespace NuGet.Server.V2.Tests
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                     // Act
-                    using (var result = await v2Service.Download("Foo", "1.0.0"))
+                    using (var result = await v2Service.Download("Foo", version))
                     {
                         // Assert
                         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
@@ -228,7 +268,9 @@ namespace NuGet.Server.V2.Tests
                     File.WriteAllText(packagePath, packageContent);
 
                     var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                    repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                    repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                         new[]
                         {
                             new ServerPackage
@@ -265,7 +307,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         new ServerPackage
@@ -303,7 +347,8 @@ namespace NuGet.Server.V2.Tests
                             new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
                             v2Service.Request),
                         "Foo",
-                        Token))
+                        semVerLevel: "",
+                        token: Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -318,12 +363,100 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
+            public async Task FindPackagesByIdExcludesSemVer2ByDefault()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.Is<ClientCompatibility>(x => x.SemVerLevel.Equals(new SemanticVersion("1.0.0"))),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
+                    new[]
+                {
+                        new ServerPackage
+                            {
+                                Id = "Foo",
+                                Version = SemanticVersion.Parse("1.0.0"),
+                                Listed = true,
+                                Authors = new [] { string.Empty },
+                                Owners = new [] { string.Empty },
+                                Description = string.Empty,
+                                Summary = string.Empty,
+                                Tags = string.Empty
+                            }
+                }.AsQueryable());
+
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = (await v2Service.FindPackagesById(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        "Foo",
+                        semVerLevel: "",
+                        token: Token))
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
+
+                // Assert
+                Assert.Equal(1, result.Count());
+                Assert.Equal("Foo", result.First().Id);
+                Assert.Equal("1.0.0", result.First().Version);
+            }
+
+            [Fact]
+            public async Task FindPackagesByIdAllowsSemVer2ToBeIncluded()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.Is<ClientCompatibility>(x => x.SemVerLevel.Equals(new SemanticVersion("2.0.0"))),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
+                    new[]
+                {
+                        new ServerPackage
+                            {
+                                Id = "Foo",
+                                Version = SemanticVersion.Parse("1.0.0"),
+                                Listed = true,
+                                Authors = new [] { string.Empty },
+                                Owners = new [] { string.Empty },
+                                Description = string.Empty,
+                                Summary = string.Empty,
+                                Tags = string.Empty
+                            }
+                }.AsQueryable());
+
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = (await v2Service.FindPackagesById(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        "Foo",
+                        semVerLevel: "2.0.0",
+                        token: Token))
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
+
+                // Assert
+                Assert.Equal(1, result.Count());
+                Assert.Equal("Foo", result.First().Id);
+                Assert.Equal("1.0.0", result.First().Version);
+            }
+
+            [Fact]
             public async Task FindPackagesByIdReturnsEmptyCollectionWhenNoPackages()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
                 repo
-                    .Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>()))
+                    .Setup(r => r.GetPackagesAsync(It.IsAny<ClientCompatibility>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Enumerable.Empty<IServerPackage>());
 
                 var v2Service = new TestableNuGetODataController(repo.Object);
@@ -335,7 +468,8 @@ namespace NuGet.Server.V2.Tests
                             new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
                             v2Service.Request),
                         "Foo",
-                        Token))
+                        semVerLevel: "",
+                        token: Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -359,13 +493,16 @@ namespace NuGet.Server.V2.Tests
                             new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
                             v2Service.Request),
                         "",
-                        Token))
+                        semVerLevel: "",
+                        token: Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
 
                 // Assert
-                repo.Verify(r => r.GetPackagesAsync(It.IsAny<CancellationToken>()), Times.Never);
+                repo.Verify(r => r.GetPackagesAsync(
+                    It.IsAny<ClientCompatibility>(),
+                    It.IsAny<CancellationToken>()), Times.Never);
                 Assert.Equal(0, result.Count());
             }
         }
@@ -407,11 +544,79 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
+            public async Task GetUpdatesExcludesSemVer2ByDefault()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackagesAsync(
+                    It.Is<ClientCompatibility>(x => x.SemVerLevel.Equals(new SemanticVersion("1.0.0"))),
+                    It.IsAny<CancellationToken>())).ReturnsAsync(
+                    new[]
+                {
+                        CreatePackageWithDefaults("Foo", "1.0.0", listed: true)
+                }.AsQueryable());
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = (await v2Service.GetUpdates(
+                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                    "Foo",
+                    "1.0.0",
+                    includePrerelease: false,
+                    includeAllVersions: false,
+                    targetFrameworks: null,
+                    versionConstraints: null,
+                    semVerLevel: ""))
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
+
+                // Assert
+                Assert.Equal(0, result.Count());
+            }
+
+            [Fact]
+            public async Task GetUpdatesAllowsSemVer2ToBeIncluded()
+            {
+                // Arrange
+                var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
+                repo.Setup(r => r.GetPackagesAsync(
+                    It.Is<ClientCompatibility>(x => x.SemVerLevel.Equals(new SemanticVersion("2.0.0"))),
+                    It.IsAny<CancellationToken>())).ReturnsAsync(
+                    new[]
+                {
+                        CreatePackageWithDefaults("Foo", "1.0.0", listed: true)
+                }.AsQueryable());
+                var v2Service = new TestableNuGetODataController(repo.Object);
+                v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
+
+                // Act
+                var result = (await v2Service.GetUpdates(
+                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
+                    "Foo",
+                    "1.0.0",
+                    includePrerelease: false,
+                    includeAllVersions: false,
+                    targetFrameworks: null,
+                    versionConstraints: null,
+                    semVerLevel: "2.0.0"))
+                    .ExpectQueryResult<ODataPackage>()
+                    .GetInnerResult()
+                    .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
+
+                // Assert
+                Assert.Equal(0, result.Count());
+            }
+
+            [Fact]
             public async Task GetUpdatesIgnoresItemsWithMalformedVersions()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                    It.IsAny<ClientCompatibility>(),
+                    It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -446,7 +651,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                    It.IsAny<ClientCompatibility>(),
+                    It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -484,7 +691,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -526,7 +735,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -560,7 +771,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -599,7 +812,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -639,7 +854,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -678,7 +895,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -714,7 +933,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -751,7 +972,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(),
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -790,7 +1013,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -829,7 +1054,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -871,7 +1098,9 @@ namespace NuGet.Server.V2.Tests
                 // Arrange
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -909,7 +1138,9 @@ namespace NuGet.Server.V2.Tests
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+                repo.Setup(r => r.GetPackagesAsync(
+                        It.IsAny<ClientCompatibility>(), 
+                        It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
