@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Server.Core.Logging;
 
@@ -77,37 +78,49 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        public HashSet<ServerPackage> GetAll(bool enableDelisting)
+        public async Task<HashSet<ServerPackage>> GetAllAsync(bool enableDelisting, CancellationToken token)
         {
             var allPackages = new ConcurrentBag<ServerPackage>();
-            
-            Parallel.ForEach(_repository.GetPackages(), package =>
-            {
-                ServerPackage serverPackage;
 
-                // Try to create the server package and ignore a bad package if it fails.
-                if (TryCreateServerPackage(package, enableDelisting, out serverPackage))
-                {
-                    allPackages.Add(serverPackage);
-                }
-            });
+            var tasks = _repository
+                .GetPackages()
+                .Select(package => TryAddServerPackageAsync(allPackages, package, enableDelisting, token))
+                .ToList();
+
+            await Task.WhenAll(tasks);
 
             // Only return unique packages.
             return new HashSet<ServerPackage>(allPackages, IdAndVersionEqualityComparer.Instance);
         }
 
-        private bool TryCreateServerPackage(IPackage package, bool enableDelisting, out ServerPackage serverPackage)
+        private async Task TryAddServerPackageAsync(
+            ConcurrentBag<ServerPackage> allPackages,
+            IPackage package,
+            bool enableDelisting,
+            CancellationToken token)
+        {
+            // Immediately defer work to the background thread.
+            await Task.Yield();
+
+            // Try to create the server package and ignore a bad package if it fails.
+            var serverPackage = CreateServerPackage(package, enableDelisting, token);
+            if (serverPackage != null)
+            {
+                allPackages.Add(serverPackage);
+            }
+        }
+
+        private ServerPackage CreateServerPackage(
+            IPackage package,
+            bool enableDelisting,
+            CancellationToken token)
         {
             try
             {
-                serverPackage = CreateServerPackage(package, enableDelisting);
-
-                return true;
+                return CreateServerPackage(package, enableDelisting);
             }
             catch (Exception e)
             {
-                serverPackage = null;
-
                 _logger.Log(
                     LogLevel.Warning,
                     "Unable to create server package - {0} {1}: {2}",
@@ -115,7 +128,7 @@ namespace NuGet.Server.Core.Infrastructure
                     package.Version,
                     e.Message);
 
-                return false;
+                return null;
             }
         }
 

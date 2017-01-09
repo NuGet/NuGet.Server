@@ -5,53 +5,63 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NuGet.Server.Core.Infrastructure
 {
     public static class ServerPackageRepositoryExtensions
     {
-        public static IQueryable<IServerPackage> FindPackagesById(
-            this IServerPackageRepository repository,
-            string id)
-        {
-            return repository
-                .GetPackages()
-                .Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, id));
-        }
-
-        public static IQueryable<IServerPackage> Search(
-            this IServerPackageRepository repository,
-            string searchTerm,
-            bool allowPrereleaseVersions)
-        {
-            return repository.Search(searchTerm, Enumerable.Empty<string>(), allowPrereleaseVersions);
-        }
-
-        public static IServerPackage FindPackage(
+        public static async Task<IEnumerable<IServerPackage>> FindPackagesByIdAsync(
             this IServerPackageRepository repository,
             string id,
-            SemanticVersion version)
+            CancellationToken token)
         {
-            return repository
-                .FindPackagesById(id)
-                .FirstOrDefault(p => p.Version.Equals(version));
+            var packages = await repository.GetPackagesAsync(token);
+
+            return packages.Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, id));
         }
 
-        public static IServerPackage FindPackage(this IServerPackageRepository repository, string id)
+        public static async Task<IEnumerable<IServerPackage>> SearchAsync(
+            this IServerPackageRepository repository,
+            string searchTerm,
+            bool allowPrereleaseVersions,
+            CancellationToken token)
         {
-            return repository
-                .FindPackagesById(id)
+            return await repository.SearchAsync(searchTerm, Enumerable.Empty<string>(), allowPrereleaseVersions, token);
+        }
+
+        public static async Task<IServerPackage> FindPackageAsync(
+            this IServerPackageRepository repository,
+            string id,
+            SemanticVersion version,
+            CancellationToken token)
+        {
+            var packages = await repository.FindPackagesByIdAsync(id, token);
+
+            return packages.FirstOrDefault(p => p.Version.Equals(version));
+        }
+
+        public static async Task<IServerPackage> FindPackageAsync(
+            this IServerPackageRepository repository,
+            string id,
+            CancellationToken token)
+        {
+            var packages = await repository.FindPackagesByIdAsync(id, token);
+
+            return packages
                 .OrderByDescending(p => p.Version)
                 .FirstOrDefault();
         }
 
-        public static IEnumerable<IServerPackage> GetUpdates(
+        public static async Task<IEnumerable<IServerPackage>> GetUpdatesAsync(
             this IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
             bool includePrerelease,
             bool includeAllVersions,
             IEnumerable<FrameworkName> targetFramework,
-            IEnumerable<IVersionSpec> versionConstraints)
+            IEnumerable<IVersionSpec> versionConstraints,
+            CancellationToken token)
         {
             List<IPackageName> packageList = packages.ToList();
 
@@ -76,7 +86,13 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             // These are the packages that we need to look at for potential updates.
-            ILookup<string, IServerPackage> sourcePackages = GetUpdateCandidates(repository, packageList, includePrerelease)
+            var candidates = await GetUpdateCandidatesAsync(
+                repository,
+                packageList,
+                includePrerelease,
+                token);
+
+            ILookup<string, IServerPackage> sourcePackages = candidates
                 .ToList()
                 .ToLookup(package => package.Id, StringComparer.OrdinalIgnoreCase);
 
@@ -118,12 +134,13 @@ namespace NuGet.Server.Core.Infrastructure
                 .Select(g => g.OrderByDescending(p => p.Version).First());
         }
 
-        private static IQueryable<IServerPackage> GetUpdateCandidates(
+        private static async Task<IEnumerable<IServerPackage>> GetUpdateCandidatesAsync(
             IServerPackageRepository repository,
             IEnumerable<IPackageName> packages,
-            bool includePrerelease)
+            bool includePrerelease,
+            CancellationToken token)
         {
-            var query = repository.GetPackages();
+            var query = await repository.GetPackagesAsync(token);
 
             var ids = new HashSet<string>(
                 packages.Select(p => p.Id),

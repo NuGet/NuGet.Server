@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Query;
@@ -24,6 +25,8 @@ namespace NuGet.Server.V2.Tests
 {
     public class NuGetODataControllerTests
     {
+        private static CancellationToken Token => CancellationToken.None;
+
         internal static ServerPackage CreatePackageWithDefaults(
             string id,
             string version,
@@ -57,7 +60,7 @@ namespace NuGet.Server.V2.Tests
             [InlineData("Id eq 'Bar'", 1, new[] { "Bar" }, new[] { "1.0.0" })]
             [InlineData("Id eq 'Bar' and IsPrerelease eq true", 100, new[] { "Bar", "Bar" }, new[] { "2.0.1-a", "2.0.1-b" })]
             [InlineData("Id eq 'Bar' or Id eq 'Foo'", 100, new[] { "Foo", "Foo", "Bar", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a", "2.0.1-b" })]
-            public void PackagesReturnsCollection(string filter, int top, string[] expectedIds, string[] expectedVersions)
+            public async Task PackagesReturnsCollection(string filter, int top, string[] expectedIds, string[] expectedVersions)
             {
                 // Arrange
                 var repo = ControllerTestHelpers.SetupTestPackageRepository();
@@ -66,7 +69,11 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages?$filter=" + filter + "&$top=" + top);
 
                 // Act
-                var result = (v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request)))
+                var result = (await v2Service.Get(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -90,7 +97,7 @@ namespace NuGet.Server.V2.Tests
             [InlineData("Id eq 'Bar' and IsPrerelease eq true", 100, 2)]
             [InlineData("Id eq 'Bar' or Id eq 'Foo'", 100, 6)]
             [InlineData("Id eq 'NotBar'", 100, 0)]
-            public void PackagesCountReturnsCorrectCount(string filter, int top, int expectedNumberOfPackages)
+            public async Task PackagesCountReturnsCorrectCount(string filter, int top, int expectedNumberOfPackages)
             {
                 // Arrange
                 var repo = ControllerTestHelpers.SetupTestPackageRepository();
@@ -98,7 +105,11 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages/$count?$filter=" + filter + "&$top=" + top);
 
                 // Act
-                var result = (v2Service.GetCount(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request)))
+                var result = (await v2Service.GetCount(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectResult<PlainTextResult>();
@@ -113,7 +124,7 @@ namespace NuGet.Server.V2.Tests
             [InlineData("Bar", "1.0.0")]
             [InlineData("Bar", "2.0.0")]
             [InlineData("Bar", "2.0.1-b")]
-            public void PackagesByIdAndVersionReturnsPackage(string expectedId, string expectedVersion)
+            public async Task PackagesByIdAndVersionReturnsPackage(string expectedId, string expectedVersion)
             {
                 // Arrange
                 var repo = ControllerTestHelpers.SetupTestPackageRepository();
@@ -121,7 +132,13 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages(Id='" + expectedId + "', Version='" + expectedVersion + "')");
 
                 // Act
-                var result = (v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request), expectedId, expectedVersion))
+                var result = (await v2Service.Get(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        expectedId,
+                        expectedVersion,
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<ODataPackage>();
@@ -135,7 +152,7 @@ namespace NuGet.Server.V2.Tests
             [InlineData("NoFoo", "1.0.0")]
             [InlineData("NoBar", "1.0.0-a")]
             [InlineData("Bar", "9.9.9")]
-            public void PackagesByIdAndVersionReturnsNotFoundWhenPackageNotFound(string expectedId, string expectedVersion)
+            public async Task PackagesByIdAndVersionReturnsNotFoundWhenPackageNotFound(string expectedId, string expectedVersion)
             {
                 // Arrange
                 var repo = ControllerTestHelpers.SetupTestPackageRepository();
@@ -143,8 +160,14 @@ namespace NuGet.Server.V2.Tests
                 var v2Service = new TestableNuGetODataController(repo.Object);
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Packages(Id='" + expectedId + "', Version='" + expectedVersion + "')");
 
-                //// Act
-                v2Service.Get(new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request), expectedId, expectedVersion)
+                // Act
+                (await v2Service.Get(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        expectedId,
+                        expectedVersion,
+                        Token))
                     .ExpectResult<NotFoundResult>();
             }
         }
@@ -162,7 +185,7 @@ namespace NuGet.Server.V2.Tests
                     File.WriteAllText(packagePath, packageContent);
 
                     var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                    repo.Setup(r => r.GetPackages()).Returns(
+                    repo.Setup(r => r.GetPackagesAsync(Token)).ReturnsAsync(
                         new[]
                         {
                             new ServerPackage
@@ -183,7 +206,7 @@ namespace NuGet.Server.V2.Tests
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                     // Act
-                    using (var result = v2Service.Download("Foo", "1.0.0"))
+                    using (var result = await v2Service.Download("Foo", "1.0.0"))
                     {
                         // Assert
                         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
@@ -195,7 +218,7 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void DownloadReturnsNotFoundOnMissingPackage()
+            public async Task DownloadReturnsNotFoundOnMissingPackage()
             {
                 // Arrange
                 using (var temporaryDirectory = new TemporaryDirectory())
@@ -205,7 +228,7 @@ namespace NuGet.Server.V2.Tests
                     File.WriteAllText(packagePath, packageContent);
 
                     var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                    repo.Setup(r => r.GetPackages()).Returns(
+                    repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                         new[]
                         {
                             new ServerPackage
@@ -226,7 +249,7 @@ namespace NuGet.Server.V2.Tests
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                     // Act
-                    using (var result = v2Service.Download("Bar", "1.0.0"))
+                    using (var result = await v2Service.Download("Bar", "1.0.0"))
                     {
                         // Assert
                         Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
@@ -238,11 +261,11 @@ namespace NuGet.Server.V2.Tests
         public class FindPackagesByIdMethod
         {
             [Fact]
-            public void FindPackagesByIdReturnsUnlistedAndPrereleasePackages()
+            public async Task FindPackagesByIdReturnsUnlistedAndPrereleasePackages()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         new ServerPackage
@@ -275,9 +298,12 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = (v2Service.FindPackagesById(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    "Foo"))
+                var result = (await v2Service.FindPackagesById(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        "Foo",
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -292,19 +318,24 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void FindPackagesByIdReturnsEmptyCollectionWhenNoPackages()
+            public async Task FindPackagesByIdReturnsEmptyCollectionWhenNoPackages()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(() => Enumerable.Empty<ServerPackage>().AsQueryable());
+                repo
+                    .Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(Enumerable.Empty<IServerPackage>());
 
                 var v2Service = new TestableNuGetODataController(repo.Object);
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = (v2Service.FindPackagesById(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    "Foo"))
+                var result = (await v2Service.FindPackagesById(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        "Foo",
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -314,7 +345,7 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void FindPackagesByIdDoesNotHitBackendWhenIdIsEmpty()
+            public async Task FindPackagesByIdDoesNotHitBackendWhenIdIsEmpty()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Loose);
@@ -323,15 +354,18 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = (v2Service.FindPackagesById(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    ""))
+                var result = (await v2Service.FindPackagesById(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        "",
+                        Token))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
 
                 // Assert
-                repo.Verify(r => r.GetPackages(), Times.Never);
+                repo.Verify(r => r.GetPackagesAsync(It.IsAny<CancellationToken>()), Times.Never);
                 Assert.Equal(0, result.Count());
             }
         }
@@ -348,7 +382,7 @@ namespace NuGet.Server.V2.Tests
             [InlineData("A", "   |")]
             [InlineData("A", "|  ")]
             [InlineData("A|B", "1.0|")]
-            public void GetUpdatesReturnsEmptyResultsIfInputIsMalformed(string id, string version)
+            public async Task GetUpdatesReturnsEmptyResultsIfInputIsMalformed(string id, string version)
             {
                 // Arrange
                 var repo = Mock.Of<IServerPackageRepository>();
@@ -356,14 +390,16 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
-                    new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
-                    id,
-                    version,
-                    includePrerelease: false,
-                    includeAllVersions: true,
-                    targetFrameworks: null,
-                    versionConstraints: null)
+                var result = (await v2Service.GetUpdates(
+                        new ODataQueryOptions<ODataPackage>(
+                            new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)),
+                            v2Service.Request),
+                        id,
+                        version,
+                        includePrerelease: false,
+                        includeAllVersions: true,
+                        targetFrameworks: null,
+                        versionConstraints: null))
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
 
                 // Assert
@@ -371,11 +407,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesIgnoresItemsWithMalformedVersions()
+            public async Task GetUpdatesIgnoresItemsWithMalformedVersions()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -388,14 +424,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|abcd",
                     includePrerelease: false,
                     includeAllVersions: false,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -406,11 +442,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsVersionsNewerThanListedVersion()
+            public async Task GetUpdatesReturnsVersionsNewerThanListedVersion()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -423,14 +459,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -444,11 +480,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesIgnoresPackagesNotRequested()
+            public async Task GetUpdatesIgnoresPackagesNotRequested()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -461,14 +497,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo",
                     "1.0.0",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -486,11 +522,11 @@ namespace NuGet.Server.V2.Tests
             [InlineData("1.0||2.0")]
             [InlineData("||")]
             [InlineData("|1.0|")]
-            public void GetUpdatesReturnsEmptyIfVersionConstraintsContainWrongNumberOfElements(string constraintString)
+            public async Task GetUpdatesReturnsEmptyIfVersionConstraintsContainWrongNumberOfElements(string constraintString)
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -505,14 +541,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: constraintString)
+                    versionConstraints: constraintString))
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
 
                 // Assert
@@ -520,11 +556,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsVersionsConformingToConstraints()
+            public async Task GetUpdatesReturnsVersionsConformingToConstraints()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -539,14 +575,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: "(,1.2.0)|[2.0,2.3]")
+                    versionConstraints: "(,1.2.0)|[2.0,2.3]"))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -559,11 +595,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesIgnoreInvalidVersionConstraints()
+            public async Task GetUpdatesIgnoreInvalidVersionConstraints()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -578,14 +614,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: "(,1.2.0)|abdfsdf")
+                    versionConstraints: "(,1.2.0)|abdfsdf"))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -599,11 +635,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsVersionsConformingToConstraintsWithMissingConstraintsForSomePackges()
+            public async Task GetUpdatesReturnsVersionsConformingToConstraintsWithMissingConstraintsForSomePackges()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -618,14 +654,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: false,
                     targetFrameworks: null,
-                    versionConstraints: "|(1.2,2.8)")
+                    versionConstraints: "|(1.2,2.8)"))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -638,11 +674,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsEmptyPackagesIfNoPackageSatisfiesConstraints()
+            public async Task GetUpdatesReturnsEmptyPackagesIfNoPackageSatisfiesConstraints()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -657,14 +693,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: false,
                     targetFrameworks: null,
-                    versionConstraints: "3.4|4.0")
+                    versionConstraints: "3.4|4.0"))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>();
@@ -674,11 +710,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsCaseInsensitiveMatches()
+            public async Task GetUpdatesReturnsCaseInsensitiveMatches()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -691,14 +727,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "foo",
                     "1.0.0",
                     includePrerelease: false,
                     includeAllVersions: false,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -711,11 +747,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsUpdateIfAnyOfTheProvidedVersionsIsOlder()
+            public async Task GetUpdatesReturnsUpdateIfAnyOfTheProvidedVersionsIsOlder()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -730,14 +766,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Foo|Qux",
                     "1.0.0|1.2.0|0.9",
                     includePrerelease: false,
                     includeAllVersions: false,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -750,11 +786,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsPrereleasePackages()
+            public async Task GetUpdatesReturnsPrereleasePackages()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -768,14 +804,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.1.0|0.9",
                     includePrerelease: true,
                     includeAllVersions: true,
                     targetFrameworks: null,
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -789,11 +825,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesReturnsResultsIfDuplicatesInPackageList()
+            public async Task GetUpdatesReturnsResultsIfDuplicatesInPackageList()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -808,15 +844,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result =
-                    v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                         new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                         "Foo|Qux|Foo",
                         "0.9|1.5|1.1.2",
                         includePrerelease: false,
                         includeAllVersions: true,
                         targetFrameworks: null,
-                        versionConstraints: null)
+                        versionConstraints: null))
                         .ExpectQueryResult<ODataPackage>()
                         .GetInnerResult()
                         .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -831,12 +866,12 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesFiltersByTargetFramework()
+            public async Task GetUpdatesFiltersByTargetFramework()
             {
                 // Arrange
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -850,14 +885,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0|1.5",
                     includePrerelease: false,
                     includeAllVersions: true,
                     targetFrameworks: "net40",
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -870,11 +905,11 @@ namespace NuGet.Server.V2.Tests
             }
 
             [Fact]
-            public void GetUpdatesFiltersIncludesHighestPrereleasePackage()
+            public async Task GetUpdatesFiltersIncludesHighestPrereleasePackage()
             {
                 // Arrange
                 var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-                repo.Setup(r => r.GetPackages()).Returns(
+                repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
                     new[]
                 {
                         CreatePackageWithDefaults("Foo", "1.0.0", listed: true),
@@ -889,14 +924,14 @@ namespace NuGet.Server.V2.Tests
                 v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/");
 
                 // Act
-                var result = v2Service.GetUpdates(
+                var result = (await v2Service.GetUpdates(
                     new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                     "Foo|Qux",
                     "1.0|1.5",
                     includePrerelease: true,
                     includeAllVersions: false,
                     targetFrameworks: "net40",
-                    versionConstraints: null)
+                    versionConstraints: null))
                     .ExpectQueryResult<ODataPackage>()
                     .GetInnerResult()
                     .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -918,22 +953,22 @@ namespace NuGet.Server.V2.Tests
             [InlineData("CommonTag", false, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
             [InlineData("CommonTag CommonTag2", false, new[] { "Foo", "Bar", "Bar" }, new[] { "1.0.0", "1.0.0", "2.0.0" })]
             [InlineData("", true, new[] { "Foo", "Foo", "Bar", "Bar", "Bar" }, new[] { "1.0.0", "1.0.1-a", "1.0.0", "2.0.0", "2.0.1-a" })]
-            public void SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, string[] expectedIds, string[] expectedVersions)
+            public async Task SearchFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, string[] expectedIds, string[] expectedVersions)
             {
                 using (var temporaryDirectory = new TemporaryDirectory())
                 {
                     // Arrange
-                    var serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+                    var serverRepository = await CreateRepositoryWithPackagesAsync(temporaryDirectory);
 
                     var v2Service = new TestableNuGetODataController(serverRepository);
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=" + includePrerelease);
 
                     // Act
-                    var result = v2Service.Search(
+                    var result = (await v2Service.Search(
                         new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                         searchTerm: searchTerm,
                         targetFramework: null,
-                        includePrerelease: includePrerelease)
+                        includePrerelease: includePrerelease))
                         .ExpectQueryResult<ODataPackage>()
                         .GetInnerResult()
                         .ExpectOkNegotiatedContentResult<IQueryable<ODataPackage>>()
@@ -959,22 +994,22 @@ namespace NuGet.Server.V2.Tests
             [InlineData("", false, 3)]
             [InlineData("CommonTag", false, 3)]
             [InlineData("", true, 5)]
-            public void SearchCountFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages)
+            public async Task SearchCountFiltersPackagesBySearchTermAndPrereleaseFlag(string searchTerm, bool includePrerelease, int expectedNumberOfPackages)
             {
                 using (var temporaryDirectory = new TemporaryDirectory())
                 {
                     // Arrange
-                    var serverRepository = CreateRepositoryWithPackages(temporaryDirectory);
+                    var serverRepository = await CreateRepositoryWithPackagesAsync(temporaryDirectory);
 
                     var v2Service = new TestableNuGetODataController(serverRepository);
                     v2Service.Request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:8081/api/v2/Search()/$count?searchTerm='" + searchTerm + "'&targetFramework=''&includePrerelease=false");
 
                     // Act
-                    var result = v2Service.SearchCount(
+                    var result = (await v2Service.SearchCount(
                         new ODataQueryOptions<ODataPackage>(new ODataQueryContext(NuGetV2WebApiEnabler.BuildNuGetODataModel(), typeof(ODataPackage)), v2Service.Request),
                         searchTerm: searchTerm,
                         targetFramework: null,
-                        includePrerelease: includePrerelease)
+                        includePrerelease: includePrerelease))
                         .ExpectQueryResult<ODataPackage>()
                         .GetInnerResult()
                         .ExpectResult<PlainTextResult>();
@@ -984,9 +1019,9 @@ namespace NuGet.Server.V2.Tests
                 }
             }
 
-            private ServerPackageRepository CreateRepositoryWithPackages(TemporaryDirectory temporaryDirectory)
+            private async Task<ServerPackageRepository> CreateRepositoryWithPackagesAsync(TemporaryDirectory temporaryDirectory)
             {
-                return ServerPackageRepositoryTest.CreateServerPackageRepository(temporaryDirectory.Path, repository =>
+                return await ServerPackageRepositoryTest.CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("Foo", "1.0.0", new[] { "Foo", "CommonTag", "CommonTag2" }));
                     repository.AddPackage(CreatePackage("Foo", "1.0.1-a", new[] { "Foo", "CommonTag", "CommonTag2" }));

@@ -2,7 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NuGet.Server.Core.Infrastructure
 {
@@ -10,17 +11,18 @@ namespace NuGet.Server.Core.Infrastructure
     {
         string Source { get; }
 
-        void AddPackage(IPackage package);
+        Task AddPackageAsync(IPackage package, CancellationToken token);
 
-        IQueryable<IServerPackage> GetPackages();
+        Task<IEnumerable<IServerPackage>> GetPackagesAsync(CancellationToken token);
 
-        IQueryable<IServerPackage> Search(
+        Task<IEnumerable<IServerPackage>> SearchAsync(
             string searchTerm,
             IEnumerable<string> targetFrameworks,
-            bool allowPrereleaseVersions);
+            bool allowPrereleaseVersions,
+            CancellationToken token);
 
-        void ClearCache();
+        Task ClearCacheAsync(CancellationToken token);
 
-        void RemovePackage(string packageId, SemanticVersion version);
+        Task RemovePackageAsync(string packageId, SemanticVersion version, CancellationToken token);
     }
 }

@@ -3,6 +3,8 @@
 
 using System.Net;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Http;
 using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.V2.Controllers;
@@ -39,11 +41,11 @@ namespace NuGet.Server.DataServices
 
         [HttpGet]
         // Exposed through ordinary Web API route. Bypasses OData pipeline.
-        public HttpResponseMessage ClearCache()
+        public async Task<HttpResponseMessage> ClearCache(CancellationToken token)
         {
             if (RequestContext.IsLocal)
             {
-                _serverRepository.ClearCache();
+                await _serverRepository.ClearCacheAsync(token);
                 return CreateStringResponse(HttpStatusCode.OK, "Server cache has been cleared.");
             }
             else

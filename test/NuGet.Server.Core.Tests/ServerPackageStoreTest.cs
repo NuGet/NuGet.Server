@@ -3,6 +3,8 @@
 
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Moq;
 using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Tests.Infrastructure;
@@ -12,12 +14,13 @@ namespace NuGet.Server.Core.Tests
 {
     public class ServerPackageStoreTest
     {
+        private static CancellationToken Token => CancellationToken.None;
         private const string PackageId = "NuGet.Versioning";
         private const string PackageVersionString = "3.5.0";
         private static readonly SemanticVersion PackageVersion = new SemanticVersion(PackageVersionString);
 
         [Fact]
-        public void Remove_SupportsEnabledUnlisting()
+        public async Task Remove_SupportsEnabledUnlisting()
         {
             // Arrange
             using (var directory = new TemporaryDirectory())
@@ -34,7 +37,7 @@ namespace NuGet.Server.Core.Tests
                 target.Remove(PackageId, PackageVersion, enableDelisting: true);
 
                 // Assert
-                var package = target.GetAll(enableDelisting: true).SingleOrDefault();
+                var package = (await target.GetAllAsync(enableDelisting: true, token: Token)).SingleOrDefault();
                 Assert.NotNull(package);
                 Assert.Equal(PackageId, package.Id);
                 Assert.Equal(PackageVersion, package.Version);
@@ -47,7 +50,7 @@ namespace NuGet.Server.Core.Tests
         }
 
         [Fact]
-        public void Remove_SupportsDisabledUnlisting()
+        public async Task Remove_SupportsDisabledUnlisting()
         {
             // Arrange
             using (var directory = new TemporaryDirectory())
@@ -64,13 +67,13 @@ namespace NuGet.Server.Core.Tests
                 target.Remove(PackageId, PackageVersion, enableDelisting: false);
 
                 // Assert
-                Assert.Empty(target.GetAll(enableDelisting: false));
+                Assert.Empty(await target.GetAllAsync(enableDelisting: false, token: Token));
                 Assert.Empty(repository.GetPackages());
             }
         }
 
         [Fact]
-        public void Remove_NoOpsWhenPackageDoesNotExist()
+        public async Task Remove_NoOpsWhenPackageDoesNotExist()
         {
             // Arrange
             using (var directory = new TemporaryDirectory())
@@ -87,7 +90,7 @@ namespace NuGet.Server.Core.Tests
                 target.Remove("Foo", PackageVersion, enableDelisting: false);
 
                 // Assert
-                var package = target.GetAll(enableDelisting: false).FirstOrDefault();
+                var package = (await target.GetAllAsync(enableDelisting: false, token: Token)).FirstOrDefault();
                 Assert.NotNull(package);
                 Assert.Equal(PackageId, package.Id);
                 Assert.Equal(PackageVersion, package.Version);
