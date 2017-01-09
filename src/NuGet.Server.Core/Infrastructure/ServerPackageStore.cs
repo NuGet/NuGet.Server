@@ -99,25 +99,25 @@ namespace NuGet.Server.Core.Infrastructure
             bool enableDelisting,
             CancellationToken token)
         {
-            // Immediatelly defer work to the background thread.
+            // Immediately defer work to the background thread.
             await Task.Yield();
 
             // Try to create the server package and ignore a bad package if it fails.
-            var serverPackage = await CreateServerPackageAsync(package, enableDelisting, token);
+            var serverPackage = CreateServerPackage(package, enableDelisting, token);
             if (serverPackage != null)
             {
                 allPackages.Add(serverPackage);
             }
         }
 
-        private Task<ServerPackage> CreateServerPackageAsync(
+        private ServerPackage CreateServerPackage(
             IPackage package,
             bool enableDelisting,
             CancellationToken token)
         {
             try
             {
-                return Task.FromResult(CreateServerPackage(package, enableDelisting));
+                return CreateServerPackage(package, enableDelisting);
             }
             catch (Exception e)
             {
