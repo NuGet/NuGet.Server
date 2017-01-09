@@ -9,7 +9,6 @@ using System.Data.Services.Providers;
 using System.IO;
 using System.Linq;
 using System.ServiceModel.Web;
-using System.Text.RegularExpressions;
 using System.Web;
 using NuGet.Server.Infrastructure;
 

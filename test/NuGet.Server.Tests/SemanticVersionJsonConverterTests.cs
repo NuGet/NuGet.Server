@@ -37,8 +37,8 @@ namespace NuGet.Server.Tests
         [InlineData("2.0.0.0", "2.0.0.0")]
         [InlineData("3.0.0-alpha1", "3.0.0-alpha1")]
         [InlineData("4.0.0-0test.zero", "4.0.0-0test.zero")]
-        [InlineData("4.0.0-0test.zero+tagParses", "4.0.0-0test.zero")]
-        [InlineData("4.0.0-test.more.parts+tagsHash", "4.0.0-test.more.parts")]
+        [InlineData("4.0.0-0test.zero+tagParses", "4.0.0-0test.zero+tagParses")]
+        [InlineData("4.0.0-test.more.parts+tagsHash", "4.0.0-test.more.parts+tagsHash")]
         public void SerializesSemanticVersionAsString(string version, string expected)
         {
             // Arrange

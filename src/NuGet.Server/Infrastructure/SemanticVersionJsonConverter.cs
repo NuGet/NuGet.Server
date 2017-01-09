@@ -39,7 +39,15 @@ namespace NuGet.Server.Infrastructure
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
-            _serializer.Serialize(writer, value.ToString());
+            var semanticVersion = value as SemanticVersion;
+            if (semanticVersion != null)
+            {
+                _serializer.Serialize(writer, semanticVersion.ToOriginalString());
+            }
+            else
+            {
+                _serializer.Serialize(writer, value.ToString());
+            }
         }
     }
 }

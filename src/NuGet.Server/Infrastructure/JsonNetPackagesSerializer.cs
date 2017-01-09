@@ -17,7 +17,8 @@ namespace NuGet.Server.Infrastructure
 
         private readonly JsonSerializer _serializer = new JsonSerializer
         {
-            Formatting = Formatting.None
+            Formatting = Formatting.None,
+            NullValueHandling = NullValueHandling.Ignore
         };
 
         public void Serialize(IEnumerable<ServerPackage> packages, Stream stream)
@@ -40,11 +41,11 @@ namespace NuGet.Server.Infrastructure
             {
                 var packages = _serializer.Deserialize<SerializedServerPackages>(reader);
 
-                if (packages.SchemaVersion != CurrentSchemaVersion)
+                if (packages == null || packages.SchemaVersion != CurrentSchemaVersion)
                 {
                     throw new SerializationException(
                         $"The expected schema version of the packages file is '{CurrentSchemaVersion}', not " +
-                        $"'{packages.SchemaVersion}'.");
+                        $"'{packages?.SchemaVersion}'.");
                 }
                 
                 return packages.Packages;
