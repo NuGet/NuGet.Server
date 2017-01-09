@@ -212,7 +212,7 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 var serverPackages = new HashSet<ServerPackage>(IdAndVersionEqualityComparer.Instance);
 
-                foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", false))
+                foreach (var packageFile in _fileSystem.GetFiles(_fileSystem.Root, "*.nupkg", recursive: false))
                 {
                     try
                     {
@@ -373,11 +373,21 @@ namespace NuGet.Server.Core.Infrastructure
             _serverPackageCache.PersistIfDirty();
         }
 
+        /// <summary>
+        /// This is an event handler for background work. Therefore, it should never throw exceptions.
+        /// </summary>
         private async void RebuildPackageStoreAsync(CancellationToken token)
         {
-            using (await LockAndSuppressFileSystemWatcherAsync(token))
+            try
             {
-                await RebuildPackageStoreWithoutLockingAsync(token);
+                using (await LockAndSuppressFileSystemWatcherAsync(token))
+                {
+                    await RebuildPackageStoreWithoutLockingAsync(token);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Log(LogLevel.Error, "An exception occurred while rebuilding the package store: {0}", exception);
             }
         }
 
@@ -405,7 +415,7 @@ namespace NuGet.Server.Core.Infrastructure
         }
 
         /// <summary>
-        /// ReadPackagesFromDisk loads all packages from disk and determines additional metadata such as the hash,
+        /// Loads all packages from disk and determines additional metadata such as the hash,
         /// IsAbsoluteLatestVersion, and IsLatestVersion.
         /// 
         /// This method requires <see cref="LockAndSuppressFileSystemWatcherAsync(CancellationToken)"/>.
@@ -419,7 +429,7 @@ namespace NuGet.Server.Core.Infrastructure
                 var packages = await _serverPackageStore.GetAllAsync(EnableDelisting, token);
 
                 _logger.Log(LogLevel.Info, "Finished reading packages from disk.");
-                ;
+
                 return packages;
             }
             catch (Exception ex)
@@ -514,54 +524,69 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
+
+        /// <summary>
+        /// This is an event handler for background work. Therefore, it should never throw exceptions.
+        /// </summary>
         private async void FileSystemChangedAsync(object sender, FileSystemEventArgs e)
         {
-            if (_isFileSystemWatcherSuppressed)
+            try
             {
-                return;
+                if (_isFileSystemWatcherSuppressed)
+                {
+                    return;
+                }
+
+                _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
+
+                // 1) If a .nupkg is dropped in the root, add it as a package
+                if (string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(Path.GetExtension(e.Name), ".nupkg", StringComparison.OrdinalIgnoreCase))
+                {
+                    // When a package is dropped into the server packages root folder, add it to the repository.
+                    await AddPackagesFromDropFolderAsync(CancellationToken.None);
+                }
+
+                // 2) If a file is updated in a subdirectory, *or* a folder is deleted, invalidate the cache
+                if ((!string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
+                    || e.ChangeType == WatcherChangeTypes.Deleted)
+                {
+                    // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
+                    // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
+
+                    await ClearCacheAsync(CancellationToken.None);
+                }
             }
-
-            _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
-
-            // 1) If a .nupkg is dropped in the root, add it as a package
-            if (string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(Path.GetExtension(e.Name), ".nupkg", StringComparison.OrdinalIgnoreCase))
+            catch (Exception exception)
             {
-                // When a package is dropped into the server packages root folder, add it to the repository.
-                await AddPackagesFromDropFolderAsync(CancellationToken.None);
-            }
-
-            // 2) If a file is updated in a subdirectory, *or* a folder is deleted, invalidate the cache
-            if ((!string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
-                || e.ChangeType == WatcherChangeTypes.Deleted)
-            {
-                // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
-                // Recommend using e.FullPath to figure out which nupkgs need to be (re)computed.
-
-                await ClearCacheAsync(CancellationToken.None);
+                _logger.Log(LogLevel.Error, "An exception occurred while handling a file system event: {0}", exception);
             }
         }
 
-        private async Task<DisposableSemphoreSlim> LockAsync(CancellationToken token)
+        private async Task<Lock> LockAsync(CancellationToken token)
         {
-            var handle = new DisposableSemphoreSlim(_syncLock);
+            var handle = new Lock(_syncLock);
             await handle.WaitAsync(token);
             return handle;
         }
 
-        private async Task<SupressedFileSystemWatcher> LockAndSuppressFileSystemWatcherAsync(CancellationToken token)
+        private async Task<SuppressedFileSystemWatcher> LockAndSuppressFileSystemWatcherAsync(CancellationToken token)
         {
-            var handle = new SupressedFileSystemWatcher(this);
+            var handle = new SuppressedFileSystemWatcher(this);
             await handle.WaitAsync(token);
             return handle;
         }
 
-        private class DisposableSemphoreSlim : IDisposable
+        /// <summary>
+        /// A disposable type that wraps a semaphore so dispose releases the semaphore. This allows for more ergonomic
+        /// used (such as in a <code>using</code> statement).
+        /// </summary>
+        private class Lock : IDisposable
         {
             private readonly SemaphoreSlim _semaphore;
             private bool _lockTaken;
 
-            public DisposableSemphoreSlim(SemaphoreSlim semaphore)
+            public Lock(SemaphoreSlim semaphore)
             {
                 _semaphore = semaphore;
             }
@@ -584,12 +609,12 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        private class SupressedFileSystemWatcher : IDisposable
+        private class SuppressedFileSystemWatcher : IDisposable
         {
             private readonly ServerPackageRepository _repository;
-            private DisposableSemphoreSlim _lockHandle;
+            private Lock _lockHandle;
 
-            public SupressedFileSystemWatcher(ServerPackageRepository repository)
+            public SuppressedFileSystemWatcher(ServerPackageRepository repository)
             {
                 if (repository == null)
                 {
