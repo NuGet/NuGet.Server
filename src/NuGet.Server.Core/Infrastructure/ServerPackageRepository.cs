@@ -96,7 +96,7 @@ namespace NuGet.Server.Core.Infrastructure
         public string Source => _fileSystem.Root;
 
         private bool AllowOverrideExistingPackageOnPush =>
-            _settingsProvider.GetBoolSetting("allowOverrideExistingPackageOnPush", true);
+            _settingsProvider.GetBoolSetting("allowOverrideExistingPackageOnPush", false);
 
         private bool IgnoreSymbolsPackages =>
             _settingsProvider.GetBoolSetting("ignoreSymbolsPackages", false);
@@ -123,26 +123,7 @@ namespace NuGet.Server.Core.Infrastructure
             ClientCompatibility compatibility,
             CancellationToken token)
         {
-		    /*
-             * We rebuild the package storage under either of two conditions:
-             *
-             * 1. If the "needs rebuild" flag is set to true. This is initially the case when the repository is
-             *    instantiated, if a non-package drop file system event occurred (e.g. a file deletion), or if the
-             *    cache was manually cleared.
-             *
-             * 2. If the store has no packages at all. This is so we pick up initial packages as quickly as
-             *    possible.
-             */
-            if (_needsRebuild || _serverPackageCache.IsEmpty())
-            {
-                using (await LockAndSuppressFileSystemWatcherAsync(token))
-                {
-                    if (_needsRebuild || _serverPackageCache.IsEmpty())
-                    {
-                        await RebuildPackageStoreWithoutLockingAsync(token);
-                    }
-                }
-            }
+            await RebuildIfNeededAsync(shouldLock: true, token: token);
 
             // First time we come here, attach the file system watcher.
             if (_fileSystemWatcher == null &&
@@ -158,7 +139,7 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 SetupBackgroundJobs();
             }
-            
+
             var cache = _serverPackageCache.GetAll();
 
             if (!compatibility.AllowSemVer2)
@@ -167,6 +148,38 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             return cache;
+        }
+
+        private async Task RebuildIfNeededAsync(bool shouldLock, CancellationToken token)
+        {
+            /*
+             * We rebuild the package storage under either of two conditions:
+             *
+             * 1. If the "needs rebuild" flag is set to true. This is initially the case when the repository is
+             *    instantiated, if a non-package drop file system event occurred (e.g. a file deletion), or if the
+             *    cache was manually cleared.
+             *
+             * 2. If the store has no packages at all. This is so we pick up initial packages as quickly as
+             *    possible.
+             */
+            if (_needsRebuild || _serverPackageCache.IsEmpty())
+            {
+                if (shouldLock)
+                {
+                    using (await LockAndSuppressFileSystemWatcherAsync(token))
+                    {
+                        // Check the flags again, just in case another thread already did this work.
+                        if (_needsRebuild || _serverPackageCache.IsEmpty())
+                        {
+                            await RebuildPackageStoreWithoutLockingAsync(token);
+                        }
+                    }
+                }
+                else
+                {
+                    await RebuildPackageStoreWithoutLockingAsync(token);
+                }
+            }
         }
 
         public async Task<IEnumerable<IServerPackage>> SearchAsync(
@@ -202,18 +215,20 @@ namespace NuGet.Server.Core.Infrastructure
             return packages;
         }
 
-        private async Task AddPackagesFromDropFolderAsync(CancellationToken token)
+        internal async Task AddPackagesFromDropFolderAsync(CancellationToken token)
         {
             using (await LockAndSuppressFileSystemWatcherAsync(token))
             {
-                await AddPackagesFromDropFolderWithoutLockingAsync(token);
+                await RebuildIfNeededAsync(shouldLock: false, token: token);
+
+                AddPackagesFromDropFolderWithoutLocking();
             }
         }
 
         /// <summary>
         /// This method requires <see cref="LockAndSuppressFileSystemWatcherAsync(CancellationToken)"/>.
         /// </summary>
-        private async Task AddPackagesFromDropFolderWithoutLockingAsync(CancellationToken token)
+        private void AddPackagesFromDropFolderWithoutLocking()
         {
             _logger.Log(LogLevel.Info, "Start adding packages from drop folder.");
 
@@ -228,7 +243,7 @@ namespace NuGet.Server.Core.Infrastructure
                         // Create package
                         var package = new OptimizedZipPackage(_fileSystem, packageFile);
 
-                        if (!await CanPackageBeAddedAsync(package, shouldThrow: false, token: token))
+                        if (!CanPackageBeAddedWithoutLocking(package, shouldThrow: false))
                         {
                             continue;
                         }
@@ -275,10 +290,12 @@ namespace NuGet.Server.Core.Infrastructure
         {
             _logger.Log(LogLevel.Info, "Start adding package {0} {1}.", package.Id, package.Version);
 
-            await CanPackageBeAddedAsync(package, shouldThrow: true, token: token);
-
             using (await LockAndSuppressFileSystemWatcherAsync(token))
             {
+                await RebuildIfNeededAsync(shouldLock: false, token: token);
+
+                CanPackageBeAddedWithoutLocking(package, shouldThrow: true);
+
                 // Add the package to the file system store.
                 var serverPackage = _serverPackageStore.Add(
                     package,
@@ -291,7 +308,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        private async Task<bool> CanPackageBeAddedAsync(IPackage package, bool shouldThrow, CancellationToken token)
+        private bool CanPackageBeAddedWithoutLocking(IPackage package, bool shouldThrow)
         {
             if (IgnoreSymbolsPackages && package.IsSymbolsPackage())
             {
@@ -309,7 +326,7 @@ namespace NuGet.Server.Core.Infrastructure
 
             // Does the package already exist?
             if (!AllowOverrideExistingPackageOnPush &&
-                await this.ExistsAsync(package.Id, package.Version, token))
+                _serverPackageCache.Exists(package.Id, package.Version))
             {
                 var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 
@@ -414,7 +431,7 @@ namespace NuGet.Server.Core.Infrastructure
             _serverPackageCache.AddRange(packages);
 
             // Add packages from drop folder
-            await AddPackagesFromDropFolderWithoutLockingAsync(token);
+            AddPackagesFromDropFolderWithoutLocking();
 
             // Persist
             _serverPackageCache.PersistIfDirty();
