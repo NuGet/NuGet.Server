@@ -13,7 +13,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         Task AddPackageAsync(IPackage package, CancellationToken token);
 
-        Task<IEnumerable<IServerPackage>> GetPackagesAsync(ClientCompatibility compatiblity, CancellationToken token);
+        Task<IEnumerable<IServerPackage>> GetPackagesAsync(ClientCompatibility compatibility, CancellationToken token);
 
         Task<IEnumerable<IServerPackage>> SearchAsync(
             string searchTerm,

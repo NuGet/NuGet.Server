@@ -120,7 +120,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// This data is generated if it does not exist already.
         /// </summary>
         public async Task<IEnumerable<IServerPackage>> GetPackagesAsync(
-            ClientCompatibility compatiblity,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
 		    /*
@@ -161,7 +161,7 @@ namespace NuGet.Server.Core.Infrastructure
             
             var cache = _serverPackageCache.GetAll();
 
-            if (!compatiblity.AllowSemVer2)
+            if (!compatibility.AllowSemVer2)
             {
                 cache = cache.Where(p => !p.Version.IsSemVer2());
             }
