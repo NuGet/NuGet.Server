@@ -119,7 +119,9 @@ namespace NuGet.Server.Core.Infrastructure
         /// Package cache containing packages metadata. 
         /// This data is generated if it does not exist already.
         /// </summary>
-        public async Task<IEnumerable<IServerPackage>> GetPackagesAsync(CancellationToken token)
+        public async Task<IEnumerable<IServerPackage>> GetPackagesAsync(
+            ClientCompatibility compatibility,
+            CancellationToken token)
         {
 		    /*
              * We rebuild the package storage under either of two conditions:
@@ -156,18 +158,25 @@ namespace NuGet.Server.Core.Infrastructure
             {
                 SetupBackgroundJobs();
             }
+            
+            var cache = _serverPackageCache.GetAll();
 
-            // Return packages
-            return _serverPackageCache.GetAll();
+            if (!compatibility.AllowSemVer2)
+            {
+                cache = cache.Where(p => !p.Version.IsSemVer2());
+            }
+
+            return cache;
         }
 
         public async Task<IEnumerable<IServerPackage>> SearchAsync(
             string searchTerm,
             IEnumerable<string> targetFrameworks,
             bool allowPrereleaseVersions,
+            ClientCompatibility compatibility,
             CancellationToken token)
         {
-            var cache = await GetPackagesAsync(token);
+            var cache = await GetPackagesAsync(compatibility, token);
 
             var packages = cache
                 .Find(searchTerm)
@@ -299,7 +308,8 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             // Does the package already exist?
-            if (!AllowOverrideExistingPackageOnPush && await this.FindPackageAsync(package.Id, package.Version, token) != null)
+            if (!AllowOverrideExistingPackageOnPush &&
+                await this.ExistsAsync(package.Id, package.Version, token))
             {
                 var message = string.Format(Strings.Error_PackageAlreadyExists, package);
 

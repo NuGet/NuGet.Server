@@ -103,17 +103,16 @@ namespace NuGet.Server.Core.Infrastructure
             await Task.Yield();
 
             // Try to create the server package and ignore a bad package if it fails.
-            var serverPackage = CreateServerPackage(package, enableDelisting, token);
+            var serverPackage = CreateServerPackageOrNull(package, enableDelisting);
             if (serverPackage != null)
             {
                 allPackages.Add(serverPackage);
             }
         }
 
-        private ServerPackage CreateServerPackage(
+        private ServerPackage CreateServerPackageOrNull(
             IPackage package,
-            bool enableDelisting,
-            CancellationToken token)
+            bool enableDelisting)
         {
             try
             {
@@ -141,9 +140,6 @@ namespace NuGet.Server.Core.Infrastructure
             var serverPackage = new ServerPackage(
                 package,
                 packageDerivedData);
-
-            serverPackage.IsAbsoluteLatestVersion = false;
-            serverPackage.IsLatestVersion = false;
 
             return serverPackage;
         }

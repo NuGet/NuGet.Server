@@ -1,6 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Extensions;
 using System.Web.Http.OData.Formatter.Serialization;
@@ -56,23 +59,78 @@ namespace NuGet.Server.V2.OData.Serializers
                 }
                 entry.SetAnnotation(atomEntryMetadata);
 
+                // Set the ID and links. We have to do this because the self link should have a version containing
+                // SemVer 2.0.0 metadata (e.g. 1.0.0+git).
+                entry.Id = BuildId(instance, entityInstanceContext);
+                entry.ReadLink = new Uri(entry.Id);
+                entry.EditLink = new Uri(entry.Id);
+                
                 // Add package download link
                 entry.MediaResource = new ODataStreamReferenceValue
                 {
                     ContentType = ContentType,
                     ReadLink = BuildLinkForStreamProperty(instance, entityInstanceContext)
                 };
+
+                // Make the download action target match the media resource link.
+                entry.Actions = entry
+                    .Actions
+                    .Select(action =>
+                    {
+                        if (StringComparer.OrdinalIgnoreCase.Equals("Download", action.Title))
+                        {
+                            return new ODataAction
+                            {
+                                Metadata = action.Metadata,
+                                Target = entry.MediaResource.ReadLink,
+                                Title = action.Title
+                            };
+                        }
+
+                        return action;
+                    })
+                    .ToList();
             }
         }
 
         public string ContentType { get; }
+        
+        private string BuildId(ODataPackage package, EntityInstanceContext context)
+        {
+            var segments = GetPackagePathSegments(package);
+            return context.Url.CreateODataLink(segments);
+        }
 
         private  Uri BuildLinkForStreamProperty(ODataPackage package, EntityInstanceContext context)
         {
-            var keyValue = "Id='" + package.Id + "',Version='" + package.Version + "'";
-            var downloadUrl = context.Url.CreateODataLink(new EntitySetPathSegment("Packages"), new KeyValuePathSegment(keyValue), new ActionPathSegment("Download"));
+            var segments = GetPackagePathSegments(package);
+            segments.Add(new ActionPathSegment("Download"));
+            var downloadUrl = context.Url.CreateODataLink(segments);
             return new Uri(downloadUrl);
         }
 
+        private static List<ODataPathSegment> GetPackagePathSegments(ODataPackage package)
+        {
+            var keyValue = "Id='" + package.Id + "',Version='" + RemoveVersionMetadata(package.Version) + "'";
+
+            var segments = new List<ODataPathSegment>
+            {
+                new EntitySetPathSegment("Packages"),
+                new KeyValuePathSegment(keyValue)
+            };
+
+            return segments;
+        }
+
+        private static string RemoveVersionMetadata(string version)
+        {
+            var plusIndex = version.IndexOf('+');
+            if (plusIndex >= 0)
+            {
+                version = version.Substring(0, plusIndex);
+            }
+
+            return version;
+        }
     }
 }

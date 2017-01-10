@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Linq;
 using System.Threading;
 using Moq;
@@ -11,19 +12,15 @@ namespace NuGet.Server.V2.Tests.Infrastructure
     {
         public static Mock<IServerPackageRepository> SetupTestPackageRepository()
         {
-            //var fooPackage = new PackageRegistration { Id = "Foo" };
-            //var barPackage = new PackageRegistration { Id = "Bar" };
-            //var bazPackage = new PackageRegistration { Id = "Baz" };
-
             var repo = new Mock<IServerPackageRepository>(MockBehavior.Strict);
-            repo.Setup(r => r.GetPackagesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+            repo.Setup(r => r.GetPackagesAsync(
+                It.IsAny<ClientCompatibility>(),
+                It.IsAny<CancellationToken>())).ReturnsAsync(new[]
             {
                 new ServerPackage
                 {
-                    //PackageRegistration = fooPackage,
                     Id="Foo",
-                    Version = SemanticVersion.Parse("1.0.0"),                  
-                    //IsPrerelease = false,
+                    Version = SemanticVersion.Parse("1.0.0"),
                     Listed = true,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -33,10 +30,8 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = fooPackage,
                     Id="Foo",
                     Version = SemanticVersion.Parse("1.0.1-a"),
-                    //IsPrerelease = true,
                     Listed = true,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -46,10 +41,8 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = barPackage,
                     Id = "Bar",
                     Version = SemanticVersion.Parse("1.0.0"),
-                    //IsPrerelease = false,
                     Listed = true,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -59,10 +52,8 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = barPackage,
                     Id = "Bar",
                     Version = SemanticVersion.Parse("2.0.0"),
-                    //IsPrerelease = false,
                     Listed = true,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -72,10 +63,8 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = barPackage,
                     Id = "Bar",
                     Version = SemanticVersion.Parse("2.0.1-a"),
-                    //IsPrerelease = true,
                     Listed = true,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -85,10 +74,8 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = barPackage,
                     Id = "Bar",
                     Version = SemanticVersion.Parse("2.0.1-b"),
-                    //IsPrerelease = true,
                     Listed = false,
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
@@ -98,12 +85,42 @@ namespace NuGet.Server.V2.Tests.Infrastructure
                 },
                 new ServerPackage
                 {
-                    //PackageRegistration = bazPackage,
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.1-b.1"),
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
+                },
+                new ServerPackage
+                {
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.2-b+git"),
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
+                },
+                new ServerPackage
+                {
+                    Id = "Baz",
+                    Version = SemanticVersion.Parse("2.0.2+git"),
+                    Listed = false,
+                    Authors = new [] { "Test" },
+                    Owners = new [] { "Test" },
+                    Description = "Baz",
+                    Summary = "Baz",
+                    Tags = "Baz CommonTag"
+                },
+                new ServerPackage
+                {
                     Id = "Baz",
                     Version = SemanticVersion.Parse("1.0.0"),
-                    //IsPrerelease = false,
                     Listed = false,
-                    //Deleted = true, // plot twist: this package is a soft-deleted one
                     Authors = new [] { "Test" },
                     Owners = new [] { "Test" },
                     Description = "Baz",

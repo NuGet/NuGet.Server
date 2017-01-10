@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading;
@@ -36,9 +37,21 @@ namespace NuGet.Server.Core.Tests
                 logger: new Infrastructure.NullLogger(),
                 settingsProvider: getSetting != null ? new FuncSettingsProvider(getSetting) : null);
 
-            await serverRepository.GetPackagesAsync(Token); // caches the files
+            await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token); // caches the files
 
             return serverRepository;
+        }
+
+        private async Task<ServerPackageRepository> CreateServerPackageRepositoryWithSemVer2Async(
+            TemporaryDirectory temporaryDirectory)
+        {
+            return await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+            {
+                repository.AddPackage(CreatePackage("test1", "1.0"));
+                repository.AddPackage(CreatePackage("test2", "1.0-beta"));
+                repository.AddPackage(CreatePackage("test3", "1.0-beta.1"));
+                repository.AddPackage(CreatePackage("test4", "1.0-beta+foo"));
+            });
         }
 
         [Fact]
@@ -68,7 +81,7 @@ namespace NuGet.Server.Core.Tests
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
                 Assert.Equal(packagesToAddToDropFolder.Count, packages.Count());
@@ -109,15 +122,15 @@ namespace NuGet.Server.Core.Tests
                 await serverRepository.RemovePackageAsync("test", new SemanticVersion("2.0-alpha"), Token);
                 await serverRepository.RemovePackageAsync("test", new SemanticVersion("2.0.1"), Token);
                 await serverRepository.RemovePackageAsync("test", new SemanticVersion("2.0.0-0test"), Token);
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
                 Assert.Equal(3, packages.Count());
-                Assert.Equal(1, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal("2.0.0", packages.First(p => p.IsLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal("2.0.0", packages.First(p => p.SemVer2IsLatest).Version.ToString());
 
-                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("2.0.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal("2.0.0", packages.First(p => p.SemVer2IsAbsoluteLatest).Version.ToString());
             }
         }
 
@@ -137,7 +150,7 @@ namespace NuGet.Server.Core.Tests
                 // Act
                 await serverRepository.ClearCacheAsync(Token);
                 await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token);
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
                 packages = packages.OrderBy(p => p.Version);
@@ -167,9 +180,21 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var includePrerelease = await serverRepository.SearchAsync("test3", allowPrereleaseVersions: true, token: Token);
-                var excludePrerelease = await serverRepository.SearchAsync("test3", allowPrereleaseVersions: false, token: Token);
-                var ignoreTag = await serverRepository.SearchAsync("test6", allowPrereleaseVersions: false, token: Token);
+                var includePrerelease = await serverRepository.SearchAsync(
+                    "test3",
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token);
+                var excludePrerelease = await serverRepository.SearchAsync(
+                    "test3",
+                    allowPrereleaseVersions: false,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token);
+                var ignoreTag = await serverRepository.SearchAsync(
+                    "test6",
+                    allowPrereleaseVersions: false,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token);
 
                 // Assert
                 Assert.Equal("test3", includePrerelease.First().Id);
@@ -177,6 +202,30 @@ namespace NuGet.Server.Core.Tests
                 Assert.Equal(1, excludePrerelease.Count());
                 Assert.Equal("test6", ignoreTag.First().Id);
                 Assert.Equal(1, ignoreTag.Count());
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySearchSupportsFilteringOutSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryWithSemVer2Async(temporaryDirectory);
+
+                // Act
+                var actual = await serverRepository.SearchAsync(
+                    "test",
+                    targetFrameworks: Enumerable.Empty<string>(),
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Default,
+                    token: Token);
+
+                // Assert
+                var packages = actual.OrderBy(p => p.Id).ToList();
+                Assert.Equal(2, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("test2", packages[1].Id);
             }
         }
 
@@ -201,7 +250,11 @@ namespace NuGet.Server.Core.Tests
                 }, getSetting);
 
                 // Assert base setup
-                var packages = (await serverRepository.SearchAsync("test1", allowPrereleaseVersions: true, token: Token)).ToList();
+                var packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
                 Assert.Equal(1, packages.Count);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
@@ -210,11 +263,15 @@ namespace NuGet.Server.Core.Tests
                 await serverRepository.RemovePackageAsync("test1", new SemanticVersion("1.0"), Token);
 
                 // Verify that the package is not returned by search
-                packages = (await serverRepository.SearchAsync("test1", allowPrereleaseVersions: true, token: Token)).ToList();
+                packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
                 Assert.Equal(0, packages.Count);
 
                 // Act: search with includeDelisted=true
-                packages = (await serverRepository.GetPackagesAsync(Token)).ToList();
+                packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
 
                 // Assert
                 Assert.Equal(1, packages.Count);
@@ -241,12 +298,60 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var valid = await serverRepository.FindPackagesByIdAsync("test", Token);
-                var invalid = await serverRepository.FindPackagesByIdAsync("bad", Token);
+                var valid = await serverRepository.FindPackagesByIdAsync("test", ClientCompatibility.Max, Token);
+                var invalid = await serverRepository.FindPackagesByIdAsync("bad", ClientCompatibility.Max, Token);
 
                 // Assert
                 Assert.Equal("test", valid.First().Id);
                 Assert.Equal(0, invalid.Count());
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryFindPackageByIdSupportsFilteringOutSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryWithSemVer2Async(temporaryDirectory);
+
+                // Act
+                var actual = await serverRepository.FindPackagesByIdAsync("test3", ClientCompatibility.Default, Token);
+
+                // Assert
+                Assert.Empty(actual);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryGetPackagesSupportsFilteringOutSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryWithSemVer2Async(temporaryDirectory);
+
+                // Act
+                var actual = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
+
+                // Assert
+                Assert.Equal(2, actual.Count());
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryGetPackagesSupportsIncludingSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryWithSemVer2Async(temporaryDirectory);
+
+                // Act
+                var actual = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
+
+                // Assert
+                Assert.Equal(4, actual.Count());
             }
         }
 
@@ -269,8 +374,14 @@ namespace NuGet.Server.Core.Tests
                 // Act
                 var valid = await serverRepository.FindPackageAsync("test4", new SemanticVersion("3.0.0"), Token);
                 var valid2 = await serverRepository.FindPackageAsync("Not5", new SemanticVersion("4.0"), Token);
-                var validPreRel = await serverRepository.FindPackageAsync("test3", new SemanticVersion("1.0.0-alpha"), Token);
-                var invalidPreRel = await serverRepository.FindPackageAsync("test3", new SemanticVersion("1.0.0"), Token);
+                var validPreRel = await serverRepository.FindPackageAsync(
+                    "test3",
+                    new SemanticVersion("1.0.0-alpha"),
+                    Token);
+                var invalidPreRel = await serverRepository.FindPackageAsync(
+                    "test3", 
+                    new SemanticVersion("1.0.0"),
+                    Token);
                 var invalid = await serverRepository.FindPackageAsync("bad", new SemanticVersion("1.0"), Token);
 
                 // Assert
@@ -301,18 +412,18 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
-                Assert.Equal(5, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal(4, packages.Count(p => p.IsLatestVersion));
-                Assert.Equal(3, packages.Count(p => !p.IsAbsoluteLatestVersion));
-                Assert.Equal(4, packages.Count(p => !p.IsLatestVersion));
+                Assert.Equal(5, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal(4, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal(3, packages.Count(p => !p.SemVer2IsAbsoluteLatest));
+                Assert.Equal(4, packages.Count(p => !p.SemVer2IsLatest));
             }
         }
 
         [Fact]
-        public async Task ServerPackageRepositoryIsAbsoluteLatest()
+        public async Task ServerPackageRepositorySemVer1IsAbsoluteLatest()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -328,11 +439,36 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
 
                 // Assert
-                Assert.Equal(1, packages.Count(p => p.IsAbsoluteLatestVersion));
-                Assert.Equal("3.2.0", packages.First(p => p.IsAbsoluteLatestVersion).Version.ToString());
+                Assert.Equal(1, packages.Count(p => p.SemVer1IsAbsoluteLatest));
+                Assert.Equal("2.4.0-prerel", packages.First(p => p.SemVer1IsAbsoluteLatest).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySemVer2IsAbsoluteLatest()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test", "2.0-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.1-alpha"));
+                    repository.AddPackage(CreatePackage("test", "2.2-beta"));
+                    repository.AddPackage(CreatePackage("test", "2.3"));
+                    repository.AddPackage(CreatePackage("test", "2.4.0-prerel"));
+                    repository.AddPackage(CreatePackage("test", "3.2.0+taggedOnly"));
+                });
+
+                // Act
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
+
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.SemVer2IsAbsoluteLatest));
+                Assert.Equal("3.2.0", packages.First(p => p.SemVer2IsAbsoluteLatest).Version.ToString());
             }
         }
 
@@ -350,15 +486,37 @@ namespace NuGet.Server.Core.Tests
                 });
                 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
-                Assert.Equal(0, packages.Count(p => p.IsLatestVersion));
+                Assert.Equal(0, packages.Count(p => p.SemVer2IsLatest));
             }
         }
 
         [Fact]
-        public async Task ServerPackageRepositoryIsLatest()
+        public async Task ServerPackageRepositorySemVer1IsLatest()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0.0"));
+                    repository.AddPackage(CreatePackage("test1", "1.2.0+taggedOnly"));
+                    repository.AddPackage(CreatePackage("test1", "2.0.0-alpha"));
+                });
+
+                // Act
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
+
+                // Assert
+                Assert.Equal(1, packages.Count(p => p.SemVer1IsLatest));
+                Assert.Equal("1.0.0", packages.First(p => p.SemVer1IsLatest).Version.ToString());
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySemVer2IsLatest()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -374,13 +532,16 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
-                var latestVersions = packages.Where(p => p.IsLatestVersion).Select(p => p.Version.ToString()).ToList();
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
+                var latestVersions = packages.Where(p => p.SemVer2IsLatest).Select(p => p.Version.ToString()).ToList();
 
                 // Assert
-                Assert.Equal(2, packages.Count(p => p.IsLatestVersion));
-                Assert.Contains("1.11", latestVersions);
-                Assert.Contains("1.2.0", latestVersions);
+                Assert.Equal(2, packages.Count(p => p.SemVer2IsLatest));
+                Assert.Equal("1.11", packages
+                    .OrderBy(p => p.Id)
+                    .First(p => p.SemVer2IsLatest)
+                    .Version
+                    .ToString());
             }
         }
 
@@ -397,7 +558,7 @@ namespace NuGet.Server.Core.Tests
                 });
 
                 // Act
-                var packages = await serverRepository.GetPackagesAsync(Token);
+                var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
                 var singlePackage = packages.SingleOrDefault();
@@ -417,17 +578,29 @@ namespace NuGet.Server.Core.Tests
 
                 // Act
                 var findPackage = await serverRepository.FindPackageAsync("test", new SemanticVersion("1.0"), Token);
-                var findPackagesById = await serverRepository.FindPackagesByIdAsync("test", Token);
-                var getPackages = (await serverRepository.GetPackagesAsync(Token)).ToList();
-                var getPackagesWithDerivedData = (await serverRepository.GetPackagesAsync(Token)).ToList();
+                var findPackagesById = await serverRepository.FindPackagesByIdAsync(
+                    "test",
+                    ClientCompatibility.Max,
+                    Token);
+                var getPackages = (await serverRepository.GetPackagesAsync(
+                    ClientCompatibility.Max,
+                    Token)).ToList();
+                var getPackagesWithDerivedData = (await serverRepository.GetPackagesAsync(
+                    ClientCompatibility.Max,
+                    Token)).ToList();
                 var getUpdates = await serverRepository.GetUpdatesAsync(
                     Enumerable.Empty<IPackageName>(),
                     includePrerelease: true,
                     includeAllVersions: true,
                     targetFramework: Enumerable.Empty<FrameworkName>(),
                     versionConstraints: Enumerable.Empty<IVersionSpec>(),
+                    compatibility: ClientCompatibility.Max,
                     token: Token);
-                var search = (await serverRepository.SearchAsync("test", allowPrereleaseVersions: true, token: Token)).ToList();
+                var search = (await serverRepository.SearchAsync(
+                    "test",
+                    allowPrereleaseVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
                 var source = serverRepository.Source;
 
                 // Assert
@@ -440,7 +613,84 @@ namespace NuGet.Server.Core.Tests
                 Assert.NotEmpty(source);
             }
         }
-        
+
+        [Fact]
+        public async Task ServerPackageRepositoryAddPackage()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
+
+                // Act
+                await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0"), Token);
+
+                // Assert
+                Assert.True(await serverRepository.ExistsAsync("Foo", new SemanticVersion("1.0.0"), Token));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryAddPackageSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
+
+                // Act
+                await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0+foo"), Token);
+
+                // Assert
+                Assert.True(await serverRepository.ExistsAsync("Foo", new SemanticVersion("1.0.0"), Token));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryRemovePackageSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
+                await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0+foo"), Token);
+
+                // Act
+                await serverRepository.RemovePackageAsync("Foo", new SemanticVersion("1.0.0+bar"), Token);
+
+                // Assert
+                Assert.False(await serverRepository.ExistsAsync("Foo", new SemanticVersion("1.0.0"), Token));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositoryAddPackageRejectsDuplicatesWithSemVer2()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "allowOverrideExistingPackageOnPush")
+                        {
+                            return false;
+                        }
+
+                        return defaultValue;
+                    });
+                await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0-beta.1+foo"), Token);
+
+                // Act & Assert
+                var actual = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                    await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0-beta.1+bar"), Token));
+                Assert.Equal(
+                    "Package Foo 1.0.0-beta.1 already exists. The server is configured to not allow overwriting packages that already exist.",
+                    actual.Message);
+            }
+        }
+
         private static IPackage CreateMockPackage(string id, string version)
         {
             var package = new Mock<IPackage>();
@@ -454,10 +704,11 @@ namespace NuGet.Server.Core.Tests
 
         private IPackage CreatePackage(string id, string version)
         {
-            var package = new PackageBuilder
+            var parsedVersion = new SemanticVersion(version);
+            var packageBuilder = new PackageBuilder
             {
                 Id = id,
-                Version = new SemanticVersion(version),
+                Version = parsedVersion,
                 Description = "Description",
                 Authors = { "Test Author" }
             };
@@ -465,13 +716,34 @@ namespace NuGet.Server.Core.Tests
             var mockFile = new Mock<IPackageFile>();
             mockFile.Setup(m => m.Path).Returns("foo");
             mockFile.Setup(m => m.GetStream()).Returns(new MemoryStream());
-            package.Files.Add(mockFile.Object);
+            packageBuilder.Files.Add(mockFile.Object);
 
             var packageStream = new MemoryStream();
-            package.Save(packageStream);
-            packageStream.Seek(0, SeekOrigin.Begin);
+            packageBuilder.Save(packageStream);
 
-            return new ZipPackage(packageStream);
+            // NuGet.Core package builder strips SemVer2 metadata when saving the output package. Fix up the version
+            // in the actual manifest.
+            packageStream.Seek(0, SeekOrigin.Begin);
+            using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Update, leaveOpen: true))
+            {
+                var manifestFile = zipArchive
+                    .Entries
+                    .First(f => Path.GetExtension(f.FullName) == NuGet.Constants.ManifestExtension);
+
+                using (var manifestStream = manifestFile.Open())
+                {
+                    var manifest = Manifest.ReadFrom(manifestStream, validateSchema: false);
+                    manifest.Metadata.Version = version;
+
+                    manifestStream.SetLength(0);
+                    manifest.Save(manifestStream);
+                }
+            }
+
+            packageStream.Seek(0, SeekOrigin.Begin);
+            var outputPackage = new ZipPackage(packageStream);
+
+            return outputPackage;
         }
     }
 }

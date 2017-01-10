@@ -67,7 +67,10 @@
     <Compile Include="DataServices\QueryTranslator.cs" />
     <Compile Include="DataServices\QueryTranslatorProvider.cs" />
     <Compile Include="Infrastructure\ApiKeyPackageAuthenticationService.cs" />
+    <Compile Include="Infrastructure\ClientCompatibility.cs" />
+    <Compile Include="Infrastructure\ClientCompatibilityFactory.cs" />
     <Compile Include="Infrastructure\DefaultSettingsProvider.cs" />
+    <Compile Include="Infrastructure\SerializedServerPackages.cs" />
     <Compile Include="Infrastructure\ServerPackageStore.cs" />
     <Compile Include="Infrastructure\IServerPackageStore.cs" />
     <Compile Include="Infrastructure\IPackageAuthenticationService.cs" />

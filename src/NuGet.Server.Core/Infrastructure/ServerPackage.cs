@@ -40,8 +40,6 @@ namespace NuGet.Server.Core.Infrastructure
             MinClientVersion = package.MinClientVersion;
             ReportAbuseUrl = package.ReportAbuseUrl;
             DownloadCount = package.DownloadCount;
-            IsAbsoluteLatestVersion = package.IsAbsoluteLatestVersion;
-            IsLatestVersion = package.IsLatestVersion;
             Listed = package.Listed;
 
             _dependencySets = package.DependencySets.ToList();
@@ -56,6 +54,11 @@ namespace NuGet.Server.Core.Infrastructure
             LastUpdated = packageDerivedData.LastUpdated;
             Created = packageDerivedData.Created;
             FullPath = packageDerivedData.FullPath;
+
+            SemVer1IsAbsoluteLatest = false;
+            SemVer1IsLatest = false;
+            SemVer2IsAbsoluteLatest = false;
+            SemVer2IsLatest = false;
         }
 
         [JsonRequired]
@@ -144,9 +147,13 @@ namespace NuGet.Server.Core.Infrastructure
             return _supportedFrameworks;
         }
 
-        public bool IsAbsoluteLatestVersion { get; set; }
+        public bool SemVer1IsAbsoluteLatest { get; set; }
 
-        public bool IsLatestVersion { get; set; }
+        public bool SemVer1IsLatest { get; set; }
+
+        public bool SemVer2IsAbsoluteLatest { get; set; }
+
+        public bool SemVer2IsLatest { get; set; }
 
         public bool Listed { get; set; }
 

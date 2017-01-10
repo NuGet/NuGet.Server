@@ -26,8 +26,10 @@ namespace NuGet.Server.Core.Infrastructure
         IEnumerable<PackageDependencySet> DependencySets { get; }
         string Copyright { get; }
         string Tags { get; }
-        bool IsAbsoluteLatestVersion { get; }
-        bool IsLatestVersion { get; }
+        bool SemVer1IsAbsoluteLatest { get; }
+        bool SemVer1IsLatest { get; }
+        bool SemVer2IsAbsoluteLatest { get; }
+        bool SemVer2IsLatest { get; }
         bool Listed { get; }
         Version MinClientVersion { get; }
         string Language { get; }
