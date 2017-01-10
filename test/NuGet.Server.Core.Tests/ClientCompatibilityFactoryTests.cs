@@ -10,6 +10,8 @@ namespace NuGet.Server.Core.Tests
     {
         [Theory]
         [InlineData(null, "1.0.0")]
+        [InlineData("", "1.0.0")]
+        [InlineData(" ", "1.0.0")]
         [InlineData("0", "1.0.0")]
         [InlineData("a", "1.0.0")]
         [InlineData("0.0.0", "0.0.0")]
@@ -27,16 +29,6 @@ namespace NuGet.Server.Core.Tests
 
             // Assert
             Assert.Equal(expected, actual.SemVerLevel);
-        }
-
-        [Fact]
-        public void FromProperties_AllowsNullSemVerLevel()
-        {
-            // Arrange & Act
-            var actual = ClientCompatibilityFactory.FromProperties(unparsedSemVerLevel: null);
-
-            // Assert
-            Assert.Equal(new SemanticVersion("1.0.0"), actual.SemVerLevel);
         }
     }
 }

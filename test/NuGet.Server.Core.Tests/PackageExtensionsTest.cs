@@ -18,7 +18,13 @@ namespace NuGet.Server.Core.Tests
         [InlineData(true, true, false, false, 2, false, false)]
         [InlineData(false, false, true, false, 2, true, false)]
         public void AsODataPackage_PicksCorrectLatestProperties(
-            bool v1AbsLatest, bool v1Latest, bool v2AbsLatest, bool v2Latest, int level, bool absLatest, bool latest)
+            bool v1AbsLatest,
+            bool v1Latest,
+            bool v2AbsLatest,
+            bool v2Latest,
+            int level,
+            bool expectedAbsLatest,
+            bool expectedLatest)
         {
             // Arrange
             var package = new ServerPackage
@@ -32,14 +38,14 @@ namespace NuGet.Server.Core.Tests
                 SemVer2IsAbsoluteLatest = v2AbsLatest,
                 SemVer2IsLatest = v2Latest,
             };
-            var semVerLevel = new SemanticVersion(level, 0, 0, 0);
+            var semVerLevel = new SemanticVersion(level, minor: 0, build: 0, specialVersion: null);
 
             // Act
             var actual = package.AsODataPackage(new ClientCompatibility(semVerLevel));
 
             // Assert
-            Assert.Equal(absLatest, actual.IsAbsoluteLatestVersion);
-            Assert.Equal(latest, actual.IsLatestVersion);
+            Assert.Equal(expectedAbsLatest, actual.IsAbsoluteLatestVersion);
+            Assert.Equal(expectedLatest, actual.IsLatestVersion);
         }
     }
 }
