@@ -54,8 +54,10 @@ namespace NuGet.Server.Core.Tests
             });
         }
 
-        [Fact]
-        public async Task ServerPackageRepositoryAddsPackagesFromDropFolderOnStart()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ServerPackageRepositoryAddsPackagesFromDropFolderOnStart(bool allowOverride)
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
@@ -78,7 +80,17 @@ namespace NuGet.Server.Core.Tests
                     }
                 }
 
-                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
+                var serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "allowOverrideExistingPackageOnPush")
+                        {
+                            return allowOverride;
+                        }
+
+                        return defaultValue;
+                    });
 
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
@@ -135,17 +147,12 @@ namespace NuGet.Server.Core.Tests
         }
 
         [Fact]
-        public async Task ServerPackageRepositoryNeedsRebuild()
+        public async Task ServerPackageRepositoryNeedsRebuildIsHandledWhenAddingAfterClear()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path,
-                    repository =>
-                    {
-                        repository.AddPackage(CreatePackage("test", "1.0"));
-                        repository.AddPackage(CreatePackage("test", "1.1"));
-                    });
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path);
 
                 // Act
                 await serverRepository.ClearCacheAsync(Token);
@@ -155,10 +162,81 @@ namespace NuGet.Server.Core.Tests
                 // Assert
                 packages = packages.OrderBy(p => p.Version);
 
-                Assert.Equal(3, packages.Count());
-                Assert.Equal(new SemanticVersion("1.0.0"), packages.ElementAt(0).Version);
-                Assert.Equal(new SemanticVersion("1.1.0"), packages.ElementAt(1).Version);
-                Assert.Equal(new SemanticVersion("1.2.0"), packages.ElementAt(2).Version);
+                Assert.Equal(1, packages.Count());
+                Assert.Equal(new SemanticVersion("1.2.0"), packages.ElementAt(0).Version);
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ServerPackageRepository_DuplicateAddAfterClearObservesOverrideOption(bool allowOverride)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "allowOverrideExistingPackageOnPush")
+                        {
+                            return allowOverride;
+                        }
+
+                        return defaultValue;
+                    });
+
+                await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token);
+                await serverRepository.ClearCacheAsync(Token);
+
+                // Act & Assert
+                if (allowOverride)
+                {
+                    await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token);
+                }
+                else
+                {
+                    await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                        await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ServerPackageRepository_DuplicateInDropFolderAfterClearObservesOverrideOption(bool allowOverride)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "allowOverrideExistingPackageOnPush")
+                        {
+                            return allowOverride;
+                        }
+
+                        return defaultValue;
+                    });
+
+                await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token);
+                var existingPackage = await serverRepository.FindPackageAsync(
+                    "test",
+                    new SemanticVersion("1.2"),
+                    Token);
+                var dropFolderPackagePath = Path.Combine(temporaryDirectory, "test.nupkg");
+                await serverRepository.ClearCacheAsync(Token);
+
+                // Act
+                File.Copy(existingPackage.FullPath, dropFolderPackagePath);
+                await serverRepository.AddPackagesFromDropFolderAsync(Token);
+
+                // Assert
+                Assert.NotEqual(allowOverride, File.Exists(dropFolderPackagePath));
             }
         }
 

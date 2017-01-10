@@ -14,6 +14,8 @@ namespace NuGet.Server.Core.Infrastructure
     {
         bool IsEmpty();
 
+        bool Exists(string id, SemanticVersion version);
+
         IEnumerable<ServerPackage> GetAll();
 
         void Add(ServerPackage entity);

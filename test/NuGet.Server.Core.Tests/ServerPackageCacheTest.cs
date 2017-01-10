@@ -197,5 +197,59 @@ namespace NuGet.Server.Core.Tests
             Assert.Equal(PackageId, package.Id);
             Assert.Equal(PackageVersion, package.Version);
         }
+
+        [Fact]
+        public void Exists_IsCaseInsensitive()
+        {
+            // Arrange
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem
+                .Setup(x => x.FileExists(CacheFileName))
+                .Returns(false);
+            var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
+            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+
+            // Act
+            var actual = target.Exists("nuget.versioning", new SemanticVersion("3.5.0-BETA2"));
+
+            // Assert
+            Assert.True(actual);
+        }
+
+        [Fact]
+        public void Exists_ReturnsFalseWhenPackageDoesNotExist()
+        {
+            // Arrange
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem
+                .Setup(x => x.FileExists(CacheFileName))
+                .Returns(false);
+            var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
+            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+
+            // Act
+            var actual = target.Exists("NuGet.Frameworks", new SemanticVersion("3.5.0-beta2"));
+
+            // Assert
+            Assert.False(actual);
+        }
+
+        [Fact]
+        public void Exists_ReturnsTrueWhenPackageExists()
+        {
+            // Arrange
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem
+                .Setup(x => x.FileExists(CacheFileName))
+                .Returns(false);
+            var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
+            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+
+            // Act
+            var actual = target.Exists("NuGet.Versioning", new SemanticVersion("3.5.0-beta2"));
+
+            // Assert
+            Assert.True(actual);
+        }
     }
 }

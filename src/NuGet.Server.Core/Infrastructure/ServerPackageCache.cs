@@ -87,6 +87,19 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
+        public bool Exists(string id, SemanticVersion version)
+        {
+            _syncLock.EnterReadLock();
+            try
+            {
+                return _packages.Any(p => IsMatch(p, id, version));
+            }
+            finally
+            {
+                _syncLock.ExitReadLock();
+            }
+        }
+
         public IEnumerable<ServerPackage> GetAll()
         {
             _syncLock.EnterReadLock();
