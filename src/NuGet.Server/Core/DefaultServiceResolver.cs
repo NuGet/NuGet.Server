@@ -10,7 +10,7 @@ using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server
 {
-    public class DefaultServiceResolver
+    public sealed class DefaultServiceResolver
         : IServiceResolver, IDisposable
     {
         private readonly CryptoHashProvider _hashProvider;

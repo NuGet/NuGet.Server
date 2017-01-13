@@ -98,7 +98,7 @@ namespace NuGet.Server.Tests
             }
         }
 
-        private class TestContext : IDisposable
+        private sealed class TestContext : IDisposable
         {
             private readonly HttpServer _server;
             private readonly DefaultServiceResolver _serviceResolver;

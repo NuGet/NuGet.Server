@@ -6,7 +6,7 @@ using System.IO;
 
 namespace NuGet.Server.Core.Tests.Infrastructure
 {
-    public class TemporaryDirectory 
+    public sealed class TemporaryDirectory 
         : IDisposable
     {
         public string Path { get; private set; }

@@ -608,7 +608,7 @@ namespace NuGet.Server.Core.Infrastructure
         /// A disposable type that wraps a semaphore so dispose releases the semaphore. This allows for more ergonomic
         /// used (such as in a <code>using</code> statement).
         /// </summary>
-        private class Lock : IDisposable
+        private sealed class Lock : IDisposable
         {
             private readonly SemaphoreSlim _semaphore;
             private bool _lockTaken;
@@ -636,7 +636,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        private class SuppressedFileSystemWatcher : IDisposable
+        private sealed class SuppressedFileSystemWatcher : IDisposable
         {
             private readonly ServerPackageRepository _repository;
             private Lock _lockHandle;
