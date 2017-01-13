@@ -207,3 +207,5 @@ src/VsExtension/source.extension.vsixmanifest
 !packages/Microsoft.Web.Xdt.1.0.0-alpha/
 src/NuGet.Server/packages/*.bin
 *.cache.bin
+
+!**/TestData/*.nupkg

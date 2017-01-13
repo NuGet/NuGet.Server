@@ -95,6 +95,7 @@
     <Compile Include="ServerPackageRepositoryTest.cs" />
     <Compile Include="ServerPackageCacheTest.cs" />
     <Compile Include="ServerPackageStoreTest.cs" />
+    <Compile Include="TestData.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">
@@ -107,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <EmbeddedResource Include="TestData\NuGet.Core.2.12.0.nupkg" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

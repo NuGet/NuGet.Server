@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Specialized;
 using System.Security.Principal;
@@ -10,16 +11,24 @@ namespace NuGet.Server.Infrastructure
 {
     public class PackageAuthenticationService : IPackageAuthenticationService
     {
-        public bool IsAuthenticated(IPrincipal user, string apiKey, string packageId)
+        private readonly Func<NameValueCollection> _getSettings;
+
+        public PackageAuthenticationService()
         {
-            var appSettings = WebConfigurationManager.AppSettings;
-            return IsAuthenticatedInternal(apiKey, appSettings);
+            _getSettings = () => WebConfigurationManager.AppSettings;
         }
 
-        internal static bool IsAuthenticatedInternal(string apiKey, NameValueCollection appSettings)
+        public PackageAuthenticationService(NameValueCollection settings)
         {
+            _getSettings = () => settings;
+        }
+
+        public bool IsAuthenticated(IPrincipal user, string apiKey, string packageId)
+        {
+            var settings = _getSettings();
+
             bool value;
-            if (!Boolean.TryParse(appSettings["requireApiKey"], out value))
+            if (!bool.TryParse(settings["requireApiKey"], out value))
             {
                 // If the setting is misconfigured, fail.
                 return false;
@@ -31,10 +40,10 @@ namespace NuGet.Server.Infrastructure
                 return true;
             }
 
-            var settingsApiKey = appSettings["apiKey"];
+            var settingsApiKey = settings["apiKey"];
 
             // No api key, no-one can push
-            if (String.IsNullOrEmpty(settingsApiKey))
+            if (string.IsNullOrEmpty(settingsApiKey))
             {
                 return false;
             }

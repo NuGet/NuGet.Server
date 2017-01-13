@@ -108,6 +108,7 @@
     <Compile Include="Core\IServiceResolver.cs" />
     <Compile Include="Core\ServiceResolver.cs" />
     <Compile Include="Controllers\PackagesODataController.cs" />
+    <Compile Include="Core\ServiceResolverExtensions.cs" />
     <Compile Include="Infrastructure\WebConfigSettingsProvider.cs" />
     <Compile Include="Core\Helpers.cs" />
     <Compile Include="Infrastructure\PackageAuthenticationService.cs" />
