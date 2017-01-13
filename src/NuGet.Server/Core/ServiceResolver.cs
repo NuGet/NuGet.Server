@@ -26,13 +26,5 @@ namespace NuGet.Server
         {
             Current = serviceResolver;
         }
-
-        public static T Resolve<T>()
-            where T : class
-        {
-            EnsureServiceResolver();
-
-            return Current.Resolve(typeof (T)) as T;
-        }
     }
 }
