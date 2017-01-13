@@ -1,29 +1,38 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
+using System.Collections.Specialized;
+using System.Web.Configuration;
 using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Logging;
 using NuGet.Server.Infrastructure;
 
 namespace NuGet.Server
 {
-    public class DefaultServiceResolver
-        : IServiceResolver
+    public sealed class DefaultServiceResolver
+        : IServiceResolver, IDisposable
     {
-        private readonly IHashProvider _hashProvider;
-        private readonly IServerPackageRepository _packageRepository;
-        private readonly IPackageAuthenticationService _packageAuthenticationService;
-        private readonly ISettingsProvider _settingsProvider;
+        private readonly CryptoHashProvider _hashProvider;
+        private readonly ServerPackageRepository _packageRepository;
+        private readonly PackageAuthenticationService _packageAuthenticationService;
+        private readonly WebConfigSettingsProvider _settingsProvider;
 
-        public DefaultServiceResolver()
+        public DefaultServiceResolver() : this(
+            PackageUtility.PackagePhysicalPath,
+            WebConfigurationManager.AppSettings)
+        {
+        }
+
+        public DefaultServiceResolver(string packagePath, NameValueCollection settings)
         {
             _hashProvider = new CryptoHashProvider(Core.Constants.HashAlgorithm);
 
-            _settingsProvider = new WebConfigSettingsProvider();
+            _settingsProvider = new WebConfigSettingsProvider(settings);
 
-            _packageRepository = new ServerPackageRepository(PackageUtility.PackagePhysicalPath, _hashProvider, _settingsProvider, new TraceLogger());
+            _packageRepository = new ServerPackageRepository(packagePath, _hashProvider, _settingsProvider, new TraceLogger());
 
-            _packageAuthenticationService = new PackageAuthenticationService();
+            _packageAuthenticationService = new PackageAuthenticationService(settings);
 
         }
 
@@ -44,8 +53,12 @@ namespace NuGet.Server
                 return _packageAuthenticationService;
             }
 
-
             return null;
+        }
+
+        public void Dispose()
+        {
+            _packageRepository.Dispose();
         }
     }
 }

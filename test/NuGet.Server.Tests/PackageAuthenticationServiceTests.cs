@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Collections.Specialized;
 using NuGet.Server.Infrastructure;
 using Xunit;
@@ -19,9 +20,10 @@ namespace NuGet.Server.Tests
             {
                 { "requireApiKey", requireApiKey }
             };
+            var target = new PackageAuthenticationService(collection);
 
             // Act
-            var result = PackageAuthenticationService.IsAuthenticatedInternal("test-apikey", collection);
+            var result = target.IsAuthenticated(user: null, apiKey: "test-apikey", packageId: null);
 
             // Assert
             Assert.False(result);
@@ -38,9 +40,10 @@ namespace NuGet.Server.Tests
                 { "requireApiKey", keyValue },
                 { "apiKey", "test-key" }
             };
+            var target = new PackageAuthenticationService(collection);
 
             // Act
-            var result = PackageAuthenticationService.IsAuthenticatedInternal("incorrect-key", collection);
+            var result = target.IsAuthenticated(user: null, apiKey: "incorrect-key", packageId: null);
 
             // Assert
             Assert.True(result);
@@ -57,9 +60,10 @@ namespace NuGet.Server.Tests
                 { "requireApiKey", "true" },
                 { "apiKey", "test-key" }
             };
+            var target = new PackageAuthenticationService(collection);
 
             // Act
-            var result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
+            var result = target.IsAuthenticated(user: null, apiKey: key, packageId: null);
 
             // Assert
             Assert.False(result);
@@ -76,9 +80,10 @@ namespace NuGet.Server.Tests
                 { "requireApiKey", "true" },
                 { "apiKey", "test-key" }
             };
+            var target = new PackageAuthenticationService(collection);
 
             // Act
-            var result = PackageAuthenticationService.IsAuthenticatedInternal(key, collection);
+            var result = target.IsAuthenticated(user: null, apiKey: key, packageId: null);
 
             // Assert
             Assert.True(result);

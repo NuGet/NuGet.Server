@@ -14,29 +14,15 @@ namespace NuGet.Server.DataServices
     public class PackagesODataController : NuGetODataController
     {
         public PackagesODataController()
-            : base(Repository, AuthenticationService)
+            : this(ServiceResolver.Current)
+        {
+        }
+
+        protected PackagesODataController(IServiceResolver serviceResolver)
+            : base(serviceResolver.Resolve<IServerPackageRepository>(),
+                   serviceResolver.Resolve<IPackageAuthenticationService>())
         {
             _maxPageSize = 100;
-        }
-
-        private static IServerPackageRepository Repository
-        {
-            get
-            {
-                // It's bad to use the container directly but we aren't in the loop when this 
-                // class is created
-                return ServiceResolver.Resolve<IServerPackageRepository>();
-            }
-        }
-
-        private static IPackageAuthenticationService AuthenticationService
-        {
-            get
-            {
-                // It's bad to use the container directly but we aren't in the loop when this 
-                // class is created
-                return ServiceResolver.Resolve<IPackageAuthenticationService>();
-            }
         }
 
         [HttpGet]
