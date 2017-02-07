@@ -27,7 +27,7 @@ $xml = [xml]@"
 $securePassword = ConvertTo-SecureString "$Password" -AsPlainText -Force
 $TeamCityCredentials = New-Object System.Management.Automation.PSCredential ($UserName, $securePassword)
 
-$out = Invoke-WebRequest -Uri "$Url" -Credential $TeamCityCredentials -Method POST -Body $xml.OuterXml -ContentType 'application/xml' -UseBasicParsing -Verbose
+$out = Invoke-WebRequest -Uri "$BuildQueueUrl" -Credential $TeamCityCredentials -Method POST -Body $xml.OuterXml -ContentType 'application/xml' -UseBasicParsing -Verbose
 
 if (-not $out) {
     throw "Failed to push packages to server."
