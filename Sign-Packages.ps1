@@ -11,10 +11,6 @@ param (
 # Copy artifacts to share.
 $dropSubdirectory = Join-Path "$DropPath" "$Version"
 
-if (-not (Test-Path $dropSubdirectory)) {
-    throw "Source nupkg file '$dropSubdirectory' does NOT exist."
-}
-
 New-Item -path $dropSubdirectory -type Directory
 Copy-Item -path "artifacts\packages\*.nupkg" -Destination $dropSubdirectory -verbose -force
 
