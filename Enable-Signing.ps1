@@ -100,5 +100,5 @@ foreach ($assemblyInfoFile in $assemblyInfos)
 
 # We must disable the verification for these strong named assemblies so that we can test them before we sign them
 
-cmd /c "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\sn.exe -Vr *,$publicToken"
-cmd /c "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\x64\sn.exe -Vr *,$publicToken"
+& "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\sn.exe" "-Vr" "*,$publicToken"
+& "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\x64\sn.exe" "-Vr" "*,$publicToken"
