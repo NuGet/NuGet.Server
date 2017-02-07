@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory=$false)][string]$srcRoot = ".",
     [Parameter(Mandatory=$true)][string]$keyFile,
     [Parameter(Mandatory=$true)][string]$publicKey,
-    [Parameter(Mandatory=$true)][string]$publicToken
+    [Parameter(Mandatory=$false)][string]$publicToken
 )
 
 $snSignAssembly = "true"
@@ -98,7 +98,15 @@ foreach ($assemblyInfoFile in $assemblyInfos)
     }
 }
 
-# We must disable the verification for these strong named assemblies so that we can test them before we sign them
+if (-Not $publicToken) {
+    exit 0
+}
 
-& "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\sn.exe" "-Vr" "*,$publicToken"
-& "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.2 Tools\x64\sn.exe" "-Vr" "*,$publicToken"
+# Find latest version of Windows SDK installed
+$sdkRegistry = Get-ItemProperty "hklm:\SOFTWARE\Microsoft\Microsoft SDKs\Windows"
+$sdkInstallPath = $sdkRegistry.CurrentInstallFolder
+$toolsPath = (Get-ChildItem "$sdkInstallPath\bin" | Select-Object -Last 1).FullName
+
+# Run sn.exe with the public token
+& "$toolsPath\sn.exe" "-Vr" "*,$publicToken"
+& "$toolsPath\x64\sn.exe" "-Vr" "*,$publicToken"
