@@ -11,7 +11,7 @@ $delaySignAssembly = "true"
 Function GetXmlFile
 {
     param(
-    [Parameter(Mandatory=$true)][string]$inputFile
+        [Parameter(Mandatory=$true)][string]$inputFile
     )
 
     return [xml](Get-Content $inputFile)
@@ -20,10 +20,10 @@ Function GetXmlFile
 Function MakeNodeWithInnerText
 {
     param(
-    [Parameter(Mandatory=$true)][xml]$inputXml,
-    [Parameter(Mandatory=$true)][string]$newPropertyName,
-    [Parameter(Mandatory=$true)][string]$newPropertyValue,
-    [Parameter(Mandatory=$false)][string]$xmlns = ""
+        [Parameter(Mandatory=$true)][xml]$inputXml,
+        [Parameter(Mandatory=$true)][string]$newPropertyName,
+        [Parameter(Mandatory=$true)][string]$newPropertyValue,
+        [Parameter(Mandatory=$false)][string]$xmlns = ""
     )
 
     $newNode=$inputXml.CreateElement($newPropertyName, $xmlns)
@@ -35,7 +35,7 @@ Function MakeNodeWithInnerText
 Function EnableSNAndDelaySign
 {
     param(
-    [Parameter(Mandatory=$true)][xml]$projectXML
+        [Parameter(Mandatory=$true)][xml]$projectXML
     )
 
     $xmlNameSpace = $projectXML.Project.xmlns
