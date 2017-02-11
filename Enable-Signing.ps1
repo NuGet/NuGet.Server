@@ -35,7 +35,7 @@ Function MakeNodeWithInnerText
 Function EnableSNAndDelaySign
 {
     param(
-      [Parameter(Mandatory=$true)][xml]$projectXML
+    [Parameter(Mandatory=$true)][xml]$projectXML
     )
 
     $xmlNameSpace = $projectXML.Project.xmlns
@@ -65,15 +65,15 @@ Function InjectPublicKeyIntoAssemblyInfo
 }
 
 $xmls = "src\NuGet.Server\NuGet.Server.csproj",
-  "src\NuGet.Server.V2\NuGet.Server.V2.csproj",
-  "src\NuGet.Server.Core\NuGet.Server.Core.csproj",
-  "test\NuGet.Server.Tests\NuGet.Server.Tests.csproj",
-  "test\NuGet.Server.V2.Tests\NuGet.Server.V2.Tests.csproj",
-  "test\NuGet.Server.Core.Tests\NuGet.Server.Core.Tests.csproj"
+"src\NuGet.Server.V2\NuGet.Server.V2.csproj",
+"src\NuGet.Server.Core\NuGet.Server.Core.csproj",
+"test\NuGet.Server.Tests\NuGet.Server.Tests.csproj",
+"test\NuGet.Server.V2.Tests\NuGet.Server.V2.Tests.csproj",
+"test\NuGet.Server.Core.Tests\NuGet.Server.Core.Tests.csproj"
 
 $assemblyInfos = "src\NuGet.Server\Properties\AssemblyInfo.cs",
-  "src\NuGet.Server.V2\Properties\AssemblyInfo.cs",
-  "src\NuGet.Server.Core\Properties\AssemblyInfo.cs"
+"src\NuGet.Server.V2\Properties\AssemblyInfo.cs",
+"src\NuGet.Server.Core\Properties\AssemblyInfo.cs"
 
 foreach ($relXmlPath in $xmls)
 {
