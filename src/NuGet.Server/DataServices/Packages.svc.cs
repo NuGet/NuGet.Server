@@ -32,7 +32,7 @@ namespace NuGet.Server.DataServices
         public static void InitializeService(DataServiceConfiguration config)
         {
             config.SetEntitySetAccessRule("Packages", EntitySetRights.AllRead);
-            config.SetEntitySetPageSize("Packages", 3);
+            config.SetEntitySetPageSize("Packages", 100);
             config.DataServiceBehavior.MaxProtocolVersion = DataServiceProtocolVersion.V2;
             config.UseVerboseErrors = true;
             RegisterServices(config);
