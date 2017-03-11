@@ -206,3 +206,11 @@ DebugConstants.cs
 src/VsExtension/source.extension.vsixmanifest
 !packages/Microsoft.Web.Xdt.1.0.0-alpha/
 *.cache.bin
+AssemblyInfo.g.cs
+tools
+.nuget/CredentialProvider.VSS.exe
+.nuget/CredentialProviderBundle.zip
+.nuget/EULA_Microsoft Visual Studio Team Services Credential Provider.docx
+.nuget/NuGet.exe
+.nuget/ThirdPartyNotices.txt
+Results.*.xml
