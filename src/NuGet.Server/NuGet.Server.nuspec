@@ -13,7 +13,6 @@
       <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="net46" />
       <frameworkAssembly assemblyName="System.ServiceModel.Web" targetFramework="net46" />
       <frameworkAssembly assemblyName="System.ServiceModel.Activation" targetFramework="net46" />
-      <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
     </frameworkAssemblies>
     <dependencies>
       <group targetFramework="net46">
