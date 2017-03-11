@@ -32,7 +32,7 @@ namespace NuGet.Server.DataServices
         public static void InitializeService(DataServiceConfiguration config)
         {
             config.SetEntitySetAccessRule("Packages", EntitySetRights.AllRead);
-            config.SetEntitySetPageSize("Packages", 100);
+            config.SetEntitySetPageSize("Packages", 3);
             config.DataServiceBehavior.MaxProtocolVersion = DataServiceProtocolVersion.V2;
             config.UseVerboseErrors = true;
             RegisterServices(config);
@@ -127,11 +127,10 @@ namespace NuGet.Server.DataServices
             string searchTerm,
             string targetFramework,
             bool includePrerelease,
-            bool? includeDelisted,
-            string semVerLevel)
+            bool? includeDelisted)
         {
             var targetFrameworks = string.IsNullOrEmpty(targetFramework) ? Enumerable.Empty<string>() : targetFramework.Split('|');
-            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+            var clientCompatibility = CurrentDataSource.ClientCompatibility;
 
             return Repository
                 .Search(
@@ -145,9 +144,9 @@ namespace NuGet.Server.DataServices
         }
 
         [WebGet]
-        public IQueryable<ODataPackage> FindPackagesById(string id, string semVerLevel)
+        public IQueryable<ODataPackage> FindPackagesById(string id)
         {
-            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+            var clientCompatibility = CurrentDataSource.ClientCompatibility;
 
             return Repository
                 .FindPackagesById(id, clientCompatibility)
@@ -164,8 +163,7 @@ namespace NuGet.Server.DataServices
             bool includePrerelease,
             bool includeAllVersions,
             string targetFrameworks,
-            string versionConstraints,
-            string semVerLevel)
+            string versionConstraints)
         {
             if (String.IsNullOrEmpty(packageIds) || String.IsNullOrEmpty(versions))
             {
@@ -201,7 +199,7 @@ namespace NuGet.Server.DataServices
                 }
             }
 
-            var clientCompatibility = ClientCompatibilityFactory.FromProperties(semVerLevel);
+            var clientCompatibility = CurrentDataSource.ClientCompatibility;
 
             return Repository
                 .GetUpdatesCore(
