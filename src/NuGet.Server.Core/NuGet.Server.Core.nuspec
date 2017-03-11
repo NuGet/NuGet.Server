@@ -2,7 +2,7 @@
 <package>
   <metadata minClientVersion="2.6">
     <id>$id$</id>
-    <version>$packageVersion$</version>
+    <version>$version$</version>
     <description>$description$</description>
     <authors>.NET Foundation</authors>
     <owners>$author$</owners>

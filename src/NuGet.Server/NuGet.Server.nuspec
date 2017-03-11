@@ -2,7 +2,7 @@
 <package>
   <metadata minClientVersion="2.6">
     <id>NuGet.Server</id>
-    <version>$packageVersion$</version>
+    <version>$version$</version>
     <description>Web Application used to host a simple NuGet feed</description>
     <authors>.NET Foundation</authors>
     <owners>.NET Foundation</owners>
@@ -19,8 +19,8 @@
       <group targetFramework="net46">
         <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
         <dependency id="NuGet.Core" version="2.14.0" />
-        <dependency id="NuGet.Server.Core" version="$packageVersion$" />
-        <dependency id="NuGet.Server.V2" version="$packageVersion$" />
+        <dependency id="NuGet.Server.Core" version="$version$" />
+        <dependency id="NuGet.Server.V2" version="$version$" />
         <dependency id="Microsoft.AspNet.WebApi" version="5.2.3" />
         <dependency id="Microsoft.AspNet.WebApi.OData" version="5.7.0" />
         <dependency id="WebActivatorEx" version="2.2.0" />

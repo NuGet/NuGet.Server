@@ -2,7 +2,7 @@
 <package>
   <metadata minClientVersion="2.6">
     <id>$id$</id>
-    <version>$packageVersion$</version>
+    <version>$version$</version>
     <description>$description$</description>
     <authors>.NET Foundation</authors>
     <owners>$author$</owners>
@@ -17,7 +17,7 @@
         <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
         <dependency id="Newtonsoft.Json" version="9.0.1" />
         <dependency id="NuGet.Core" version="2.14.0" />
-        <dependency id="NuGet.Server.Core" version="$packageVersion$" />
+        <dependency id="NuGet.Server.Core" version="$version$" />
 
         <dependency id="Microsoft.AspNet.WebApi.Client" version="5.2.3" />
         <dependency id="Microsoft.AspNet.WebApi.Core" version="5.2.3" />

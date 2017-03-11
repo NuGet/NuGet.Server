@@ -207,5 +207,12 @@ src/VsExtension/source.extension.vsixmanifest
 !packages/Microsoft.Web.Xdt.1.0.0-alpha/
 src/NuGet.Server/packages/*.bin
 *.cache.bin
-
+AssemblyInfo.g.cs
+tools
+.nuget/CredentialProvider.VSS.exe
+.nuget/CredentialProviderBundle.zip
+.nuget/EULA_Microsoft Visual Studio Team Services Credential Provider.docx
+.nuget/NuGet.exe
+.nuget/ThirdPartyNotices.txt
+Results.*.xml
 !**/TestData/*.nupkg
