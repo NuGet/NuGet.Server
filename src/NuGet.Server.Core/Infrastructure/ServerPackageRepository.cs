@@ -144,7 +144,7 @@ namespace NuGet.Server.Core.Infrastructure
 
             if (!compatibility.AllowSemVer2)
             {
-                cache = cache.Where(p => !p.Version.IsSemVer2());
+                cache = cache.Where(p => !p.IsSemVer2);
             }
 
             return cache;

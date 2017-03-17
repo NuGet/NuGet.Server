@@ -196,7 +196,7 @@ namespace NuGet.Server.Core.Infrastructure
                 package.SemVer2IsLatest = false;
 
                 // Update the SemVer1 views.
-                if (!package.Version.IsSemVer2())
+                if (!package.IsSemVer2)
                 {
                     UpdateLatestDictionary(semVer1AbsoluteLatest, package);
 

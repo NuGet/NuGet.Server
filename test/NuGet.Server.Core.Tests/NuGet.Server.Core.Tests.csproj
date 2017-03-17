@@ -95,6 +95,7 @@
     <Compile Include="ServerPackageRepositoryTest.cs" />
     <Compile Include="ServerPackageCacheTest.cs" />
     <Compile Include="ServerPackageStoreTest.cs" />
+    <Compile Include="ServerPackageTest.cs" />
     <Compile Include="TestData.cs" />
   </ItemGroup>
   <ItemGroup>
