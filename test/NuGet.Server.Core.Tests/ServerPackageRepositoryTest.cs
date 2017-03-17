@@ -419,7 +419,10 @@ namespace NuGet.Server.Core.Tests
                 var actual = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
 
                 // Assert
-                Assert.Equal(2, actual.Count());
+                var packages = actual.OrderBy(p => p.Id).ToList();
+                Assert.Equal(2, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("test2", packages[1].Id);
             }
         }
 
@@ -435,7 +438,13 @@ namespace NuGet.Server.Core.Tests
                 var actual = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
-                Assert.Equal(5, actual.Count());
+                var packages = actual.OrderBy(p => p.Id).ToList();
+                Assert.Equal(5, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("test2", packages[1].Id);
+                Assert.Equal("test3", packages[2].Id);
+                Assert.Equal("test4", packages[3].Id);
+                Assert.Equal("test5", packages[4].Id);
             }
         }
 
