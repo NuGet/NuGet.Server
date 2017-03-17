@@ -30,9 +30,10 @@ namespace NuGet.Server.Tests
         [InlineData("[{\"foo\": \"bar\"}]")]
         [InlineData("{\"SchemaVersion\":null,\"Packages\":[]}")]
         [InlineData("{\"SchemaVersion\":\"1.0.0\",\"Packages\":null}")]
-        [InlineData("{\"SchemaVersion\":\"3.0.0\",\"Packages\":[]}")]
+        [InlineData("{\"SchemaVersion\":\"2.0.0\",\"Packages\":null}")]
+        [InlineData("{\"SchemaVersion\":\"4.0.0\",\"Packages\":[]}")]
         [InlineData("{\"Packages\":[]}")]
-        [InlineData("{\"SchemaVersion\":\"2.0.0\"}")]
+        [InlineData("{\"SchemaVersion\":\"3.0.0\"}")]
         public void Constructor_IgnoresAndDeletesInvalidCacheFile(string content)
         {
             // Arrange
@@ -53,8 +54,8 @@ namespace NuGet.Server.Tests
         }
 
         [Theory]
-        [InlineData("{\"SchemaVersion\":\"2.0.0\",\"Packages\":[]}", 0)]
-        [InlineData("{\"SchemaVersion\":\"2.0.0\",\"Packages\":[{\"Id\":\"" + PackageId + "\",\"Version\":\"" + PackageVersionString + "\"}]}", 1)]
+        [InlineData("{\"SchemaVersion\":\"3.0.0\",\"Packages\":[]}", 0)]
+        [InlineData("{\"SchemaVersion\":\"3.0.0\",\"Packages\":[{\"Id\":\"" + PackageId + "\",\"Version\":\"" + PackageVersionString + "\"}]}", 1)]
         public void Constructor_LeavesValidCacheFile(string content, int count)
         {
             // Arrange
@@ -78,7 +79,7 @@ namespace NuGet.Server.Tests
         public void Constructor_DeserializesSemVer2Version()
         {
             // Arrange
-            var cacheFile = "{\"SchemaVersion\":\"2.0.0\",\"Packages\":[{\"Id\":\"" + PackageId + "\",\"Version\":\"" + SemVer2VersionString + "\"}]}";
+            var cacheFile = "{\"SchemaVersion\":\"3.0.0\",\"Packages\":[{\"Id\":\"" + PackageId + "\",\"Version\":\"" + SemVer2VersionString + "\"}]}";
             var fileSystem = new Mock<IFileSystem>();
             fileSystem
                 .Setup(x => x.FileExists(CacheFileName))
@@ -96,6 +97,30 @@ namespace NuGet.Server.Tests
             Assert.Equal(SemVer2Version.ToOriginalString(), package.Version.ToOriginalString());
             Assert.Equal(SemVer2Version.ToFullString(), package.Version.ToFullString());
             Assert.Equal(SemVer2Version.ToNormalizedString(), package.Version.ToNormalizedString());
+        }
+
+        [Theory]
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Constructor_DeserializesIsSemVer2(string serialized, bool expected)
+        {
+            // Arrange
+            var cacheFile = "{\"SchemaVersion\":\"3.0.0\",\"Packages\":[{\"Id\":\"" + PackageId + "\",\"Version\":\"" + SemVer2VersionString + "\",\"IsSemVer2\":" + serialized + "}]}";
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem
+                .Setup(x => x.FileExists(CacheFileName))
+                .Returns(true);
+            fileSystem
+                .Setup(x => x.OpenFile(CacheFileName))
+                .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(cacheFile)));
+
+            // Act
+            var actual = new ServerPackageStore(fileSystem.Object, CacheFileName);
+
+            // Assert
+            Assert.Equal(1, actual.GetAll().Count());
+            var package = actual.GetAll().First();
+            Assert.Equal(expected, package.IsSemVer2);
         }
 
         [Fact]

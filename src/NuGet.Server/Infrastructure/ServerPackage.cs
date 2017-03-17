@@ -46,6 +46,8 @@ namespace NuGet.Server.Infrastructure
             Listed = package.Listed;
             Published = package.Published;
 
+            IsSemVer2 = IsPackageSemVer2(package);
+
             _dependencySets = package.DependencySets.ToList();
             Dependencies = DependencySetsAsString(package.DependencySets);
 
@@ -147,9 +149,9 @@ namespace NuGet.Server.Infrastructure
             return _supportedFrameworks;
         }
 
-        public bool IsAbsoluteLatestVersion => SemVer2IsAbsoluteLatest;
+        public bool IsAbsoluteLatestVersion => IsSemVer2 ? SemVer2IsAbsoluteLatest : SemVer1IsAbsoluteLatest;
 
-        public bool IsLatestVersion => SemVer2IsLatest;
+        public bool IsLatestVersion => IsSemVer2 ? SemVer2IsLatest : SemVer1IsLatest;
 
         public bool SemVer1IsAbsoluteLatest { get; set; }
 
@@ -163,6 +165,7 @@ namespace NuGet.Server.Infrastructure
 
         public DateTimeOffset? Published { get; set; }
 
+        public bool IsSemVer2 { get; set; }
         
         public long PackageSize { get; set; }
 
@@ -259,6 +262,41 @@ namespace NuGet.Server.Infrastructure
             return Tuple.Create(id, versionSpec, targetFramework);
         }
 
+        private static bool IsPackageSemVer2(IPackage package)
+        {
+            if (package.Version.IsSemVer2())
+            {
+                return true;
+            }
+
+            if (package.DependencySets != null)
+            {
+                foreach (var dependencySet in package.DependencySets)
+                {
+                    foreach (var dependency in dependencySet.Dependencies)
+                    {
+                        var range = dependency.VersionSpec;
+                        if (range == null)
+                        {
+                            continue;
+                        }
+
+                        if (range.MinVersion != null && range.MinVersion.IsSemVer2())
+                        {
+                            return true;
+                        }
+
+                        if (range.MaxVersion != null && range.MaxVersion.IsSemVer2())
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+
+            return false;
+        }
 
         #region Unsupported operations
 
