@@ -42,6 +42,8 @@ namespace NuGet.Server.Core.Infrastructure
             DownloadCount = package.DownloadCount;
             Listed = package.Listed;
 
+            IsSemVer2 = IsPackageSemVer2(package);
+
             _dependencySets = package.DependencySets.ToList();
             Dependencies = DependencySetsAsString(package.DependencySets);
 
@@ -157,6 +159,8 @@ namespace NuGet.Server.Core.Infrastructure
 
         public bool Listed { get; set; }
 
+        public bool IsSemVer2 { get; set; }
+
         public long PackageSize { get; set; }
 
         public string PackageHash { get; set; }
@@ -248,6 +252,42 @@ namespace NuGet.Server.Core.Infrastructure
                                     : null;
 
             return Tuple.Create(id, versionSpec, targetFramework);
+        }
+
+        private static bool IsPackageSemVer2(IPackage package)
+        {
+            if (package.Version.IsSemVer2())
+            {
+                return true;
+            }
+
+            if (package.DependencySets != null)
+            {
+                foreach (var dependencySet in package.DependencySets)
+                {
+                    foreach (var dependency in dependencySet.Dependencies)
+                    {
+                        var range = dependency.VersionSpec;
+                        if (range == null)
+                        {
+                            continue;
+                        }
+
+                        if (range.MinVersion != null && range.MinVersion.IsSemVer2())
+                        {
+                            return true;
+                        }
+
+                        if (range.MaxVersion != null && range.MaxVersion.IsSemVer2())
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+
+            return false;
         }
     }
 }

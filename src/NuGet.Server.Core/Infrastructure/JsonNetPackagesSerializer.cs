@@ -13,7 +13,7 @@ namespace NuGet.Server.Core.Infrastructure
     public class JsonNetPackagesSerializer
         : IPackagesSerializer
     {
-        private static readonly SemanticVersion CurrentSchemaVersion = new SemanticVersion("2.0.0");
+        private static readonly SemanticVersion CurrentSchemaVersion = new SemanticVersion("3.0.0");
 
         private readonly JsonSerializer _serializer = new JsonSerializer
         {

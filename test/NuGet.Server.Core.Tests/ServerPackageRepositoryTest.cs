@@ -51,6 +51,12 @@ namespace NuGet.Server.Core.Tests
                 repository.AddPackage(CreatePackage("test2", "1.0-beta"));
                 repository.AddPackage(CreatePackage("test3", "1.0-beta.1"));
                 repository.AddPackage(CreatePackage("test4", "1.0-beta+foo"));
+                repository.AddPackage(CreatePackage(
+                    "test5",
+                    "1.0-beta",
+                    new PackageDependency(
+                        "SomePackage",
+                        VersionUtility.ParseVersionSpec("1.0.0-beta.1"))));
             });
         }
 
@@ -429,7 +435,7 @@ namespace NuGet.Server.Core.Tests
                 var actual = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
                 // Assert
-                Assert.Equal(4, actual.Count());
+                Assert.Equal(5, actual.Count());
             }
         }
 
@@ -780,7 +786,7 @@ namespace NuGet.Server.Core.Tests
             return package.Object;
         }
 
-        private IPackage CreatePackage(string id, string version)
+        private IPackage CreatePackage(string id, string version, PackageDependency packageDependency = null)
         {
             var parsedVersion = new SemanticVersion(version);
             var packageBuilder = new PackageBuilder
@@ -790,6 +796,16 @@ namespace NuGet.Server.Core.Tests
                 Description = "Description",
                 Authors = { "Test Author" }
             };
+
+            if (packageDependency != null)
+            {
+                packageBuilder.DependencySets.Add(new PackageDependencySet(
+                    new FrameworkName(".NETFramework,Version=v4.5"),
+                    new[]
+                    {
+                        packageDependency
+                    }));
+            }
 
             var mockFile = new Mock<IPackageFile>();
             mockFile.Setup(m => m.Path).Returns("foo");
