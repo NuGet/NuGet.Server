@@ -216,3 +216,4 @@ tools
 .nuget/ThirdPartyNotices.txt
 Results.*.xml
 !**/TestData/*.nupkg
+.vs
