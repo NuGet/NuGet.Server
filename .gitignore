@@ -214,3 +214,4 @@ tools
 .nuget/NuGet.exe
 .nuget/ThirdPartyNotices.txt
 Results.*.xml
+.vs
