@@ -18,9 +18,9 @@ namespace NuGet.Server.Core.Infrastructure
 
         IEnumerable<ServerPackage> GetAll();
 
-        void Add(ServerPackage entity);
+        void Add(ServerPackage entity, bool enableDelisting);
 
-        void AddRange(IEnumerable<ServerPackage> entities);
+        void AddRange(IEnumerable<ServerPackage> entities, bool enableDelisting);
 
         void Remove(string id, SemanticVersion version, bool enableDelisting);
 

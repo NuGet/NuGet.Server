@@ -130,7 +130,7 @@ namespace NuGet.Server.Core.Infrastructure
                     _packages.RemoveWhere(p => IsMatch(p, id, version));
                 }
 
-                UpdateLatestVersions(_packages.Where(p => IsMatch(p, id)));
+                UpdateLatestVersions(_packages.Where(p => IsMatch(p, id)), enableDelisting);
 
                 _isDirty = true;
             }
@@ -140,7 +140,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        public void Add(ServerPackage entity)
+        public void Add(ServerPackage entity, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -148,7 +148,7 @@ namespace NuGet.Server.Core.Infrastructure
                 _packages.Remove(entity);
                 _packages.Add(entity);
 
-                UpdateLatestVersions(_packages.Where(p => IsMatch(p, entity.Id)));
+                UpdateLatestVersions(_packages.Where(p => IsMatch(p, entity.Id)), enableDelisting);
 
                 _isDirty = true;
             }
@@ -158,7 +158,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        public void AddRange(IEnumerable<ServerPackage> entities)
+        public void AddRange(IEnumerable<ServerPackage> entities, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -169,7 +169,7 @@ namespace NuGet.Server.Core.Infrastructure
                     _packages.Add(entity);
                 }
 
-                UpdateLatestVersions(_packages);
+                UpdateLatestVersions(_packages, enableDelisting);
 
                 _isDirty = true;
             }
@@ -179,7 +179,7 @@ namespace NuGet.Server.Core.Infrastructure
             }
         }
 
-        private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages)
+        private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages, bool enableDelisting)
         {
             var semVer1AbsoluteLatest = InitializePackageDictionary();
             var semVer1Latest = InitializePackageDictionary();
@@ -194,6 +194,12 @@ namespace NuGet.Server.Core.Infrastructure
                 package.SemVer1IsLatest = false;
                 package.SemVer2IsAbsoluteLatest = false;
                 package.SemVer2IsLatest = false;
+
+                // Unlisted packages are never considered "latest".
+                if (enableDelisting && !package.Listed)
+                {
+                    return;
+                }
 
                 // Update the SemVer1 views.
                 if (!package.IsSemVer2)

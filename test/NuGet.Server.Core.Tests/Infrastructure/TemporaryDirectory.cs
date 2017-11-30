@@ -23,7 +23,14 @@ namespace NuGet.Server.Core.Tests.Infrastructure
         {
             if (Directory.Exists(Path))
             {
-                Directory.Delete(Path, true);
+                try
+                {
+                    Directory.Delete(Path, true);
+                }
+                catch
+                {
+                    // Nothing to do here.
+                }
             }
         }
 

@@ -319,19 +319,10 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                Func<string, bool, bool> getSetting = (key, defaultValue) =>
-                {
-                    if (key == "enableDelisting")
-                    {
-                        return true;
-                    }
-                    return defaultValue;
-                };
-
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test1", "1.0"));
-                }, getSetting);
+                }, EnableDelisting);
 
                 // Assert base setup
                 var packages = (await serverRepository.SearchAsync(
@@ -515,12 +506,15 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
-        [Fact]
-        public async Task ServerPackageRepositorySemVer1IsAbsoluteLatest()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ServerPackageRepositorySemVer1IsAbsoluteLatest(bool enableDelisting)
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -528,8 +522,14 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "2.2-beta"));
                     repository.AddPackage(CreatePackage("test", "2.3"));
                     repository.AddPackage(CreatePackage("test", "2.4.0-prerel"));
+                    repository.AddPackage(CreatePackage("test", "2.5.0-prerel"));
                     repository.AddPackage(CreatePackage("test", "3.2.0+taggedOnly"));
-                });
+                }, getSetting);
+
+                await serverRepository.RemovePackageAsync(
+                    "test",
+                    new SemanticVersion("2.5.0-prerel"),
+                    CancellationToken.None);
 
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
@@ -540,12 +540,15 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
-        [Fact]
-        public async Task ServerPackageRepositorySemVer2IsAbsoluteLatest()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ServerPackageRepositorySemVer2IsAbsoluteLatest(bool enableDelisting)
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -554,7 +557,13 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "2.3"));
                     repository.AddPackage(CreatePackage("test", "2.4.0-prerel"));
                     repository.AddPackage(CreatePackage("test", "3.2.0+taggedOnly"));
-                });
+                    repository.AddPackage(CreatePackage("test", "3.3.0+unlisted"));
+                }, getSetting);
+
+                await serverRepository.RemovePackageAsync(
+                    "test",
+                    new SemanticVersion("3.3.0+unlisted"),
+                    CancellationToken.None);
 
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
@@ -586,18 +595,27 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
-        [Fact]
-        public async Task ServerPackageRepositorySemVer1IsLatest()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ServerPackageRepositorySemVer1IsLatest(bool enableDelisting)
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test1", "1.0.0"));
+                    repository.AddPackage(CreatePackage("test1", "1.1.0"));
                     repository.AddPackage(CreatePackage("test1", "1.2.0+taggedOnly"));
                     repository.AddPackage(CreatePackage("test1", "2.0.0-alpha"));
-                });
+                }, getSetting);
+
+                await serverRepository.RemovePackageAsync(
+                    "test1",
+                    new SemanticVersion("1.1.0"),
+                    CancellationToken.None);
 
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Default, Token);
@@ -608,21 +626,30 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
-        [Fact]
-        public async Task ServerPackageRepositorySemVer2IsLatest()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ServerPackageRepositorySemVer2IsLatest(bool enableDelisting)
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "1.11"));
+                    repository.AddPackage(CreatePackage("test", "2.0"));
                     repository.AddPackage(CreatePackage("test", "1.9"));
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
                     repository.AddPackage(CreatePackage("test1", "1.0.0"));
                     repository.AddPackage(CreatePackage("test1", "1.2.0+taggedOnly"));
                     repository.AddPackage(CreatePackage("test1", "2.0.0-alpha"));
-                });
+                }, getSetting);
+
+                await serverRepository.RemovePackageAsync(
+                    "test",
+                    new SemanticVersion("2.0"),
+                    CancellationToken.None);
 
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
@@ -795,7 +822,10 @@ namespace NuGet.Server.Core.Tests
             return package.Object;
         }
 
-        private IPackage CreatePackage(string id, string version, PackageDependency packageDependency = null)
+        private IPackage CreatePackage(
+            string id,
+            string version,
+            PackageDependency packageDependency = null)
         {
             var parsedVersion = new SemanticVersion(version);
             var packageBuilder = new PackageBuilder
@@ -847,6 +877,16 @@ namespace NuGet.Server.Core.Tests
             var outputPackage = new ZipPackage(packageStream);
 
             return outputPackage;
+        }
+
+        private static bool EnableDelisting(string key, bool defaultValue)
+        {
+            if (key == "enableDelisting")
+            {
+                return true;
+            }
+
+            return defaultValue;
         }
     }
 }

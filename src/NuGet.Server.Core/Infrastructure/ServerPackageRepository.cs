@@ -72,17 +72,12 @@ namespace NuGet.Server.Core.Infrastructure
             ISettingsProvider settingsProvider = null,
             Logging.ILogger logger = null)
         {
-            if (fileSystem == null)
-            {
-                throw new ArgumentNullException(nameof(fileSystem));
-            }
-
             if (innerRepository == null)
             {
                 throw new ArgumentNullException(nameof(innerRepository));
             }
 
-            _fileSystem = fileSystem;
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _runBackgroundTasks = runBackgroundTasks;
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
             _logger = logger ?? new TraceLogger();
@@ -272,7 +267,7 @@ namespace NuGet.Server.Core.Infrastructure
                 }
 
                 // Add packages to metadata store in bulk
-                _serverPackageCache.AddRange(serverPackages);
+                _serverPackageCache.AddRange(serverPackages, EnableDelisting);
                 _serverPackageCache.PersistIfDirty();
 
                 _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
@@ -302,7 +297,7 @@ namespace NuGet.Server.Core.Infrastructure
                     EnableDelisting);
 
                 // Add the package to the metadata store.
-                _serverPackageCache.Add(serverPackage);
+                _serverPackageCache.Add(serverPackage, EnableDelisting);
 
                 _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
             }
@@ -428,7 +423,7 @@ namespace NuGet.Server.Core.Infrastructure
             // Build cache
             var packages = await ReadPackagesFromDiskWithoutLockingAsync(token);
             _serverPackageCache.Clear();
-            _serverPackageCache.AddRange(packages);
+            _serverPackageCache.AddRange(packages, EnableDelisting);
 
             // Add packages from drop folder
             AddPackagesFromDropFolderWithoutLocking();
@@ -517,9 +512,11 @@ namespace NuGet.Server.Core.Infrastructure
             if (EnableFileSystemMonitoring && _runBackgroundTasks && _fileSystemWatcher == null && !string.IsNullOrEmpty(Source) && Directory.Exists(Source))
             {
                 // ReSharper disable once UseObjectOrCollectionInitializer
-                _fileSystemWatcher = new FileSystemWatcher(Source);
-                _fileSystemWatcher.Filter = "*";
-                _fileSystemWatcher.IncludeSubdirectories = true;
+                _fileSystemWatcher = new FileSystemWatcher(Source)
+                {
+                    Filter = "*",
+                    IncludeSubdirectories = true,
+                };
 
                 _fileSystemWatcher.Changed += FileSystemChangedAsync;
                 _fileSystemWatcher.Created += FileSystemChangedAsync;
@@ -643,12 +640,7 @@ namespace NuGet.Server.Core.Infrastructure
 
             public SuppressedFileSystemWatcher(ServerPackageRepository repository)
             {
-                if (repository == null)
-                {
-                    throw new ArgumentNullException(nameof(repository));
-                }
-
-                _repository = repository;
+                _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             }
 
             public bool LockTaken => _lockHandle.LockTaken;

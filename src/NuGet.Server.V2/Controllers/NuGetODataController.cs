@@ -40,12 +40,7 @@ namespace NuGet.Server.V2.Controllers
             IServerPackageRepository repository,
             IPackageAuthenticationService authenticationService = null)
         {
-            if (repository == null)
-            {
-                throw new ArgumentNullException(nameof(repository));
-            }
-
-            _serverRepository = repository;
+            _serverRepository = repository ?? throw new ArgumentNullException(nameof(repository));
             _authenticationService = authenticationService;
         }
         
@@ -226,8 +221,7 @@ namespace NuGet.Server.V2.Controllers
             var packagesToUpdate = new List<IPackageMetadata>();
             for (var i = 0; i < idValues.Length; i++)
             {
-                SemanticVersion semVersion;
-                if(SemanticVersion.TryParse(versionValues[i],out semVersion))
+                if(SemanticVersion.TryParse(versionValues[i], out var semVersion))
                 {
                     packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = semVersion });
                 }
@@ -441,8 +435,7 @@ namespace NuGet.Server.V2.Controllers
         private string GetApiKeyFromHeader()
         {
             string apiKey = null;
-            IEnumerable<string> values;
-            if (Request.Headers.TryGetValues(ApiKeyHeader, out values))
+            if (Request.Headers.TryGetValues(ApiKeyHeader, out var values))
             {
                 apiKey = values.FirstOrDefault();
             }
