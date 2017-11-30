@@ -92,7 +92,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
         
-        public void Remove(ServerPackage entity)
+        public void Remove(ServerPackage entity, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -100,7 +100,8 @@ namespace NuGet.Server.Infrastructure
                 _packages.Remove(entity);
 
                 UpdateLatestVersions(_packages.Where(package =>
-                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)));
+                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)),
+                    enableDelisting);
 
                 _isDirty = true;
             }
@@ -110,7 +111,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        public void Remove(string id, SemanticVersion version)
+        public void Remove(string id, SemanticVersion version, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -118,7 +119,7 @@ namespace NuGet.Server.Infrastructure
                 _packages.RemoveWhere(package =>
                     String.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase) && package.Version == version);
 
-                UpdateLatestVersions(_packages);
+                UpdateLatestVersions(_packages, enableDelisting);
 
                 _isDirty = true;
             }
@@ -128,7 +129,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        public void Store(ServerPackage entity)
+        public void Store(ServerPackage entity, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -137,7 +138,8 @@ namespace NuGet.Server.Infrastructure
                 _packages.Add(entity);
 
                 UpdateLatestVersions(_packages.Where(package =>
-                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)));
+                    String.Equals(package.Id, entity.Id, StringComparison.OrdinalIgnoreCase)),
+                    enableDelisting);
 
                 _isDirty = true;
             }
@@ -147,7 +149,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        public void StoreRange(IEnumerable<ServerPackage> entities)
+        public void StoreRange(IEnumerable<ServerPackage> entities, bool enableDelisting)
         {
             _syncLock.EnterWriteLock();
             try
@@ -158,7 +160,7 @@ namespace NuGet.Server.Infrastructure
                     _packages.Add(entity);
                 }
 
-                UpdateLatestVersions(_packages);
+                UpdateLatestVersions(_packages, enableDelisting);
 
                 _isDirty = true;
             }
@@ -168,7 +170,7 @@ namespace NuGet.Server.Infrastructure
             }
         }
 
-        private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages)
+        private static void UpdateLatestVersions(IEnumerable<ServerPackage> packages, bool enableDelisting)
         {
             var semVer1AbsoluteLatest = InitializePackageDictionary();
             var semVer1Latest = InitializePackageDictionary();
@@ -183,6 +185,12 @@ namespace NuGet.Server.Infrastructure
                 package.SemVer1IsLatest = false;
                 package.SemVer2IsAbsoluteLatest = false;
                 package.SemVer2IsLatest = false;
+
+                 // Unlisted packages are never considered "latest".
+                 if (enableDelisting && !package.Listed)
+                 {
+                     return;
+                 }
 
                 // Update the SemVer1 views.
                 if (!package.IsSemVer2)

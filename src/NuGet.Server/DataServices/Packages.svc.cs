@@ -150,7 +150,6 @@ namespace NuGet.Server.DataServices
 
             return Repository
                 .FindPackagesById(id, clientCompatibility)
-                .Where(package => package.Listed)
                 .Select(package => package.AsODataPackage(clientCompatibility))
                 .AsQueryable()
                 .InterceptWith(new NormalizeVersionInterceptor());

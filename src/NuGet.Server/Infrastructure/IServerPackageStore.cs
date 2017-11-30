@@ -10,10 +10,10 @@ namespace NuGet.Server.Infrastructure
     {
         bool HasPackages();
         IQueryable<ServerPackage> GetAll();
-        void Store(ServerPackage entity);
-        void StoreRange(IEnumerable<ServerPackage> entities);
-        void Remove(ServerPackage entity);
-        void Remove(string id, SemanticVersion version);
+        void Store(ServerPackage entity, bool enableDelisting);
+        void StoreRange(IEnumerable<ServerPackage> entities, bool enableDelisting);
+        void Remove(ServerPackage entit, bool enableDelistingy);
+        void Remove(string id, SemanticVersion version, bool enableDelisting);
         void Persist();
         void PersistIfDirty();
         void Clear();

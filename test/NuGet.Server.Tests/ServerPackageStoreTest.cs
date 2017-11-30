@@ -142,7 +142,7 @@ namespace NuGet.Server.Tests
             {
                 Id = PackageId,
                 Version = SemVer2Version
-            });
+            }, enableDelisting: false);
 
             // Act
             actual.Persist();

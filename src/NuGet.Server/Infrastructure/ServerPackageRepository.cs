@@ -278,7 +278,7 @@ namespace NuGet.Server.Infrastructure
                     }
 
                     // Add packages to metadata store in bulk
-                    _serverPackageStore.StoreRange(serverPackages);
+                    _serverPackageStore.StoreRange(serverPackages, EnableDelisting);
                     _serverPackageStore.PersistIfDirty();
 
                     _logger.Log(LogLevel.Info, "Finished adding packages from drop folder.");
@@ -319,7 +319,7 @@ namespace NuGet.Server.Infrastructure
                 _expandedPackageRepository.AddPackage(package);
 
                 // Add to metadata store
-                _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting));
+                _serverPackageStore.Store(CreateServerPackage(package, EnableDelisting), EnableDelisting);
 
                 _logger.Log(LogLevel.Info, "Finished adding package {0} {1}.", package.Id, package.Version);
             }
@@ -357,7 +357,7 @@ namespace NuGet.Server.Infrastructure
                             if (serverPackage != null)
                             {
                                 serverPackage.Listed = false;
-                                _serverPackageStore.Store(serverPackage);
+                                _serverPackageStore.Store(serverPackage, EnableDelisting);
                             }
 
                             // Note that delisted files can still be queried, therefore not deleting persisted hashes if present.
@@ -379,7 +379,7 @@ namespace NuGet.Server.Infrastructure
                     _expandedPackageRepository.RemovePackage(package);
 
                     // Update metadata store
-                    _serverPackageStore.Remove(package.Id, package.Version);
+                    _serverPackageStore.Remove(package.Id, package.Version, EnableDelisting);
 
                     _logger.Log(LogLevel.Info, "Finished removing package {0} {1}.", package.Id, package.Version);
                 }
@@ -473,7 +473,7 @@ namespace NuGet.Server.Infrastructure
                 // Build cache
                 var packages = ReadPackagesFromDisk();
                 _serverPackageStore.Clear();
-                _serverPackageStore.StoreRange(packages);
+                _serverPackageStore.StoreRange(packages, EnableDelisting);
 
                 // Add packages from drop folder
                 AddPackagesFromDropFolder();
