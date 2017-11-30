@@ -45,9 +45,7 @@ namespace NuGet.Server.Core.Infrastructure
         {
             if (enableDelisting)
             {
-                var physicalFileSystem = _fileSystem as PhysicalFileSystem;
-
-                if (physicalFileSystem != null)
+                if (_fileSystem is PhysicalFileSystem physicalFileSystem)
                 {
                     var fileName = physicalFileSystem.GetFullPath(
                         GetPackageFileName(id, version.ToNormalizedString()));
@@ -150,10 +148,7 @@ namespace NuGet.Server.Core.Infrastructure
             var normalizedVersion = package.Version.ToNormalizedString();
             var packageFileName = GetPackageFileName(package.Id, normalizedVersion);
             var hashFileName = GetHashFileName(package.Id, normalizedVersion);
-
-            // File system
-            var physicalFileSystem = _fileSystem as PhysicalFileSystem;
-
+            
             // Build package info
             var packageDerivedData = new PackageDerivedData();
 
@@ -165,7 +160,7 @@ namespace NuGet.Server.Core.Infrastructure
 
             // Read package info
             var localPackage = package as LocalPackage;
-            if (physicalFileSystem != null)
+            if (_fileSystem is PhysicalFileSystem physicalFileSystem)
             {
                 // Read package info from file system
                 var fullPath = _fileSystem.GetFullPath(packageFileName);

@@ -146,7 +146,7 @@ namespace NuGet.Server.Core.Tests
             {
                 Id = PackageId,
                 Version = SemVer2Version
-            });
+            }, enableDelisting: false);
 
             // Act
             actual.Persist();
@@ -232,7 +232,11 @@ namespace NuGet.Server.Core.Tests
                 .Setup(x => x.FileExists(CacheFileName))
                 .Returns(false);
             var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
-            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+            target.Add(new ServerPackage
+            {
+                Id = "NuGet.Versioning",
+                Version = new SemanticVersion("3.5.0-beta2"),
+            }, enableDelisting: false);
 
             // Act
             var actual = target.Exists("nuget.versioning", new SemanticVersion("3.5.0-BETA2"));
@@ -250,7 +254,11 @@ namespace NuGet.Server.Core.Tests
                 .Setup(x => x.FileExists(CacheFileName))
                 .Returns(false);
             var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
-            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+            target.Add(new ServerPackage
+            {
+                Id = "NuGet.Versioning",
+                Version = new SemanticVersion("3.5.0-beta2"),
+            }, enableDelisting: false);
 
             // Act
             var actual = target.Exists("NuGet.Frameworks", new SemanticVersion("3.5.0-beta2"));
@@ -268,7 +276,11 @@ namespace NuGet.Server.Core.Tests
                 .Setup(x => x.FileExists(CacheFileName))
                 .Returns(false);
             var target = new ServerPackageCache(fileSystem.Object, CacheFileName);
-            target.Add(new ServerPackage { Id = "NuGet.Versioning", Version = new SemanticVersion("3.5.0-beta2") });
+            target.Add(new ServerPackage
+            {
+                Id = "NuGet.Versioning",
+                Version = new SemanticVersion("3.5.0-beta2"),
+            }, enableDelisting: false);
 
             // Act
             var actual = target.Exists("NuGet.Versioning", new SemanticVersion("3.5.0-beta2"));
