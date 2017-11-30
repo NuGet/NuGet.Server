@@ -11,6 +11,8 @@ namespace NuGet.Server.DataServices
 {
     public static class PackageExtensions
     {
+        private static readonly DateTime PublishedForUnlisted = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         public static ODataPackage AsODataPackage(this IPackage package, ClientCompatibility compatibility)
         {
             var serverPackage = package as ServerPackage;
@@ -19,7 +21,7 @@ namespace NuGet.Server.DataServices
                 return AsODataPackage(serverPackage, compatibility);
             }
 
-            var utcNow = DateTime.UtcNow;
+            var published = package.Published.HasValue ? package.Published.Value.UtcDateTime : DateTime.UtcNow;
 
             return new ODataPackage
             {
@@ -39,8 +41,8 @@ namespace NuGet.Server.DataServices
                 Description = package.Description,
                 Summary = package.Summary,
                 ReleaseNotes = package.ReleaseNotes,
-                Published = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
-                LastUpdated = package.Published.HasValue ? package.Published.Value.UtcDateTime : utcNow,
+                Published = package.Listed ? published : PublishedForUnlisted,
+                LastUpdated = published,
                 Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
                 PackageHash = package.GetHash(Constants.HashAlgorithm),
                 PackageHashAlgorithm = Constants.HashAlgorithm,
@@ -76,7 +78,7 @@ namespace NuGet.Server.DataServices
                 Description = package.Description,
                 Summary = package.Summary,
                 ReleaseNotes = package.ReleaseNotes,
-                Published = package.Created.UtcDateTime,
+                Published = package.Listed ? package.Created.UtcDateTime : PublishedForUnlisted,
                 LastUpdated = package.LastUpdated.UtcDateTime,
                 Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
                 PackageHash = package.PackageHash,
