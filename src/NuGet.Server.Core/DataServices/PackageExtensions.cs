@@ -11,6 +11,8 @@ namespace NuGet.Server.Core.DataServices
 {
     public static class PackageExtensions
     {
+        private static readonly DateTime PublishedForUnlisted = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         public static ODataPackage AsODataPackage(this IServerPackage package, ClientCompatibility compatibility)
         {
             return new ODataPackage
@@ -31,7 +33,7 @@ namespace NuGet.Server.Core.DataServices
                 Description = package.Description,
                 Summary = package.Summary,
                 ReleaseNotes = package.ReleaseNotes,
-                Published = package.Created.UtcDateTime,
+                Published = package.Listed ? package.Created.UtcDateTime : PublishedForUnlisted,
                 LastUpdated = package.LastUpdated.UtcDateTime,
                 Dependencies = string.Join("|", package.DependencySets.SelectMany(ConvertDependencySetToStrings)),
                 PackageHash = package.PackageHash,
