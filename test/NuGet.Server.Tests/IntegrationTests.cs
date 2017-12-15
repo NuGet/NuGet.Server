@@ -98,6 +98,40 @@ namespace NuGet.Server.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EndpointsSupportingProjection))]
+        public async Task CanQueryUsingProjection(string endpoint)
+        {
+            // Arrange
+            using (var tc = new TestContext())
+            {
+                var packagePath = Path.Combine(tc.PackagesDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+
+                // Act
+                using (var request = new HttpRequestMessage(HttpMethod.Get, $"/nuget/{endpoint}$select=Id,Version"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    // Assert
+                    Assert.Contains(TestData.PackageId, content);
+                    Assert.Contains(TestData.PackageVersionString, content);
+                }
+            }
+        }
+
+        public static IEnumerable<object[]> EndpointsSupportingProjection
+        {
+            get
+            {
+                yield return new object[] { "Packages()?" };
+                yield return new object[] { "Search()?searchTerm=''&targetFramework=''&includePrerelease=true&includeDelisted=true&" };
+                yield return new object[] { $"FindPackagesById()?id='{TestData.PackageId}'&" };
+            }
+        }
+
         private sealed class TestContext : IDisposable
         {
             private readonly HttpServer _server;
