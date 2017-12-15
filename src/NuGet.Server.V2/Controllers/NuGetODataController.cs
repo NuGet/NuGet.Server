@@ -45,10 +45,7 @@ namespace NuGet.Server.V2.Controllers
         }
         
         // GET /Packages
-        // Never seen this invoked. NuGet.Exe and Visual Studio seems to use 'Search' for all package listing.
-        // Probably required to be OData compliant?
         [HttpGet]
-        [EnableQuery(PageSize = 100, HandleNullPropagation = HandleNullPropagationOption.False)]
         public virtual async Task<IHttpActionResult> Get(
             ODataQueryOptions<ODataPackage> options,
             [FromUri] string semVerLevel = "",
