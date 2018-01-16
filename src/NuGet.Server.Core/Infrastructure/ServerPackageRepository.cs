@@ -105,9 +105,28 @@ namespace NuGet.Server.Core.Infrastructure
         private bool EnableFileSystemMonitoring =>
             _settingsProvider.GetBoolSetting("enableFileSystemMonitoring", true);
 
+        private string CacheFileName => _settingsProvider.GetStringSetting("cacheFileName", null);
+
         private ServerPackageCache InitializeServerPackageStore()
         {
-            return new ServerPackageCache(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+            return new ServerPackageCache(_fileSystem, ResolveCacheFileName());
+        }
+
+        private string ResolveCacheFileName()
+        {
+            var fileName = CacheFileName;
+            const string suffix = ".cache.bin";
+
+            if (String.IsNullOrWhiteSpace(fileName))
+            {
+                // Default file name
+                return Environment.MachineName.ToLowerInvariant() + suffix;
+            }
+
+            if (fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                return fileName;
+
+            return fileName + suffix;
         }
 
         /// <summary>

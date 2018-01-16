@@ -28,5 +28,11 @@ namespace NuGet.Server.Infrastructure
             bool value;
             return !bool.TryParse(settings[key], out value) ? defaultValue : value;
         }
+
+        public string GetStringSetting(string key, string defaultValue)
+        {
+            var settings = _getSettings();
+            return settings[key] ?? defaultValue;
+        }
     }
 }

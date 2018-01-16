@@ -23,7 +23,7 @@ namespace NuGet.Server.Core.Tests
         public static async Task<ServerPackageRepository> CreateServerPackageRepositoryAsync(
             string path,
             Action<ExpandedPackageRepository> setupRepository = null,
-            Func<string, bool, bool> getSetting = null)
+            Func<string, object, object> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
@@ -514,7 +514,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -548,7 +548,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -603,7 +603,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test1", "1.0.0"));
@@ -634,7 +634,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "1.11"));
@@ -879,7 +879,7 @@ namespace NuGet.Server.Core.Tests
             return outputPackage;
         }
 
-        private static bool EnableDelisting(string key, bool defaultValue)
+        private static object EnableDelisting(string key, object defaultValue)
         {
             if (key == "enableDelisting")
             {
