@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Query;
+using NuGet.Server.Core;
 using NuGet.Server.Core.DataServices;
 using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.V2.Model;
@@ -396,8 +397,7 @@ namespace NuGet.Server.V2.Controllers
                 }
             }
 
-            var package = new OptimizedZipPackage(temporaryFile);
-
+            var package = PackageFactory.Open(temporaryFile);
 
             HttpResponseMessage retValue;
             if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))

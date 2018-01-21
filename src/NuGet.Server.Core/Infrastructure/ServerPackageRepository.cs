@@ -236,7 +236,7 @@ namespace NuGet.Server.Core.Infrastructure
                     try
                     {
                         // Create package
-                        var package = new OptimizedZipPackage(_fileSystem, packageFile);
+                        var package = PackageFactory.Open(_fileSystem.GetFullPath(packageFile));
 
                         if (!CanPackageBeAddedWithoutLocking(package, shouldThrow: false))
                         {

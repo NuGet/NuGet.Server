@@ -58,7 +58,9 @@
     </Compile>
     <Compile Include="Core\Constants.cs" />
     <Compile Include="Core\FrameworkNameExtensions.cs" />
+    <Compile Include="Core\NullFileSystem.cs" />
     <Compile Include="Core\PackageExtensions.cs" />
+    <Compile Include="Core\PackageFactory.cs" />
     <Compile Include="DataServices\IgnoreCaseForPackageIdInterceptor.cs" />
     <Compile Include="DataServices\NormalizeVersionInterceptor.cs" />
     <Compile Include="DataServices\ODataPackage.cs" />

@@ -81,6 +81,7 @@
   <ItemGroup>
     <Compile Include="ApiKeyPackageAuthenticationServiceTest.cs" />
     <Compile Include="ClientCompatibilityFactoryTests.cs" />
+    <Compile Include="Core\PackageFactoryTest.cs" />
     <Compile Include="IdAndVersionEqualityComparerTest.cs" />
     <Compile Include="IgnoreCaseForPackageIdInterceptorTest.cs" />
     <Compile Include="Infrastructure\FuncSettingsProvider.cs" />
