@@ -8,7 +8,7 @@ namespace NuGet.Server.Core.Tests.Infrastructure
     class FuncSettingsProvider : ISettingsProvider
     {
         readonly Func<string, object, object> _getSetting;
-        internal FuncSettingsProvider(Func<string,object,object> getSetting)
+        internal FuncSettingsProvider(Func<string, object, object> getSetting)
         {
             if (getSetting == null)
             {
