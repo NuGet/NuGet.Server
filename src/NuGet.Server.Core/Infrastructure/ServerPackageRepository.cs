@@ -123,6 +123,15 @@ namespace NuGet.Server.Core.Infrastructure
                 return Environment.MachineName.ToLowerInvariant() + suffix;
             }
 
+            if (fileName.LastIndexOfAny(Path.GetInvalidFileNameChars()) > 0)
+            {
+                var message = string.Format(Strings.Error_InvalidCacheFileName, fileName);
+
+                _logger.Log(LogLevel.Error, message);
+
+                throw new InvalidOperationException(message);
+            }
+
             if (fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
             {
                 return fileName;

@@ -811,6 +811,123 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task ServerPackageRepository_CustomCacheFileNameNotConfigured_UseMachineNameAsFileName(string fileNameFromConfig)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "cacheFileName")
+                        {
+                            return fileNameFromConfig;
+                        }
+
+                        return defaultValue;
+                    });
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsConfigured_CustomCacheFileIsCreated()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "cacheFileName")
+                        {
+                            return "CustomFileName.cache.bin";
+                        }
+
+                        return defaultValue;
+                    });
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameWithoutExtensionIsConfigured_CustomCacheFileWithExtensionIsCreated()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "cacheFileName")
+                        {
+                            return "CustomFileName";
+                        }
+
+                        return defaultValue;
+                    });
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Theory]
+        [InlineData("c:\\file\\is\\a\\path\\to\\Awesome.cache.bin")]
+        [InlineData("random:invalidFileName.cache.bin")]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsInvalid_ThrowUp(string invlaidCacheFileName)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                Func<Task> code = () => CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "cacheFileName")
+                        {
+                            return invlaidCacheFileName;
+                        }
+
+                        return defaultValue;
+                    });
+
+                await Assert.ThrowsAsync<InvalidOperationException>(code);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsInvalid_ThrowUpWithCorrectErrorMessage()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                Func<Task> code = () => CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) =>
+                    {
+                        if (key == "cacheFileName")
+                        {
+                            return "foo:bar/baz";
+                        }
+
+                        return defaultValue;
+                    });
+
+                var expectedMessage = "Configured cache file name 'foo:bar/baz' is invalid. Keep it simple; No paths allowed.";
+                Assert.Equal(expectedMessage, (await Assert.ThrowsAsync<InvalidOperationException>(code)).Message);
+            }
+        }
+
         private static IPackage CreateMockPackage(string id, string version)
         {
             var package = new Mock<IPackage>();
