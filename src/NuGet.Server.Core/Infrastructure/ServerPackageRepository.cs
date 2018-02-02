@@ -124,7 +124,9 @@ namespace NuGet.Server.Core.Infrastructure
             }
 
             if (fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
                 return fileName;
+            }
 
             return fileName + suffix;
         }
