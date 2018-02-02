@@ -58,7 +58,7 @@ namespace NuGet.Server.Core.Infrastructure
             _runBackgroundTasks = true;
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
             _logger = logger ?? new TraceLogger();
-            _serverPackageCache = InitializeServerPackageStore();
+            _serverPackageCache = InitializeServerPackageCache();
             _serverPackageStore = new ServerPackageStore(
                 _fileSystem,
                 new ExpandedPackageRepository(_fileSystem, hashProvider),
@@ -81,7 +81,7 @@ namespace NuGet.Server.Core.Infrastructure
             _runBackgroundTasks = runBackgroundTasks;
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
             _logger = logger ?? new TraceLogger();
-            _serverPackageCache = InitializeServerPackageStore();
+            _serverPackageCache = InitializeServerPackageCache();
             _serverPackageStore = new ServerPackageStore(
                 _fileSystem,
                 innerRepository,
@@ -107,7 +107,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         private string CacheFileName => _settingsProvider.GetStringSetting("cacheFileName", null);
 
-        private ServerPackageCache InitializeServerPackageStore()
+        private ServerPackageCache InitializeServerPackageCache()
         {
             return new ServerPackageCache(_fileSystem, ResolveCacheFileName());
         }
