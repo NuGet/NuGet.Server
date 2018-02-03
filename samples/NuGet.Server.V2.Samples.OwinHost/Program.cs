@@ -24,7 +24,7 @@ namespace NuGet.Server.V2.Samples.OwinHost
 
             // Set up a common settingsProvider to be used by all repositories. 
             // If a setting is not present in dictionary default value will be used.
-            var settings = new Dictionary<string, bool>();
+            var settings = new Dictionary<string, object>();
             settings.Add("enableDelisting", false);                         //default=false
             settings.Add("enableFrameworkFiltering", false);                //default=false
             settings.Add("ignoreSymbolsPackages", true);                    //default=false
