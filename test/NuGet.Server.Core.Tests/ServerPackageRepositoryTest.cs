@@ -821,15 +821,7 @@ namespace NuGet.Server.Core.Tests
             {
                 ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
                     temporaryDirectory.Path,
-                    getSetting: (key, defaultValue) =>
-                    {
-                        if (key == "cacheFileName")
-                        {
-                            return fileNameFromConfig;
-                        }
-
-                        return defaultValue;
-                    });
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? fileNameFromConfig : defaultValue);
 
                 string expectedCacheFileName = Path.Combine(serverRepository.Source, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
 
@@ -844,15 +836,7 @@ namespace NuGet.Server.Core.Tests
             {
                 ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
                     temporaryDirectory.Path,
-                    getSetting: (key, defaultValue) =>
-                    {
-                        if (key == "cacheFileName")
-                        {
-                            return "CustomFileName.cache.bin";
-                        }
-
-                        return defaultValue;
-                    });
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "CustomFileName.cache.bin" : defaultValue);
 
                 string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
 
@@ -867,15 +851,7 @@ namespace NuGet.Server.Core.Tests
             {
                 ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
                     temporaryDirectory.Path,
-                    getSetting: (key, defaultValue) =>
-                    {
-                        if (key == "cacheFileName")
-                        {
-                            return "CustomFileName";
-                        }
-
-                        return defaultValue;
-                    });
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "CustomFileName" : defaultValue);
 
                 string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
 
@@ -890,19 +866,11 @@ namespace NuGet.Server.Core.Tests
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
-                Func<Task> code = () => CreateServerPackageRepositoryAsync(
+                Task Code() => CreateServerPackageRepositoryAsync(
                     temporaryDirectory.Path,
-                    getSetting: (key, defaultValue) =>
-                    {
-                        if (key == "cacheFileName")
-                        {
-                            return invlaidCacheFileName;
-                        }
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? invlaidCacheFileName : defaultValue);
 
-                        return defaultValue;
-                    });
-
-                await Assert.ThrowsAsync<InvalidOperationException>(code);
+                await Assert.ThrowsAsync<InvalidOperationException>(Code);
             }
         }
 
@@ -911,20 +879,12 @@ namespace NuGet.Server.Core.Tests
         {
             using (var temporaryDirectory = new TemporaryDirectory())
             {
-                Func<Task> code = () => CreateServerPackageRepositoryAsync(
+                Task Code() => CreateServerPackageRepositoryAsync(
                     temporaryDirectory.Path,
-                    getSetting: (key, defaultValue) =>
-                    {
-                        if (key == "cacheFileName")
-                        {
-                            return "foo:bar/baz";
-                        }
-
-                        return defaultValue;
-                    });
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "foo:bar/baz" : defaultValue);
 
                 var expectedMessage = "Configured cache file name 'foo:bar/baz' is invalid. Keep it simple; No paths allowed.";
-                Assert.Equal(expectedMessage, (await Assert.ThrowsAsync<InvalidOperationException>(code)).Message);
+                Assert.Equal(expectedMessage, (await Assert.ThrowsAsync<InvalidOperationException>(Code)).Message);
             }
         }
 
