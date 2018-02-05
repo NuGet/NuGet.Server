@@ -58,7 +58,7 @@ namespace NuGet.Server.Core.Infrastructure
             _runBackgroundTasks = true;
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
             _logger = logger ?? new TraceLogger();
-            _serverPackageCache = InitializeServerPackageStore();
+            _serverPackageCache = InitializeServerPackageCache();
             _serverPackageStore = new ServerPackageStore(
                 _fileSystem,
                 new ExpandedPackageRepository(_fileSystem, hashProvider),
@@ -81,7 +81,7 @@ namespace NuGet.Server.Core.Infrastructure
             _runBackgroundTasks = runBackgroundTasks;
             _settingsProvider = settingsProvider ?? new DefaultSettingsProvider();
             _logger = logger ?? new TraceLogger();
-            _serverPackageCache = InitializeServerPackageStore();
+            _serverPackageCache = InitializeServerPackageCache();
             _serverPackageStore = new ServerPackageStore(
                 _fileSystem,
                 innerRepository,
@@ -105,9 +105,39 @@ namespace NuGet.Server.Core.Infrastructure
         private bool EnableFileSystemMonitoring =>
             _settingsProvider.GetBoolSetting("enableFileSystemMonitoring", true);
 
-        private ServerPackageCache InitializeServerPackageStore()
+        private string CacheFileName => _settingsProvider.GetStringSetting("cacheFileName", null);
+
+        private ServerPackageCache InitializeServerPackageCache()
         {
-            return new ServerPackageCache(_fileSystem, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+            return new ServerPackageCache(_fileSystem, ResolveCacheFileName());
+        }
+
+        private string ResolveCacheFileName()
+        {
+            var fileName = CacheFileName;
+            const string suffix = ".cache.bin";
+
+            if (String.IsNullOrWhiteSpace(fileName))
+            {
+                // Default file name
+                return Environment.MachineName.ToLowerInvariant() + suffix;
+            }
+
+            if (fileName.LastIndexOfAny(Path.GetInvalidFileNameChars()) > 0)
+            {
+                var message = string.Format(Strings.Error_InvalidCacheFileName, fileName);
+
+                _logger.Log(LogLevel.Error, message);
+
+                throw new InvalidOperationException(message);
+            }
+
+            if (fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return fileName;
+            }
+
+            return fileName + suffix;
         }
 
         /// <summary>
@@ -236,7 +266,7 @@ namespace NuGet.Server.Core.Infrastructure
                     try
                     {
                         // Create package
-                        var package = new OptimizedZipPackage(_fileSystem, packageFile);
+                        var package = PackageFactory.Open(_fileSystem.GetFullPath(packageFile));
 
                         if (!CanPackageBeAddedWithoutLocking(package, shouldThrow: false))
                         {

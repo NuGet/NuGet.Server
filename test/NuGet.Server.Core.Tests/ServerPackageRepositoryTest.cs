@@ -23,7 +23,7 @@ namespace NuGet.Server.Core.Tests
         public static async Task<ServerPackageRepository> CreateServerPackageRepositoryAsync(
             string path,
             Action<ExpandedPackageRepository> setupRepository = null,
-            Func<string, bool, bool> getSetting = null)
+            Func<string, object, object> getSetting = null)
         {
             var fileSystem = new PhysicalFileSystem(path);
             var expandedPackageRepository = new ExpandedPackageRepository(fileSystem);
@@ -514,7 +514,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -548,7 +548,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "2.0-alpha"));
@@ -603,7 +603,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test1", "1.0.0"));
@@ -634,7 +634,7 @@ namespace NuGet.Server.Core.Tests
             using (var temporaryDirectory = new TemporaryDirectory())
             {
                 // Arrange
-                var getSetting = enableDelisting ? EnableDelisting : (Func<string, bool, bool>)null;
+                var getSetting = enableDelisting ? EnableDelisting : (Func<string, object, object>)null;
                 var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
                 {
                     repository.AddPackage(CreatePackage("test", "1.11"));
@@ -811,6 +811,83 @@ namespace NuGet.Server.Core.Tests
             }
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task ServerPackageRepository_CustomCacheFileNameNotConfigured_UseMachineNameAsFileName(string fileNameFromConfig)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? fileNameFromConfig : defaultValue);
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, Environment.MachineName.ToLowerInvariant() + ".cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsConfigured_CustomCacheFileIsCreated()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "CustomFileName.cache.bin" : defaultValue);
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameWithoutExtensionIsConfigured_CustomCacheFileWithExtensionIsCreated()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                ServerPackageRepository serverRepository = await CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "CustomFileName" : defaultValue);
+
+                string expectedCacheFileName = Path.Combine(serverRepository.Source, "CustomFileName.cache.bin");
+
+                Assert.True(File.Exists(expectedCacheFileName));
+            }
+        }
+
+        [Theory]
+        [InlineData("c:\\file\\is\\a\\path\\to\\Awesome.cache.bin")]
+        [InlineData("random:invalidFileName.cache.bin")]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsInvalid_ThrowUp(string invlaidCacheFileName)
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                Task Code() => CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? invlaidCacheFileName : defaultValue);
+
+                await Assert.ThrowsAsync<InvalidOperationException>(Code);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepository_CustomCacheFileNameIsInvalid_ThrowUpWithCorrectErrorMessage()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                Task Code() => CreateServerPackageRepositoryAsync(
+                    temporaryDirectory.Path,
+                    getSetting: (key, defaultValue) => key == "cacheFileName" ? "foo:bar/baz" : defaultValue);
+
+                var expectedMessage = "Configured cache file name 'foo:bar/baz' is invalid. Keep it simple; No paths allowed.";
+                Assert.Equal(expectedMessage, (await Assert.ThrowsAsync<InvalidOperationException>(Code)).Message);
+            }
+        }
+
         private static IPackage CreateMockPackage(string id, string version)
         {
             var package = new Mock<IPackage>();
@@ -879,7 +956,7 @@ namespace NuGet.Server.Core.Tests
             return outputPackage;
         }
 
-        private static bool EnableDelisting(string key, bool defaultValue)
+        private static object EnableDelisting(string key, object defaultValue)
         {
             if (key == "enableDelisting")
             {

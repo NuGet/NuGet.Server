@@ -6,13 +6,16 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Dependencies;
 using NuGet.Server.App_Start;
+using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Tests;
 using NuGet.Server.Core.Tests.Infrastructure;
 using Xunit;
@@ -52,6 +55,72 @@ namespace NuGet.Server.Tests
                     var content = await response.Content.ReadAsStringAsync();
 
                     Assert.Contains(TestData.PackageId, content);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task DownloadPackage()
+        {
+            // Arrange
+            using (var tc = new TestContext())
+            {
+                // Act & Assert
+                // 1. Write a package to the drop folder.
+                var packagePath = Path.Combine(tc.PackagesDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+                var expectedBytes = File.ReadAllBytes(packagePath);
+
+                // 2. Download the package.
+                using (var request = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    $"/nuget/Packages(Id='{TestData.PackageId}',Version='{TestData.PackageVersionString}')/Download"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var actualBytes = await response.Content.ReadAsByteArrayAsync();
+
+                    Assert.Equal("binary/octet-stream", response.Content.Headers.ContentType.ToString());
+                    Assert.Equal(expectedBytes, actualBytes);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task FilterOnFramework()
+        {
+            // Arrange
+            using (var tc = new TestContext())
+            {
+                tc.Settings["enableFrameworkFiltering"] = "true";
+
+                // Act & Assert
+                // 1. Write a package to the drop folder.
+                var packagePath = Path.Combine(tc.PackagesDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+
+                // 2. Search for all packages supporting .NET Framework 4.6 (this should match the test package)
+                using (var request = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    $"/nuget/Search?targetFramework='net46'"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.Contains(TestData.PackageId, content);
+                }
+
+                // 3. Search for all packages supporting .NET Framework 2.0 (this should match nothing)
+                using (var request = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    $"/nuget/Search?targetFramework='net20'"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.DoesNotContain(TestData.PackageId, content);
                 }
             }
         }
@@ -122,6 +191,75 @@ namespace NuGet.Server.Tests
             }
         }
 
+        [Fact]
+        public async Task DoesNotWriteToNuGetScratch()
+        {
+            // Arrange
+            OptimizedZipPackage.PurgeCache();
+            var expectedTempEntries = Directory
+                .GetFileSystemEntries(Path.Combine(Path.GetTempPath(), "NuGetScratch"))
+                .OrderBy(x => x)
+                .ToList();
+
+            using (var tc = new TestContext())
+            {
+                tc.Settings["enableFrameworkFiltering"] = "true";
+                tc.Settings["allowOverrideExistingPackageOnPush"] = "true";
+
+                string apiKey = "foobar";
+                tc.SetApiKey(apiKey);
+
+                // Act & Assert
+                // 1. Write a package to the drop folder.
+                var packagePath = Path.Combine(tc.PackagesDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+
+                // 2. Search for packages.
+                using (var request = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    $"/nuget/Search?targetFramework='net46'"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                }
+
+                // 3. Push the package.
+                var pushPath = Path.Combine(tc.TemporaryDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, pushPath);
+                using (var request = new HttpRequestMessage(HttpMethod.Put, "/nuget")
+                {
+                    Headers =
+                    {
+                        { "X-NUGET-APIKEY", apiKey }
+                    },
+                    Content = tc.GetFileUploadContent(pushPath),
+                })
+                {
+                    using (request)
+                    using (var response = await tc.Client.SendAsync(request))
+                    {
+                        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+                    }
+                }
+
+                // 4. Search for packages again.
+                using (var request = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    $"/nuget/Search?targetFramework='net46'"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                }
+
+                // 6. Make sure we have not added more temp files.
+                var actualTempEntries = Directory
+                    .GetFileSystemEntries(Path.Combine(Path.GetTempPath(), "NuGetScratch"))
+                    .OrderBy(x => x)
+                    .ToList();
+                Assert.Equal(expectedTempEntries, actualTempEntries);
+            }
+        }
+
         public static IEnumerable<object[]> EndpointsSupportingProjection
         {
             get
@@ -135,7 +273,6 @@ namespace NuGet.Server.Tests
         private sealed class TestContext : IDisposable
         {
             private readonly HttpServer _server;
-            private readonly DefaultServiceResolver _serviceResolver;
             private readonly HttpConfiguration _config;
 
             public TestContext()
@@ -149,11 +286,11 @@ namespace NuGet.Server.Tests
                     { "apiKey", string.Empty }
                 };
 
-                _serviceResolver = new DefaultServiceResolver(PackagesDirectory, Settings);
+                ServiceResolver = new DefaultServiceResolver(PackagesDirectory, Settings);
 
                 _config = new HttpConfiguration();
                 _config.IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always;
-                _config.DependencyResolver = new DependencyResolverAdapter(_serviceResolver);
+                _config.DependencyResolver = new DependencyResolverAdapter(ServiceResolver);
 
                 NuGetODataConfig.Initialize(_config, "TestablePackagesOData");
 
@@ -162,6 +299,7 @@ namespace NuGet.Server.Tests
                 Client.BaseAddress = new Uri("http://localhost/");
             }
 
+            public DefaultServiceResolver ServiceResolver { get; }
             public TemporaryDirectory TemporaryDirectory { get; }
             public TemporaryDirectory PackagesDirectory { get; }
             public NameValueCollection Settings { get; }
@@ -198,7 +336,7 @@ namespace NuGet.Server.Tests
                 Client.Dispose();
                 _server.Dispose();
                 _config.Dispose();
-                _serviceResolver.Dispose();
+                ServiceResolver.Dispose();
                 PackagesDirectory.Dispose();
                 TemporaryDirectory.Dispose();
             }

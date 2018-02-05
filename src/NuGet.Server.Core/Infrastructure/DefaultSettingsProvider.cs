@@ -8,5 +8,10 @@ namespace NuGet.Server.Core.Infrastructure
         {
             return defaultValue;
         }
+
+        public string GetStringSetting(string key, string defaultValue)
+        {
+            return defaultValue;
+        }
     }
 }

@@ -61,6 +61,15 @@ namespace NuGet.Server.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Configured cache file name &apos;{0}&apos; is invalid. Keep it simple; No paths allowed..
+        /// </summary>
+        internal static string Error_InvalidCacheFileName {
+            get {
+                return ResourceManager.GetString("Error_InvalidCacheFileName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Package {0} already exists. The server is configured to not allow overwriting packages that already exist..
         /// </summary>
         internal static string Error_PackageAlreadyExists {

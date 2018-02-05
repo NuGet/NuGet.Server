@@ -7,8 +7,8 @@ namespace NuGet.Server.Core.Tests.Infrastructure
 {
     class FuncSettingsProvider : ISettingsProvider
     {
-        readonly Func<string, bool, bool> _getSetting;
-        internal FuncSettingsProvider(Func<string,bool,bool> getSetting)
+        readonly Func<string, object, object> _getSetting;
+        internal FuncSettingsProvider(Func<string, object, object> getSetting)
         {
             if (getSetting == null)
             {
@@ -20,7 +20,12 @@ namespace NuGet.Server.Core.Tests.Infrastructure
 
         public bool GetBoolSetting(string key, bool defaultValue)
         {
-            return _getSetting(key, defaultValue);
+            return Convert.ToBoolean(_getSetting(key, defaultValue));
+        }
+
+        public string GetStringSetting(string key, string defaultValue)
+        {
+            return Convert.ToString(_getSetting(key, defaultValue));
         }
     }
 }
