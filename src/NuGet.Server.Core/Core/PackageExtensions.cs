@@ -8,13 +8,22 @@ namespace NuGet.Server.Core
 {
     public static class PackageExtensions
     {
+        private const string SourcesDirectory = "src";
+        private const string EmptySourceDirectoryPlaceholder = SourcesDirectory + @"\_._";
+
         public static bool IsSymbolsPackage(this IPackage package)
         {
             var hasSymbols = package.GetFiles()
                 .Any(pf => string.Equals(Path.GetExtension(pf.Path), ".pdb", StringComparison.InvariantCultureIgnoreCase));
 
-            return hasSymbols && package.GetFiles()
-                   .Any(pf => pf.Path.StartsWith("src") || pf.Path.StartsWith("/src"));
+            return hasSymbols && package.GetFiles().Any(IsSourceFile);
+        }
+
+        private static bool IsSourceFile(IPackageFile pf)
+        {
+            var path = pf.Path.Trim('/');
+
+            return path.StartsWith(SourcesDirectory) && path != EmptySourceDirectoryPlaceholder;
         }
     }
 }
