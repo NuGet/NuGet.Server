@@ -3,8 +3,10 @@
 
 using System.Net.Http;
 using System.Web.Http;
+using System.Web.Http.ExceptionHandling;
 using System.Web.Http.Routing;
 using NuGet.Server.DataServices;
+using NuGet.Server.Infrastructure;
 using NuGet.Server.V2;
 
 // The consuming project executes this logic with its own copy of this class. This is done with a .pp file that is
@@ -27,6 +29,11 @@ namespace NuGet.Server.App_Start
         public static void Initialize(HttpConfiguration config, string controllerName)
         {
             NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config, "NuGetDefault", "nuget", controllerName);
+
+            config.Services.Replace(typeof(IExceptionLogger), new TraceExceptionLogger());
+
+            // Trace.Listeners.Add(new TextWriterTraceListener(HostingEnvironment.MapPath("~/NuGet.Server.log")));
+            // Trace.AutoFlush = true;
 
             config.Routes.MapHttpRoute(
                 name: "NuGetDefault_ClearCache",
