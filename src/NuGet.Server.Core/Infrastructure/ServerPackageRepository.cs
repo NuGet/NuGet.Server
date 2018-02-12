@@ -32,6 +32,7 @@ namespace NuGet.Server.Core.Infrastructure
 
         private readonly bool _runBackgroundTasks;
         private FileSystemWatcher _fileSystemWatcher;
+        private string _watchDirectory;
         private bool _isFileSystemWatcherSuppressed;
         private bool _needsRebuild;
 
@@ -548,6 +549,9 @@ namespace NuGet.Server.Core.Infrastructure
                     IncludeSubdirectories = true,
                 };
 
+                //Keep the normalized watch path.
+                _watchDirectory = Path.GetFullPath(_fileSystemWatcher.Path);
+
                 _fileSystemWatcher.Changed += FileSystemChangedAsync;
                 _fileSystemWatcher.Created += FileSystemChangedAsync;
                 _fileSystemWatcher.Deleted += FileSystemChangedAsync;
@@ -576,6 +580,8 @@ namespace NuGet.Server.Core.Infrastructure
 
                 _logger.Log(LogLevel.Verbose, "Destroyed FileSystemWatcher - no longer monitoring {0}.", Source);
             }
+
+            _watchDirectory = null;
         }
 
 
@@ -593,8 +599,16 @@ namespace NuGet.Server.Core.Infrastructure
 
                 _logger.Log(LogLevel.Verbose, "File system changed. File: {0} - Change: {1}", e.Name, e.ChangeType);
 
+                var changedDirectory = Path.GetDirectoryName(e.FullPath);
+                if (changedDirectory == null || _watchDirectory == null)
+                {
+                    return;
+                }
+
+                changedDirectory = Path.GetFullPath(changedDirectory);                
+
                 // 1) If a .nupkg is dropped in the root, add it as a package
-                if (string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase)
+                if (string.Equals(changedDirectory, _watchDirectory, StringComparison.OrdinalIgnoreCase)
                     && string.Equals(Path.GetExtension(e.Name), ".nupkg", StringComparison.OrdinalIgnoreCase))
                 {
                     // When a package is dropped into the server packages root folder, add it to the repository.
@@ -602,7 +616,7 @@ namespace NuGet.Server.Core.Infrastructure
                 }
 
                 // 2) If a file is updated in a subdirectory, *or* a folder is deleted, invalidate the cache
-                if ((!string.Equals(Path.GetDirectoryName(e.FullPath), _fileSystemWatcher.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
+                if ((!string.Equals(changedDirectory, _watchDirectory, StringComparison.OrdinalIgnoreCase) && File.Exists(e.FullPath))
                     || e.ChangeType == WatcherChangeTypes.Deleted)
                 {
                     // TODO: invalidating *all* packages for every nupkg change under this folder seems more expensive than it should.
