@@ -106,11 +106,11 @@ namespace NuGet.Server.Core.Tests
                 foreach (var packageToAddToDropFolder in packagesToAddToDropFolder)
                 {
                     var package = packages.FirstOrDefault(
-                            p => p.Id == packageToAddToDropFolder.Value.Id 
+                            p => p.Id == packageToAddToDropFolder.Value.Id
                                 && p.Version == packageToAddToDropFolder.Value.Version);
 
                     // check the package from drop folder has been added
-                    Assert.NotNull(package); 
+                    Assert.NotNull(package);
 
                     // check the package in the drop folder has been removed
                     Assert.False(File.Exists(Path.Combine(temporaryDirectory.Path, packageToAddToDropFolder.Key)));
@@ -357,6 +357,139 @@ namespace NuGet.Server.Core.Tests
         }
 
         [Fact]
+        public async Task ServerPackageRepositorySearchDelistingDisabledAndExclude()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0"));
+                });
+
+                // Remove the package
+                await serverRepository.RemovePackageAsync("test1", new SemanticVersion("1.0"), Token);
+
+                // Verify that the package is not returned by search
+                var packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    allowDelistedVersions: false,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
+                Assert.Equal(0, packages.Count);
+
+                // Act: search with includeDelisted=true
+                packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
+
+                // Assert
+                Assert.Equal(0, packages.Count);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySearchDelistingDisabledAndInclude()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0"));
+                });
+
+                // Remove the package
+                await serverRepository.RemovePackageAsync("test1", new SemanticVersion("1.0"), Token);
+
+                // Verify that the package is not returned by search
+                var packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    allowDelistedVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
+                Assert.Equal(0, packages.Count);
+
+                // Act: search with includeDelisted=true
+                packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
+
+                // Assert
+                Assert.Equal(0, packages.Count);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySearchDelistingEnabledAndExclude()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0"));
+                }, EnableDelisting);
+
+                // Delist the package
+                await serverRepository.RemovePackageAsync("test1", new SemanticVersion("1.0"), Token);
+
+                // Verify that the package is not returned by search
+                var packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    allowDelistedVersions: false,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
+                Assert.Equal(0, packages.Count);
+
+                // Act: search with includeDelisted=true
+                packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
+
+                // Assert
+                Assert.Equal(1, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("1.0", packages[0].Version.ToString());
+                Assert.False(packages[0].Listed);
+            }
+        }
+
+        [Fact]
+        public async Task ServerPackageRepositorySearchDelistingEnabledAndInclude()
+        {
+            using (var temporaryDirectory = new TemporaryDirectory())
+            {
+                // Arrange
+                var serverRepository = await CreateServerPackageRepositoryAsync(temporaryDirectory.Path, repository =>
+                {
+                    repository.AddPackage(CreatePackage("test1", "1.0"));
+                }, EnableDelisting);
+
+                // Delist the package
+                await serverRepository.RemovePackageAsync("test1", new SemanticVersion("1.0"), Token);
+
+                // Verify that the package is not returned by search
+                var packages = (await serverRepository.SearchAsync(
+                    "test1",
+                    allowPrereleaseVersions: true,
+                    allowDelistedVersions: true,
+                    compatibility: ClientCompatibility.Max,
+                    token: Token)).ToList();
+                Assert.Equal(1, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("1.0", packages[0].Version.ToString());
+                Assert.False(packages[0].Listed);
+
+                // Act: search with includeDelisted=true
+                packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
+
+                // Assert
+                Assert.Equal(1, packages.Count);
+                Assert.Equal("test1", packages[0].Id);
+                Assert.Equal("1.0", packages[0].Version.ToString());
+                Assert.False(packages[0].Listed);
+            }
+        }
+
+        [Fact]
         public async Task ServerPackageRepositoryFindPackageById()
         {
             using (var temporaryDirectory = new TemporaryDirectory())
@@ -463,7 +596,7 @@ namespace NuGet.Server.Core.Tests
                     new SemanticVersion("1.0.0-alpha"),
                     Token);
                 var invalidPreRel = await serverRepository.FindPackageAsync(
-                    "test3", 
+                    "test3",
                     new SemanticVersion("1.0.0"),
                     Token);
                 var invalid = await serverRepository.FindPackageAsync("bad", new SemanticVersion("1.0"), Token);
@@ -586,7 +719,7 @@ namespace NuGet.Server.Core.Tests
                     repository.AddPackage(CreatePackage("test", "2.1-alpha"));
                     repository.AddPackage(CreatePackage("test", "2.2-beta+tagged"));
                 });
-                
+
                 // Act
                 var packages = await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token);
 
