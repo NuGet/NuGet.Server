@@ -42,7 +42,7 @@ namespace NuGet.Server.Core.Infrastructure
             this IServerPackageRepository repository,
             string searchTerm,
             bool allowPrereleaseVersions,
-            bool allowDelistedVersions,
+            bool allowUnlistedVersions,
             ClientCompatibility compatibility,
             CancellationToken token)
         {
@@ -50,7 +50,7 @@ namespace NuGet.Server.Core.Infrastructure
                 searchTerm,
                 Enumerable.Empty<string>(),
                 allowPrereleaseVersions,
-                allowDelistedVersions,
+                allowUnlistedVersions,
                 compatibility,
                 token);
         }

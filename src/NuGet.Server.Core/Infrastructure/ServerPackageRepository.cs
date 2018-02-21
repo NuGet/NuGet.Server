@@ -222,7 +222,7 @@ namespace NuGet.Server.Core.Infrastructure
             string searchTerm,
             IEnumerable<string> targetFrameworks,
             bool allowPrereleaseVersions,
-            bool allowDelistedVersions,
+            bool allowUnlistedVersions,
             ClientCompatibility compatibility,
             CancellationToken token)
         {
@@ -232,7 +232,7 @@ namespace NuGet.Server.Core.Infrastructure
                 .Find(searchTerm)
                 .FilterByPrerelease(allowPrereleaseVersions);
 
-            if (EnableDelisting && !allowDelistedVersions)
+            if (EnableDelisting && !allowUnlistedVersions)
             {
                 packages = packages.Where(p => p.Listed);
             }

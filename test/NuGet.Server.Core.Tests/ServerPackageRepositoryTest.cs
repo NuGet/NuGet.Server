@@ -374,7 +374,7 @@ namespace NuGet.Server.Core.Tests
                 var packages = (await serverRepository.SearchAsync(
                     "test1",
                     allowPrereleaseVersions: true,
-                    allowDelistedVersions: false,
+                    allowUnlistedVersions: false,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
                 Assert.Equal(0, packages.Count);
@@ -405,7 +405,7 @@ namespace NuGet.Server.Core.Tests
                 var packages = (await serverRepository.SearchAsync(
                     "test1",
                     allowPrereleaseVersions: true,
-                    allowDelistedVersions: true,
+                    allowUnlistedVersions: true,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
                 Assert.Equal(0, packages.Count);
@@ -436,7 +436,7 @@ namespace NuGet.Server.Core.Tests
                 var packages = (await serverRepository.SearchAsync(
                     "test1",
                     allowPrereleaseVersions: true,
-                    allowDelistedVersions: false,
+                    allowUnlistedVersions: false,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
                 Assert.Equal(0, packages.Count);
@@ -470,7 +470,7 @@ namespace NuGet.Server.Core.Tests
                 var packages = (await serverRepository.SearchAsync(
                     "test1",
                     allowPrereleaseVersions: true,
-                    allowDelistedVersions: true,
+                    allowUnlistedVersions: true,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
                 Assert.Equal(1, packages.Count);

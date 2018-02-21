@@ -26,7 +26,7 @@ namespace NuGet.Server.Core.Infrastructure
             string searchTerm,
             IEnumerable<string> targetFrameworks,
             bool allowPrereleaseVersions,
-            bool allowDelistedVersions,
+            bool allowUnlistedVersions,
             ClientCompatibility compatibility,
             CancellationToken token);
 
