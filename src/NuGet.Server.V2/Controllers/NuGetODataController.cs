@@ -44,7 +44,7 @@ namespace NuGet.Server.V2.Controllers
             _serverRepository = repository ?? throw new ArgumentNullException(nameof(repository));
             _authenticationService = authenticationService;
         }
-        
+
         // GET /Packages
         [HttpGet]
         public virtual async Task<IHttpActionResult> Get(
@@ -129,8 +129,8 @@ namespace NuGet.Server.V2.Controllers
         [HttpPost]
         public virtual async Task<IHttpActionResult> Search(
             ODataQueryOptions<ODataPackage> options,
-            [FromODataUri] string searchTerm = "", 
-            [FromODataUri] string targetFramework = "", 
+            [FromODataUri] string searchTerm = "",
+            [FromODataUri] string targetFramework = "",
             [FromODataUri] bool includePrerelease = false,
             [FromODataUri] bool includeDelisted = false,
             [FromUri] string semVerLevel = "",
@@ -144,6 +144,7 @@ namespace NuGet.Server.V2.Controllers
                 searchTerm,
                 targetFrameworks,
                 includePrerelease,
+                includeDelisted,
                 clientCompatibility,
                 token);
 
@@ -203,8 +204,8 @@ namespace NuGet.Server.V2.Controllers
 
             var idValues = packageIds.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
             var versionValues = versions.Trim().Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-            var targetFrameworkValues = String.IsNullOrEmpty(targetFrameworks) 
-                                        ? null 
+            var targetFrameworkValues = String.IsNullOrEmpty(targetFrameworks)
+                                        ? null
                                         : targetFrameworks.Split('|').Select(VersionUtility.ParseFrameworkName).ToList();
             var versionConstraintValues = (String.IsNullOrEmpty(versionConstraints)
                                             ? new string[idValues.Length]
@@ -219,7 +220,7 @@ namespace NuGet.Server.V2.Controllers
             var packagesToUpdate = new List<IPackageMetadata>();
             for (var i = 0; i < idValues.Length; i++)
             {
-                if(SemanticVersion.TryParse(versionValues[i], out var semVersion))
+                if (SemanticVersion.TryParse(versionValues[i], out var semVersion))
                 {
                     packagesToUpdate.Add(new PackageBuilder { Id = idValues[i], Version = semVersion });
                 }
@@ -365,7 +366,7 @@ namespace NuGet.Server.V2.Controllers
             }
             else
             {
-                return CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}', version '{1}'.", requestedPackage.Id,version));
+                return CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}', version '{1}'.", requestedPackage.Id, version));
             }
         }
 
@@ -416,7 +417,7 @@ namespace NuGet.Server.V2.Controllers
                 File.Delete(temporaryFile);
             }
             catch (Exception)
-            {                
+            {
                 retValue = CreateStringResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
             }
 
@@ -436,7 +437,7 @@ namespace NuGet.Server.V2.Controllers
             {
                 apiKey = values.FirstOrDefault();
             }
-                
+
             return apiKey;
         }
 

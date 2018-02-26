@@ -215,13 +215,24 @@ namespace NuGet.Server.Core.Infrastructure
             ClientCompatibility compatibility,
             CancellationToken token)
         {
+            return await SearchAsync(searchTerm, targetFrameworks, allowPrereleaseVersions, false, compatibility, token);
+        }
+
+        public async Task<IEnumerable<IServerPackage>> SearchAsync(
+            string searchTerm,
+            IEnumerable<string> targetFrameworks,
+            bool allowPrereleaseVersions,
+            bool allowUnlistedVersions,
+            ClientCompatibility compatibility,
+            CancellationToken token)
+        {
             var cache = await GetPackagesAsync(compatibility, token);
 
             var packages = cache
                 .Find(searchTerm)
                 .FilterByPrerelease(allowPrereleaseVersions);
 
-            if (EnableDelisting)
+            if (EnableDelisting && !allowUnlistedVersions)
             {
                 packages = packages.Where(p => p.Listed);
             }
@@ -496,7 +507,7 @@ namespace NuGet.Server.Core.Infrastructure
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Sets the current cache to null so it will be regenerated next time.
         /// </summary>
@@ -605,7 +616,7 @@ namespace NuGet.Server.Core.Infrastructure
                     return;
                 }
 
-                changedDirectory = Path.GetFullPath(changedDirectory);                
+                changedDirectory = Path.GetFullPath(changedDirectory);
 
                 // 1) If a .nupkg is dropped in the root, add it as a package
                 if (string.Equals(changedDirectory, _watchDirectory, StringComparison.OrdinalIgnoreCase)

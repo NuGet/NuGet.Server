@@ -22,6 +22,14 @@ namespace NuGet.Server.Core.Infrastructure
             ClientCompatibility compatibility,
             CancellationToken token);
 
+        Task<IEnumerable<IServerPackage>> SearchAsync(
+            string searchTerm,
+            IEnumerable<string> targetFrameworks,
+            bool allowPrereleaseVersions,
+            bool allowUnlistedVersions,
+            ClientCompatibility compatibility,
+            CancellationToken token);
+
         Task ClearCacheAsync(CancellationToken token);
 
         Task RemovePackageAsync(string packageId, SemanticVersion version, CancellationToken token);

@@ -38,6 +38,23 @@ namespace NuGet.Server.Core.Infrastructure
                 token);
         }
 
+        public static async Task<IEnumerable<IServerPackage>> SearchAsync(
+            this IServerPackageRepository repository,
+            string searchTerm,
+            bool allowPrereleaseVersions,
+            bool allowUnlistedVersions,
+            ClientCompatibility compatibility,
+            CancellationToken token)
+        {
+            return await repository.SearchAsync(
+                searchTerm,
+                Enumerable.Empty<string>(),
+                allowPrereleaseVersions,
+                allowUnlistedVersions,
+                compatibility,
+                token);
+        }
+
         public static async Task<IServerPackage> FindPackageAsync(
             this IServerPackageRepository repository,
             string id,
