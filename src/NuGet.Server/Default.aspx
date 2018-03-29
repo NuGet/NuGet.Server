@@ -34,7 +34,7 @@
             <% } %> 
         </fieldset>
 
-        <% if (Request.IsLocal || ServiceResolver.Current.Resolve<NuGet.Server.Core.Infrastructure.ISettingsProvider>().GetBoolSetting("allowRemoteCacheManagement", false)) { %>
+        <% if (Request.IsLocal) { %>
         <fieldset style="width:800px">
             <legend><strong>Adding packages</strong></legend>
 
