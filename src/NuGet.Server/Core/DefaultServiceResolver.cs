@@ -53,11 +53,6 @@ namespace NuGet.Server
                 return _packageAuthenticationService;
             }
 
-            if (type == typeof(ISettingsProvider))
-            {
-                return _settingsProvider;
-            }
-
             return null;
         }
 
