@@ -31,6 +31,7 @@ namespace NuGet.Server.V2.Controllers
 
         protected readonly IServerPackageRepository _serverRepository;
         protected readonly IPackageAuthenticationService _authenticationService;
+        protected readonly ISettingsProvider _settingsProvider;
 
         /// <summary>
         /// 
@@ -39,10 +40,12 @@ namespace NuGet.Server.V2.Controllers
         /// <param name="authenticationService">Optional. If this is not supplied Upload/Delete is not available (requests returns 403 Forbidden)</param>
         protected NuGetODataController(
             IServerPackageRepository repository,
-            IPackageAuthenticationService authenticationService = null)
+            IPackageAuthenticationService authenticationService = null,
+            ISettingsProvider settingsProvider = null)
         {
             _serverRepository = repository ?? throw new ArgumentNullException(nameof(repository));
             _authenticationService = authenticationService;
+            _settingsProvider = settingsProvider;
         }
 
         // GET /Packages
@@ -326,6 +329,11 @@ namespace NuGet.Server.V2.Controllers
                 Size = requestedPackage != null ? (long?)requestedPackage.PackageSize : null,
                 ModificationDate = responseMessage.Content.Headers.LastModified,
             };
+
+            if (_settingsProvider != null && TimeSpan.TryParse(_settingsProvider.GetStringSetting("downloadCacheMaxAge", string.Empty), out var maxAge))
+            {
+                responseMessage.Headers.CacheControl = new CacheControlHeaderValue { Public = true, MaxAge = maxAge };
+            }
 
             return responseMessage;
         }

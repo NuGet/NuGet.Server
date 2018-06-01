@@ -20,7 +20,8 @@ namespace NuGet.Server.DataServices
 
         protected PackagesODataController(IServiceResolver serviceResolver)
             : base(serviceResolver.Resolve<IServerPackageRepository>(),
-                   serviceResolver.Resolve<IPackageAuthenticationService>())
+                   serviceResolver.Resolve<IPackageAuthenticationService>(),
+                   serviceResolver.Resolve<ISettingsProvider>())
         {
             _maxPageSize = 100;
         }
