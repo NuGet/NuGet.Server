@@ -29,7 +29,7 @@ namespace NuGet.Server.DataServices
         // Exposed through ordinary Web API route. Bypasses OData pipeline.
         public async Task<HttpResponseMessage> ClearCache(CancellationToken token)
         {
-            if (RequestContext.IsLocal)
+            if (RequestContext.IsLocal || ServiceResolver.Current.Resolve<ISettingsProvider>().GetBoolSetting("allowRemoteCacheManagement", false))
             {
                 await _serverRepository.ClearCacheAsync(token);
                 return CreateStringResponse(HttpStatusCode.OK, "Server cache has been cleared.");
