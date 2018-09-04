@@ -53,6 +53,13 @@ namespace NuGet.Server.V2
                  constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Delete) }
              );
 
+            config.Routes.MapHttpRoute(
+                 name: "apiv2package_upload",
+                 routeTemplate: "api/v2/package",
+                 defaults: new { controller = oDatacontrollerName, action = "UploadPackage" },
+                 constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Put) }
+             );
+
             config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new CountODataPathHandler(), conventions);
             return config;
         }
