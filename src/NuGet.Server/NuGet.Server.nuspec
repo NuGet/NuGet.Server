@@ -9,6 +9,7 @@
     <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
     <copyright>© .NET Foundation. All rights reserved.</copyright>
+    <repository type="git" url="https://github.com/NuGet/NuGet.Server" />
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="net46" />
       <frameworkAssembly assemblyName="System.ServiceModel.Web" targetFramework="net46" />

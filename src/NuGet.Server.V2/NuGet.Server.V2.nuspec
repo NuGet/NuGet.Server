@@ -9,6 +9,7 @@
     <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
     <copyright>$copyright$</copyright>
+    <repository type="git" url="https://github.com/NuGet/NuGet.Server" />
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
     </frameworkAssemblies>
