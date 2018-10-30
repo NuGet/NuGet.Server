@@ -9,8 +9,10 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = '1c479a7381ebbc0fe1fded765de70d513b8bd68e'
+    [string]$BuildBranch = '795fed66b8bae2d248237ee5ec82e688e7174a42'
 )
+
+$msBuildVersion = 14;
 
 # For TeamCity - If any issue occurs, this script fail the build. - By default, TeamCity returns an exit code of 0 for all powershell scripts, even if they fail
 trap {
@@ -67,12 +69,12 @@ Invoke-BuildStep 'Set version metadata in AssemblyInfo.cs' {
 
 Invoke-BuildStep 'Building solution' { 
         $SolutionPath = Join-Path $PSScriptRoot "NuGet.Server.sln"
-        Build-Solution $Configuration $BuildNumber -MSBuildVersion "14" $SolutionPath -SkipRestore:$SkipRestore `
+        Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $SolutionPath -SkipRestore:$SkipRestore `
     } `
     -ev +BuildErrors
 
 Invoke-BuildStep 'Creating artifacts' {
-        New-Package (Join-Path $PSScriptRoot "src\NuGet.Server\NuGet.Server.nuspec") -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -Version $SemanticVersion -Branch $Branch
+        New-Package (Join-Path $PSScriptRoot "src\NuGet.Server\NuGet.Server.nuspec") -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -MSBuildVersion "$msBuildVersion" -Version $SemanticVersion -Branch $Branch
     } `
     -ev +BuildErrors
 
