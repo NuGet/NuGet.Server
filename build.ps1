@@ -12,7 +12,7 @@ param (
     [string]$BuildBranch = '795fed66b8bae2d248237ee5ec82e688e7174a42'
 )
 
-$msBuildVersion = 14;
+$msBuildVersion = 15;
 
 # For TeamCity - If any issue occurs, this script fail the build. - By default, TeamCity returns an exit code of 0 for all powershell scripts, even if they fail
 trap {
