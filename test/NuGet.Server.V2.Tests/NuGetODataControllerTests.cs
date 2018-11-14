@@ -962,7 +962,7 @@ namespace NuGet.Server.V2.Tests
                     .ToArray();
 
                 // Assert
-                Assert.Equal(1, result.Length);
+                Assert.Single(result);
                 Assert.Equal("Foo", result[0].Id);
                 Assert.Equal("1.2.0", result[0].Version);
             }

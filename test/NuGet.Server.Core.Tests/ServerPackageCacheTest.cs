@@ -96,7 +96,7 @@ namespace NuGet.Server.Core.Tests
             var actual = new ServerPackageCache(fileSystem.Object, CacheFileName);
 
             // Assert
-            Assert.Equal(1, actual.GetAll().Count());
+            Assert.Single(actual.GetAll());
             var package = actual.GetAll().First();
             Assert.Equal(SemVer2Version.ToOriginalString(), package.Version.ToOriginalString());
             Assert.Equal(SemVer2Version.ToFullString(), package.Version.ToFullString());
@@ -122,7 +122,7 @@ namespace NuGet.Server.Core.Tests
             var actual = new ServerPackageCache(fileSystem.Object, CacheFileName);
 
             // Assert
-            Assert.Equal(1, actual.GetAll().Count());
+            Assert.Single(actual.GetAll());
             var package = actual.GetAll().First();
             Assert.Equal(expected, package.IsSemVer2);
         }

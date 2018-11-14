@@ -89,7 +89,7 @@ namespace NuGet.Server.Core.Tests
         }
 
         [Theory]
-        [MemberData("TheoryData")]
+        [MemberData(nameof(TheoryData))]
         public void RewritesVersionPropertyNameToNormalizedVersionPropertyName(Expression originalExpression, Expression expectedExpression)
         {
             // Arrange

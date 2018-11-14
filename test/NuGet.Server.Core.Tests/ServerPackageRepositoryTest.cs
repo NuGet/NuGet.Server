@@ -168,7 +168,7 @@ namespace NuGet.Server.Core.Tests
                 // Assert
                 packages = packages.OrderBy(p => p.Version);
 
-                Assert.Equal(1, packages.Count());
+                Assert.Single(packages);
                 Assert.Equal(new SemanticVersion("1.2.0"), packages.ElementAt(0).Version);
             }
         }
@@ -283,9 +283,9 @@ namespace NuGet.Server.Core.Tests
                 // Assert
                 Assert.Equal("test3", includePrerelease.First().Id);
                 Assert.Equal(2, includePrerelease.Count());
-                Assert.Equal(1, excludePrerelease.Count());
+                Assert.Single(excludePrerelease);
                 Assert.Equal("test6", ignoreTag.First().Id);
-                Assert.Equal(1, ignoreTag.Count());
+                Assert.Single(ignoreTag);
             }
         }
 
@@ -330,7 +330,7 @@ namespace NuGet.Server.Core.Tests
                     allowPrereleaseVersions: true,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
-                Assert.Equal(1, packages.Count);
+                Assert.Single(packages);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
 
@@ -343,13 +343,13 @@ namespace NuGet.Server.Core.Tests
                     allowPrereleaseVersions: true,
                     compatibility: ClientCompatibility.Max,
                     token: Token)).ToList();
-                Assert.Equal(0, packages.Count);
+                Assert.Empty(packages);
 
                 // Act: search with includeDelisted=true
                 packages = (await serverRepository.GetPackagesAsync(ClientCompatibility.Max, Token)).ToList();
 
                 // Assert
-                Assert.Equal(1, packages.Count);
+                Assert.Single(packages);
                 Assert.Equal("test1", packages[0].Id);
                 Assert.Equal("1.0", packages[0].Version.ToString());
                 Assert.False(packages[0].Listed);
@@ -420,14 +420,14 @@ namespace NuGet.Server.Core.Tests
                     token: Token)).ToList();
                 if (searchable)
                 {
-                    Assert.Equal(1, packages.Count);
+                    Assert.Single(packages);
                     Assert.Equal("test1", packages[0].Id);
                     Assert.Equal("1.0", packages[0].Version.ToString());
                     Assert.False(packages[0].Listed);
                 }
                 else
                 {
-                    Assert.Equal(0, packages.Count);
+                    Assert.Empty(packages);
                 }
 
                 // Act: search with includeDelisted=true
@@ -436,14 +436,14 @@ namespace NuGet.Server.Core.Tests
                 // Assert
                 if (gettable)
                 {
-                    Assert.Equal(1, packages.Count);
+                    Assert.Single(packages);
                     Assert.Equal("test1", packages[0].Id);
                     Assert.Equal("1.0", packages[0].Version.ToString());
                     Assert.False(packages[0].Listed);
                 }
                 else
                 {
-                    Assert.Equal(0, packages.Count);
+                    Assert.Empty(packages);
                 }
             }
         }
@@ -470,7 +470,7 @@ namespace NuGet.Server.Core.Tests
 
                 // Assert
                 Assert.Equal("test", valid.First().Id);
-                Assert.Equal(0, invalid.Count());
+                Assert.Empty(invalid);
             }
         }
 
