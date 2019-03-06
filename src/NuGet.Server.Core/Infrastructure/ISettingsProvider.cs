@@ -6,5 +6,6 @@ namespace NuGet.Server.Core.Infrastructure
     {
         bool GetBoolSetting(string key, bool defaultValue);
         string GetStringSetting(string key, string defaultValue);
+        int GetIntSetting(string key, int defaultValue);
     }
 }

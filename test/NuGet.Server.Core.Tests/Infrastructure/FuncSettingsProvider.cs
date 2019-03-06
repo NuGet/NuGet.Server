@@ -23,6 +23,11 @@ namespace NuGet.Server.Core.Tests.Infrastructure
             return Convert.ToBoolean(_getSetting(key, defaultValue));
         }
 
+        public int GetIntSetting(string key, int defaultValue)
+        {
+            return Convert.ToInt32(_getSetting(key, defaultValue));
+        }
+
         public string GetStringSetting(string key, string defaultValue)
         {
             return Convert.ToString(_getSetting(key, defaultValue));

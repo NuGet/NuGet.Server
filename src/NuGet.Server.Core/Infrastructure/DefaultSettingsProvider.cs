@@ -9,6 +9,11 @@ namespace NuGet.Server.Core.Infrastructure
             return defaultValue;
         }
 
+        public int GetIntSetting(string key, int defaultValue)
+        {
+            return defaultValue;
+        }
+
         public string GetStringSetting(string key, string defaultValue)
         {
             return defaultValue;

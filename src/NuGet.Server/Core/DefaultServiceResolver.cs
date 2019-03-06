@@ -13,6 +13,7 @@ namespace NuGet.Server
     public sealed class DefaultServiceResolver
         : IServiceResolver, IDisposable
     {
+        private readonly Core.Logging.ILogger _logger;
         private readonly CryptoHashProvider _hashProvider;
         private readonly ServerPackageRepository _packageRepository;
         private readonly PackageAuthenticationService _packageAuthenticationService;
@@ -24,20 +25,33 @@ namespace NuGet.Server
         {
         }
 
-        public DefaultServiceResolver(string packagePath, NameValueCollection settings)
+        public DefaultServiceResolver(string packagePath, NameValueCollection settings) : this(
+            packagePath,
+            settings,
+            new TraceLogger())
         {
+        }
+
+        public DefaultServiceResolver(string packagePath, NameValueCollection settings, Core.Logging.ILogger logger)
+        {
+            _logger = logger;
+
             _hashProvider = new CryptoHashProvider(Core.Constants.HashAlgorithm);
 
             _settingsProvider = new WebConfigSettingsProvider(settings);
 
-            _packageRepository = new ServerPackageRepository(packagePath, _hashProvider, _settingsProvider, new TraceLogger());
+            _packageRepository = new ServerPackageRepository(packagePath, _hashProvider, _settingsProvider, _logger);
 
             _packageAuthenticationService = new PackageAuthenticationService(settings);
-
         }
 
         public object Resolve(Type type)
         {
+            if (type == typeof(Core.Logging.ILogger))
+            {
+                return _logger;
+            }
+
             if (type == typeof(IHashProvider))
             {
                 return _hashProvider;

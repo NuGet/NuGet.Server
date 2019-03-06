@@ -89,6 +89,7 @@
     <Compile Include="JsonNetPackagesSerializerTests.cs" />
     <Compile Include="FeedPackageTest.cs" />
     <Compile Include="Infrastructure\TemporaryDirectory.cs" />
+    <Compile Include="KnownPathUtilityTest.cs" />
     <Compile Include="NormalizeVersionInterceptorTest.cs" />
     <Compile Include="PackageExtensionsTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -98,6 +99,7 @@
     <Compile Include="ServerPackageStoreTest.cs" />
     <Compile Include="ServerPackageTest.cs" />
     <Compile Include="TestData.cs" />
+    <Compile Include="TestOutputLogger.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NuGet.Server.Core\NuGet.Server.Core.csproj">
