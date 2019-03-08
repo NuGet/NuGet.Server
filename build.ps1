@@ -9,7 +9,7 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = '795fed66b8bae2d248237ee5ec82e688e7174a42'
+    [string]$BuildBranch = '1c8734ee61e209f159972ab974784ba55ee2bd6d'
 )
 
 $msBuildVersion = 15;
@@ -30,7 +30,7 @@ if (-not (Test-Path "$PSScriptRoot/build")) {
 # Enable TLS 1.2 since GitHub requires it.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-wget -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
 . "$PSScriptRoot/build/init.ps1" -BuildBranch "$BuildBranch"
 
 Write-Host ("`r`n" * 3)
@@ -88,6 +88,12 @@ Invoke-BuildStep 'Creating artifacts' {
         Foreach ($project in $projects) {
             New-Package (Join-Path $PSScriptRoot $project) -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -MSBuildVersion "$msBuildVersion" -Version $SemanticVersion -Branch $Branch
         }
+    } `
+    -ev +BuildErrors
+
+Invoke-BuildStep 'Signing the packages' { 
+        $ProjectPath = Join-Path $PSScriptRoot "build\sign.proj"
+        Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $ProjectPath `
     } `
     -ev +BuildErrors
 
