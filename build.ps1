@@ -9,8 +9,10 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = '802a2329581ab88326bf1fd442595bac6dbaa848'
+    [string]$BuildBranch = '1c8734ee61e209f159972ab974784ba55ee2bd6d'
 )
+
+$msBuildVersion = 15;
 
 # For TeamCity - If any issue occurs, this script fail the build. - By default, TeamCity returns an exit code of 0 for all powershell scripts, even if they fail
 trap {
@@ -28,7 +30,7 @@ if (-not (Test-Path "$PSScriptRoot/build")) {
 # Enable TLS 1.2 since GitHub requires it.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-wget -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
 . "$PSScriptRoot/build/init.ps1" -BuildBranch "$BuildBranch"
 
 Write-Host ("`r`n" * 3)
@@ -73,14 +75,25 @@ Invoke-BuildStep 'Set version metadata in AssemblyInfo.cs' {
 
 Invoke-BuildStep 'Building solution' { 
         $SolutionPath = Join-Path $PSScriptRoot "NuGet.Server.sln"
-        Build-Solution $Configuration $BuildNumber -MSBuildVersion "15" $SolutionPath -SkipRestore:$SkipRestore `
+        Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $SolutionPath -SkipRestore:$SkipRestore `
     } `
     -ev +BuildErrors
 
 Invoke-BuildStep 'Creating artifacts' {
-        New-Package (Join-Path $PSScriptRoot "src\NuGet.Server.Core\NuGet.Server.Core.csproj") -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -Version $SemanticVersion -Branch $Branch
-        New-Package (Join-Path $PSScriptRoot "src\NuGet.Server.V2\NuGet.Server.V2.csproj") -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -Version $SemanticVersion -Branch $Branch
-        New-Package (Join-Path $PSScriptRoot "src\NuGet.Server\NuGet.Server.nuspec") -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -Version $SemanticVersion -Branch $Branch
+        $projects = `
+            "src\NuGet.Server.Core\NuGet.Server.Core.csproj", `
+            "src\NuGet.Server.V2\NuGet.Server.V2.csproj", `
+            "src\NuGet.Server\NuGet.Server.nuspec"
+        
+        Foreach ($project in $projects) {
+            New-Package (Join-Path $PSScriptRoot $project) -Configuration $Configuration -Symbols -BuildNumber $BuildNumber -MSBuildVersion "$msBuildVersion" -Version $SemanticVersion -Branch $Branch
+        }
+    } `
+    -ev +BuildErrors
+
+Invoke-BuildStep 'Signing the packages' { 
+        $ProjectPath = Join-Path $PSScriptRoot "build\sign.proj"
+        Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $ProjectPath `
     } `
     -ev +BuildErrors
 

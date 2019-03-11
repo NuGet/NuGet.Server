@@ -16,9 +16,11 @@ using System.Web.Http;
 using System.Web.Http.Dependencies;
 using NuGet.Server.App_Start;
 using NuGet.Server.Core.Infrastructure;
+using NuGet.Server.Core.Logging;
 using NuGet.Server.Core.Tests;
 using NuGet.Server.Core.Tests.Infrastructure;
 using Xunit;
+using Xunit.Abstractions;
 using ISystemDependencyResolver = System.Web.Http.Dependencies.IDependencyResolver;
 using SystemHttpClient = System.Net.Http.HttpClient;
 
@@ -26,11 +28,18 @@ namespace NuGet.Server.Tests
 {
     public class IntegrationTests
     {
+        private readonly ITestOutputHelper _output;
+
+        public IntegrationTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
         [Fact]
         public async Task DropPackageThenReadPackages()
         {
             // Arrange
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 // Act & Assert
                 // 1. Get the initial list of packages. This should be empty.
@@ -63,7 +72,7 @@ namespace NuGet.Server.Tests
         public async Task DownloadPackage()
         {
             // Arrange
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 // Act & Assert
                 // 1. Write a package to the drop folder.
@@ -90,7 +99,7 @@ namespace NuGet.Server.Tests
         public async Task FilterOnFramework()
         {
             // Arrange
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 tc.Settings["enableFrameworkFiltering"] = "true";
 
@@ -129,7 +138,7 @@ namespace NuGet.Server.Tests
         public async Task PushPackageThenReadPackages()
         {
             // Arrange
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 string apiKey = "foobar";
                 tc.SetApiKey(apiKey);
@@ -139,21 +148,7 @@ namespace NuGet.Server.Tests
 
                 // Act & Assert
                 // 1. Push the package.
-                using (var request = new HttpRequestMessage(HttpMethod.Put, "/nuget")
-                {
-                    Headers =
-                    {
-                        { "X-NUGET-APIKEY", apiKey }
-                    },
-                    Content = tc.GetFileUploadContent(packagePath)
-                })
-                {
-                    using (request)
-                    using (var response = await tc.Client.SendAsync(request))
-                    {
-                        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-                    }
-                }
+                await tc.PushPackageAsync(apiKey, packagePath);
 
                 // 2. Get the list of packages. This should mention the package.
                 using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget/Packages()"))
@@ -167,12 +162,98 @@ namespace NuGet.Server.Tests
             }
         }
 
+        /// <summary>
+        /// Added due to https://github.com/NuGet/NuGetGallery/issues/6960. There was a concurrency issue when pushing
+        /// packages that could lead to unnecessary cache rebuilds.
+        /// </summary>
+        [Fact]
+        public async Task DoesNotRebuildTheCacheWhenPackagesArePushed()
+        {
+            // Arrange
+            using (var tc = new TestContext(_output))
+            {
+                // Essentially disable the automatic cache rebuild by setting it really far in the future.
+                const int initialCacheRebuildAfterSeconds = 60 * 60 * 24;
+                tc.Settings["initialCacheRebuildAfterSeconds"] = initialCacheRebuildAfterSeconds.ToString();
+
+                const int workerCount = 8;
+                const int totalPackages = 320;
+
+                var packagePaths = new ConcurrentBag<string>();
+                for (var i = 0; i < totalPackages; i++)
+                {
+                    var packageId = Guid.NewGuid().ToString();
+                    var packagePath = Path.Combine(tc.TemporaryDirectory, $"{packageId}.1.0.0.nupkg");
+                    using (var package = TestData.GenerateSimplePackage(packageId, SemanticVersion.Parse("1.0.0")))
+                    using (var fileStream = File.OpenWrite(packagePath))
+                    {
+                        await package.CopyToAsync(fileStream);
+                    }
+
+                    packagePaths.Add(packagePath);
+                }
+
+                string apiKey = "foobar";
+                tc.SetApiKey(apiKey);
+
+                // Act & Assert
+                // 1. Push a single package to build the cache for the first time.
+                packagePaths.TryTake(out var firstPackagePath);
+                await tc.PushPackageAsync(apiKey, firstPackagePath);
+
+                Assert.Single(tc.Logger.Messages, "[INFO] Start rebuilding package store...");
+                tc.Logger.Clear();
+                tc.TestOutputHelper.WriteLine("The first package has been pushed.");
+
+                // 2. Execute a query to register the file system watcher.
+                using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget/Packages/$count"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.Equal(1, int.Parse(content));
+                }
+
+                Assert.DoesNotContain("[INFO] Start rebuilding package store...", tc.Logger.Messages);
+                tc.TestOutputHelper.WriteLine("The first count query has completed.");
+
+                // 3. Push the rest of the packages.
+                var workerTasks = Enumerable
+                    .Range(0, workerCount)
+                    .Select(async i =>
+                    {
+                        while (packagePaths.TryTake(out var packagePath))
+                        {
+                            await tc.PushPackageAsync(apiKey, packagePath);
+                        }
+                    })
+                    .ToList();
+                await Task.WhenAll(workerTasks);
+
+                tc.TestOutputHelper.WriteLine("The rest of the packages have been pushed.");
+
+                // 4. Get the total count of packages. This should match the number of packages pushed.
+                using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget/Packages/$count"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.Equal(totalPackages, int.Parse(content));
+                }
+
+                Assert.DoesNotContain("[INFO] Start rebuilding package store...", tc.Logger.Messages);
+                tc.TestOutputHelper.WriteLine("The second count query has completed.");
+            }
+        }
+
         [Theory]
         [MemberData(nameof(EndpointsSupportingProjection))]
         public async Task CanQueryUsingProjection(string endpoint)
         {
             // Arrange
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 var packagePath = Path.Combine(tc.PackagesDirectory, "package.nupkg");
                 TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
@@ -201,7 +282,7 @@ namespace NuGet.Server.Tests
                 .OrderBy(x => x)
                 .ToList();
 
-            using (var tc = new TestContext())
+            using (var tc = new TestContext(_output))
             {
                 tc.Settings["enableFrameworkFiltering"] = "true";
                 tc.Settings["allowOverrideExistingPackageOnPush"] = "true";
@@ -275,8 +356,10 @@ namespace NuGet.Server.Tests
             private readonly HttpServer _server;
             private readonly HttpConfiguration _config;
 
-            public TestContext()
+            public TestContext(ITestOutputHelper output)
             {
+                TestOutputHelper = output;
+                Logger = new TestOutputLogger(output);
                 TemporaryDirectory = new TemporaryDirectory();
                 PackagesDirectory = new TemporaryDirectory();
 
@@ -286,7 +369,7 @@ namespace NuGet.Server.Tests
                     { "apiKey", string.Empty }
                 };
 
-                ServiceResolver = new DefaultServiceResolver(PackagesDirectory, Settings);
+                ServiceResolver = new DefaultServiceResolver(PackagesDirectory, Settings, Logger);
 
                 _config = new HttpConfiguration();
                 _config.IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always;
@@ -299,6 +382,8 @@ namespace NuGet.Server.Tests
                 Client.BaseAddress = new Uri("http://localhost/");
             }
 
+            public ITestOutputHelper TestOutputHelper { get; }
+            public TestOutputLogger Logger { get; }
             public DefaultServiceResolver ServiceResolver { get; }
             public TemporaryDirectory TemporaryDirectory { get; }
             public TemporaryDirectory PackagesDirectory { get; }
@@ -329,6 +414,25 @@ namespace NuGet.Server.Tests
                 }
 
                 return content;
+            }
+
+            public async Task PushPackageAsync(string apiKey, string packagePath)
+            {
+                using (var request = new HttpRequestMessage(HttpMethod.Put, "/nuget")
+                {
+                    Headers =
+                    {
+                        { "X-NUGET-APIKEY", apiKey }
+                    },
+                    Content = GetFileUploadContent(packagePath)
+                })
+                {
+                    using (request)
+                    using (var response = await Client.SendAsync(request))
+                    {
+                        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+                    }
+                }
             }
 
             public void Dispose()
