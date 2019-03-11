@@ -4,11 +4,11 @@
     <id>NuGet.Server</id>
     <version>$version$</version>
     <description>Web Application used to host a simple NuGet feed</description>
-    <authors>.NET Foundation</authors>
-    <owners>.NET Foundation</owners>
-    <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
+    <authors>Microsoft</authors>
+    <owners>Microsoft</owners>
+    <license type="expression">Apache-2.0</license>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
-    <copyright>© .NET Foundation. All rights reserved.</copyright>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <repository type="git" url="https://github.com/NuGet/NuGet.Server" />
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.ServiceModel" targetFramework="net46" />

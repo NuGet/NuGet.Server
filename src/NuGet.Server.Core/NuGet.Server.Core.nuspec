@@ -4,11 +4,11 @@
     <id>$id$</id>
     <version>$version$</version>
     <description>$description$</description>
-    <authors>.NET Foundation</authors>
-    <owners>$author$</owners>
-    <licenseUrl>https://raw.githubusercontent.com/NuGet/NuGet.Server/dev/LICENSE.txt</licenseUrl>
+    <authors>Microsoft</authors>
+    <owners>Microsoft</owners>
+    <license type="expression">Apache-2.0</license>
     <projectUrl>https://github.com/NuGet/NuGet.Server</projectUrl>
-    <copyright>$copyright$</copyright>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <repository type="git" url="https://github.com/NuGet/NuGet.Server" />
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.Data.Services" targetFramework="net46" />
