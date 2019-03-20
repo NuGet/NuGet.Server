@@ -7,6 +7,9 @@ namespace NuGet.Server.Tests
 {
     public class TestablePackagesODataController : PackagesODataController
     {
+        public static readonly string Name = nameof(TestablePackagesODataController)
+            .Substring(0, nameof(TestablePackagesODataController).Length - "Controller".Length);
+
         public TestablePackagesODataController(IServiceResolver serviceResolver)
             : base(serviceResolver)
         {

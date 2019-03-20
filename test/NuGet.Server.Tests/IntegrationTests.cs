@@ -19,6 +19,7 @@ using NuGet.Server.Core.Infrastructure;
 using NuGet.Server.Core.Logging;
 using NuGet.Server.Core.Tests;
 using NuGet.Server.Core.Tests.Infrastructure;
+using NuGet.Server.V2;
 using Xunit;
 using Xunit.Abstractions;
 using ISystemDependencyResolver = System.Web.Http.Dependencies.IDependencyResolver;
@@ -152,6 +153,51 @@ namespace NuGet.Server.Tests
 
                 // 2. Get the list of packages. This should mention the package.
                 using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget/Packages()"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.Contains(TestData.PackageId, content);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task CanSupportMultipleSetsOfRoutes()
+        {
+            // Arrange
+            using (var tc = new TestContext(_output))
+            {
+                // Enable another set of routes.
+                NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(
+                    tc.Config,
+                    "NuGetDefault2",
+                    "nuget2",
+                    TestablePackagesODataController.Name);
+
+                string apiKey = "foobar";
+                tc.SetApiKey(apiKey);
+
+                var packagePath = Path.Combine(tc.TemporaryDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+
+                // Act & Assert
+                // 1. Push to the legacy route.
+                await tc.PushPackageAsync(apiKey, packagePath, "/api/v2/package");
+
+                // 2. Make a request to the first set of routes.
+                using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget/Packages()"))
+                using (var response = await tc.Client.SendAsync(request))
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    Assert.Contains(TestData.PackageId, content);
+                }
+
+                // 3. Make a request to the second set of routes.
+                using (var request = new HttpRequestMessage(HttpMethod.Get, "/nuget2/Packages()"))
                 using (var response = await tc.Client.SendAsync(request))
                 {
                     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -354,7 +400,6 @@ namespace NuGet.Server.Tests
         private sealed class TestContext : IDisposable
         {
             private readonly HttpServer _server;
-            private readonly HttpConfiguration _config;
 
             public TestContext(ITestOutputHelper output)
             {
@@ -371,13 +416,13 @@ namespace NuGet.Server.Tests
 
                 ServiceResolver = new DefaultServiceResolver(PackagesDirectory, Settings, Logger);
 
-                _config = new HttpConfiguration();
-                _config.IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always;
-                _config.DependencyResolver = new DependencyResolverAdapter(ServiceResolver);
+                Config = new HttpConfiguration();
+                Config.IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always;
+                Config.DependencyResolver = new DependencyResolverAdapter(ServiceResolver);
 
-                NuGetODataConfig.Initialize(_config, "TestablePackagesOData");
+                NuGetODataConfig.Initialize(Config, TestablePackagesODataController.Name);
 
-                _server = new HttpServer(_config);
+                _server = new HttpServer(Config);
                 Client = new SystemHttpClient(_server);
                 Client.BaseAddress = new Uri("http://localhost/");
             }
@@ -388,6 +433,7 @@ namespace NuGet.Server.Tests
             public TemporaryDirectory TemporaryDirectory { get; }
             public TemporaryDirectory PackagesDirectory { get; }
             public NameValueCollection Settings { get; }
+            public HttpConfiguration Config { get; }
             public SystemHttpClient Client { get; }
 
             public void SetApiKey(string apiKey)
@@ -416,9 +462,9 @@ namespace NuGet.Server.Tests
                 return content;
             }
 
-            public async Task PushPackageAsync(string apiKey, string packagePath)
+            public async Task PushPackageAsync(string apiKey, string packagePath, string pushUrl = "/nuget")
             {
-                using (var request = new HttpRequestMessage(HttpMethod.Put, "/nuget")
+                using (var request = new HttpRequestMessage(HttpMethod.Put, pushUrl)
                 {
                     Headers =
                     {
@@ -426,12 +472,9 @@ namespace NuGet.Server.Tests
                     },
                     Content = GetFileUploadContent(packagePath)
                 })
+                using (var response = await Client.SendAsync(request))
                 {
-                    using (request)
-                    using (var response = await Client.SendAsync(request))
-                    {
-                        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-                    }
+                    Assert.Equal(HttpStatusCode.Created, response.StatusCode);
                 }
             }
 
@@ -439,7 +482,7 @@ namespace NuGet.Server.Tests
             {
                 Client.Dispose();
                 _server.Dispose();
-                _config.Dispose();
+                Config.Dispose();
                 ServiceResolver.Dispose();
                 PackagesDirectory.Dispose();
                 TemporaryDirectory.Dispose();

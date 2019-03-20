@@ -11,14 +11,19 @@ using NuGet.Server.V2;
 namespace $rootnamespace$.App_Start 
 {
     public static class NuGetODataConfig 
-	{
+    {
         public static void Start() 
-		{
+        {
             ServiceResolver.SetServiceResolver(new DefaultServiceResolver());
 
             var config = GlobalConfiguration.Configuration;
 
-            NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config, "NuGetDefault", "nuget", "PackagesOData");
+            NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(
+                config,
+                "NuGetDefault",
+                "nuget",
+                "PackagesOData",
+                enableLegacyPushRoute: true);
 
             config.Services.Replace(typeof(IExceptionLogger), new TraceExceptionLogger());
 
