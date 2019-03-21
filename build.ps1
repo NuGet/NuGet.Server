@@ -9,7 +9,7 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = 'ed30a6392ef7c342ca46b20f7b9c964ab9ad5881'
+    [string]$BuildBranch = '2d8feecabe3aeaed7f5b4d50b9be78c94faf39ec'
 )
 
 $msBuildVersion = 15;
@@ -91,9 +91,8 @@ Invoke-BuildStep 'Creating artifacts' {
     } `
     -ev +BuildErrors
 
-Invoke-BuildStep 'Signing the packages' { 
-        $ProjectPath = Join-Path $PSScriptRoot "build\sign.proj"
-        Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $ProjectPath `
+Invoke-BuildStep 'Signing the packages' {
+        Sign-Packages -Configuration $Configuration -BuildNumber $BuildNumber -MSBuildVersion $msBuildVersion `
     } `
     -ev +BuildErrors
 

@@ -28,7 +28,12 @@ namespace NuGet.Server.App_Start
 
         public static void Initialize(HttpConfiguration config, string controllerName)
         {
-            NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(config, "NuGetDefault", "nuget", controllerName);
+            NuGetV2WebApiEnabler.UseNuGetV2WebApiFeed(
+                config,
+                "NuGetDefault",
+                "nuget",
+                controllerName,
+                enableLegacyPushRoute: true);
 
             config.Services.Replace(typeof(IExceptionLogger), new TraceExceptionLogger());
 

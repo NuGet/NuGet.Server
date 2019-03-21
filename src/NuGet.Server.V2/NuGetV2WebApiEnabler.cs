@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -19,10 +20,46 @@ namespace NuGet.Server.V2
 {
     public static class NuGetV2WebApiEnabler
     {
+        /// <summary>
+        /// Enables the NuGet V2 protocol routes on this <see cref="HttpConfiguration"/>. Note that this method does
+        /// not activate the legacy push URL, <code>api/v2/package</code>. To activate the legacy push route, use the
+        /// <see cref="UseNuGetV2WebApiFeed(HttpConfiguration, string, string, string, bool)"/> method overload.
+        /// </summary>
+        /// <param name="config">The HTTP configuration associated with your web app.</param>
+        /// <param name="routeName">The route name prefix, to allow multiple feeds per web app.</param>
+        /// <param name="routeUrlRoot">The base URL for the routes, to allow multiple feeds per web app.</param>
+        /// <param name="oDatacontrollerName">The name of the OData controller containing the actions.</param>
+        /// <returns>The <paramref name="config"/> provided, for chaining purposes.</returns>
+        public static HttpConfiguration UseNuGetV2WebApiFeed(this HttpConfiguration config,
+            string routeName,
+            string routeUrlRoot,
+            string oDatacontrollerName)
+        {
+            return config.UseNuGetV2WebApiFeed(
+                routeName,
+                routeUrlRoot,
+                oDatacontrollerName,
+                enableLegacyPushRoute: false);
+        }
+
+        /// <summary>
+        /// Enables the NuGet V2 protocol routes on this <see cref="HttpConfiguration"/>.
+        /// </summary>
+        /// <param name="config">The HTTP configuration associated with your web app.</param>
+        /// <param name="routeName">The route name prefix, to allow multiple feeds per web app.</param>
+        /// <param name="routeUrlRoot">The base URL for the routes, to allow multiple feeds per web app.</param>
+        /// <param name="oDatacontrollerName">The name of the OData controller containing the actions.</param>
+        /// <param name="enableLegacyPushRoute">
+        /// Whether or not to enable the legacy push URL, <code>api/v2/package</code>. Note that this route does not
+        /// use the <paramref name="routeName"/> prefix or <paramref name="routeUrlRoot"/> and therefore should only
+        /// be enabled once (i.e. on a single controller).
+        /// </param>
+        /// <returns>The <paramref name="config"/> provided, for chaining purposes.</returns>
         public static HttpConfiguration UseNuGetV2WebApiFeed(this HttpConfiguration config,
             string routeName,
             string routeUrlRoot, 
-            string oDatacontrollerName)
+            string oDatacontrollerName,
+            bool enableLegacyPushRoute)
         {
             // Insert conventions to make NuGet-compatible OData feed possible
             var conventions = ODataRoutingConventions.CreateDefault();
@@ -53,12 +90,15 @@ namespace NuGet.Server.V2
                  constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Delete) }
              );
 
-            config.Routes.MapHttpRoute(
-                 name: "apiv2package_upload",
-                 routeTemplate: "api/v2/package",
-                 defaults: new { controller = oDatacontrollerName, action = "UploadPackage" },
-                 constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Put) }
-             );
+            if (enableLegacyPushRoute)
+            {
+                config.Routes.MapHttpRoute(
+                     name: "apiv2package_upload",
+                     routeTemplate: "api/v2/package",
+                     defaults: new { controller = oDatacontrollerName, action = "UploadPackage" },
+                     constraints: new { httpMethod = new HttpMethodConstraint(HttpMethod.Put) }
+                 );
+            }
 
             config.Routes.MapODataServiceRoute(routeName, routeUrlRoot, oDataModel, new CountODataPathHandler(), conventions);
             return config;
