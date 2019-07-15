@@ -23,9 +23,9 @@
         <dependency id="Microsoft.AspNet.WebApi.Client" version="5.2.3" />
         <dependency id="Microsoft.AspNet.WebApi.Core" version="5.2.3" />
         <dependency id="Microsoft.AspNet.WebApi.OData" version="5.7.0" />
-        <dependency id="Microsoft.Data.Edm" version="5.7.0" />
-        <dependency id="Microsoft.Data.OData" version="5.7.0" />
-        <dependency id="System.Spatial" version="5.7.0" />
+        <dependency id="Microsoft.Data.Edm" version="5.8.4" />
+        <dependency id="Microsoft.Data.OData" version="5.8.4" />
+        <dependency id="System.Spatial" version="5.8.4" />
       </group>
     </dependencies>
   </metadata>
