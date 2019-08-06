@@ -11,7 +11,7 @@ namespace NuGet.Server.Core
     /// This exception is thrown when trying to add a package in a version that already exists on the server 
     /// and <see cref="NuGet.Server.Core.Infrastructure.ServerPackageRepository.AllowOverrideExistingPackageOnPush"/> is set to false.
     /// </summary>
-    public class DuplicatePackageException : InvalidOperationException
+    public class DuplicatePackageException : Exception
     {
         public DuplicatePackageException()
         {
