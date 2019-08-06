@@ -407,7 +407,6 @@ namespace NuGet.Server.V2.Controllers
                 {
                     await _serverRepository.AddPackageAsync(package, token);
                     retValue = Request.CreateResponse(HttpStatusCode.Created);
-
                 }
                 catch (DuplicatePackageException ex)
                 {
