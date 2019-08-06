@@ -60,6 +60,7 @@
       <Link>HashCodeCombiner.cs</Link>
     </Compile>
     <Compile Include="Core\Constants.cs" />
+    <Compile Include="Core\DuplicatePackageException.cs" />
     <Compile Include="Core\FrameworkNameExtensions.cs" />
     <Compile Include="Core\NullFileSystem.cs" />
     <Compile Include="Core\PackageExtensions.cs" />

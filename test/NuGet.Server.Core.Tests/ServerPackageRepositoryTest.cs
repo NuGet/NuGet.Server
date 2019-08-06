@@ -203,7 +203,7 @@ namespace NuGet.Server.Core.Tests
                 }
                 else
                 {
-                    await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                    await Assert.ThrowsAsync<DuplicatePackageException>(async () =>
                         await serverRepository.AddPackageAsync(CreatePackage("test", "1.2"), Token));
                 }
             }
