@@ -403,8 +403,15 @@ namespace NuGet.Server.V2.Controllers
             HttpResponseMessage retValue;
             if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
             {
-                await _serverRepository.AddPackageAsync(package, token);
-                retValue = Request.CreateResponse(HttpStatusCode.Created);
+                try
+                {
+                    await _serverRepository.AddPackageAsync(package, token);
+                    retValue = Request.CreateResponse(HttpStatusCode.Created);
+                }
+                catch (DuplicatePackageException ex)
+                {
+                    retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
+                }
             }
             else
             {
