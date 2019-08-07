@@ -400,7 +400,7 @@ namespace NuGet.Server.Core.Infrastructure
 
                 if (shouldThrow)
                 {
-                    throw new InvalidOperationException(message);
+                    throw new DuplicatePackageException(message);
                 }
 
                 return false;

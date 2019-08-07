@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -132,6 +132,27 @@ namespace NuGet.Server.Tests
 
                     Assert.DoesNotContain(TestData.PackageId, content);
                 }
+            }
+        }
+
+        [Fact]
+        public async Task PushDuplicatePackage()
+        {
+            // Arrange
+            using (var tc = new TestContext(_output))
+            {
+                string apiKey = "foobar";
+                tc.SetApiKey(apiKey);
+
+                var packagePath = Path.Combine(tc.TemporaryDirectory, "package.nupkg");
+                TestData.CopyResourceToPath(TestData.PackageResource, packagePath);
+
+                // Act & Assert
+                // 1. Push the package.
+                await tc.PushPackageAsync(apiKey, packagePath);
+
+                // 2. Push the package again expecting a 409 as the Package already exists.
+                await tc.PushPackageAsync(apiKey, packagePath, excepectedStatusCode: HttpStatusCode.Conflict);
             }
         }
 
@@ -462,7 +483,7 @@ namespace NuGet.Server.Tests
                 return content;
             }
 
-            public async Task PushPackageAsync(string apiKey, string packagePath, string pushUrl = "/nuget")
+            public async Task PushPackageAsync(string apiKey, string packagePath, string pushUrl = "/nuget", HttpStatusCode excepectedStatusCode = HttpStatusCode.Created)
             {
                 using (var request = new HttpRequestMessage(HttpMethod.Put, pushUrl)
                 {
@@ -474,7 +495,7 @@ namespace NuGet.Server.Tests
                 })
                 using (var response = await Client.SendAsync(request))
                 {
-                    Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+                    Assert.Equal(excepectedStatusCode, response.StatusCode);
                 }
             }
 
