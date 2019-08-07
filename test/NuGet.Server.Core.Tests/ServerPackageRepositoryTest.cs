@@ -895,7 +895,7 @@ namespace NuGet.Server.Core.Tests
                 await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0-beta.1+foo"), Token);
 
                 // Act & Assert
-                var actual = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                var actual = await Assert.ThrowsAsync<DuplicatePackageException>(async () =>
                     await serverRepository.AddPackageAsync(CreatePackage("Foo", "1.0.0-beta.1+bar"), Token));
                 Assert.Equal(
                     "Package Foo 1.0.0-beta.1 already exists. The server is configured to not allow overwriting packages that already exist.",
