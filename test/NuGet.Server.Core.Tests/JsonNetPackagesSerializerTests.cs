@@ -15,6 +15,37 @@ namespace NuGet.Server.Core.Tests
     public class JsonNetPackagesSerializerTests
     {
         [Fact]
+        public void RoundTripsUncPaths()
+        {
+            var originalPackages = GenerateServerPackages(1);
+            var originalPackage = originalPackages.Single();
+            originalPackage.IconUrl = new Uri("//testunc/test/a", UriKind.Absolute);
+            originalPackage.LicenseUrl = new Uri("//testunc/test/b", UriKind.Absolute);
+            originalPackage.ProjectUrl = new Uri("//testunc/test/c", UriKind.Absolute);
+            originalPackage.ReportAbuseUrl = new Uri("//testunc/test/d", UriKind.Absolute);
+            var serializer = new JsonNetPackagesSerializer();
+
+            // Act
+            var deserializedPackages = new List<ServerPackage>();
+            using (var memoryStream = new MemoryStream())
+            {
+                serializer.Serialize(originalPackages, memoryStream);
+
+                memoryStream.Position = 0;
+
+                deserializedPackages.AddRange(serializer.Deserialize(memoryStream));
+            }
+
+            // Assert
+            AssertPackagesAreEqual(originalPackages, deserializedPackages);
+            var deserializedPackage = deserializedPackages.Single();
+            Assert.True(deserializedPackage.IconUrl.IsAbsoluteUri, "The icon URL should still be absolute.");
+            Assert.True(deserializedPackage.LicenseUrl.IsAbsoluteUri, "The license URL should still be absolute.");
+            Assert.True(deserializedPackage.ProjectUrl.IsAbsoluteUri, "The project URL should still be absolute.");
+            Assert.True(deserializedPackage.ReportAbuseUrl.IsAbsoluteUri, "The report abuse URL should still be absolute.");
+        }
+
+        [Fact]
         public void TestSerializationRoundTrip()
         {
             // Arrange
@@ -33,14 +64,25 @@ namespace NuGet.Server.Core.Tests
             }
 
             // Assert
+            AssertPackagesAreEqual(originalPackages, deserializedPackages);
+        }
+
+        private static void AssertPackagesAreEqual(List<ServerPackage> originalPackages, List<ServerPackage> deserializedPackages)
+        {
             Assert.Equal(originalPackages.Count, deserializedPackages.Count);
             for (var i = 0; i < originalPackages.Count; i++)
             {
-                Assert.True(PublicPropertiesEqual(originalPackages[i], deserializedPackages[i], "DependencySets", "FrameworkAssemblies", "PackageAssemblyReferences", "AssemblyReferences"));
+                AssertPublicPropertiesEqual(
+                    originalPackages[i],
+                    deserializedPackages[i],
+                    "DependencySets",
+                    "FrameworkAssemblies",
+                    "PackageAssemblyReferences",
+                    "AssemblyReferences");
             }
         }
 
-        private static bool PublicPropertiesEqual<T>(T a, T b, params string[] ignoreProperties) where T : class
+        private static void AssertPublicPropertiesEqual<T>(T a, T b, params string[] ignoreProperties) where T : class
         {
             if (a != null && b != null)
             {
@@ -55,15 +97,15 @@ namespace NuGet.Server.Core.Tests
 
                         if (selfValue != toValue && (selfValue == null || !selfValue.Equals(toValue)) && !(selfValue is IEnumerable))
                         {
-                            return false;
+                            Assert.False(true, $"The property '{pi.Name}' is not equal.");
                         }
                     }
                 }
 
-                return true;
+                return;
             }
 
-            return a == b;
+            Assert.Equal(a, b);
         }
 
         private static List<ServerPackage> GenerateServerPackages(int count)
