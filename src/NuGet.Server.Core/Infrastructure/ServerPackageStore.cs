@@ -144,6 +144,12 @@ namespace NuGet.Server.Core.Infrastructure
 
         private PackageDerivedData GetPackageDerivedData(IPackage package, bool enableDelisting)
         {
+            _logger.Log(
+                LogLevel.Info,
+                "[{0} {1}] Getting package derived data.",
+                package.Id,
+                package.Version);
+
             // File names
             var normalizedVersion = package.Version.ToNormalizedString();
             var packageFileName = GetPackageFileName(package.Id, normalizedVersion);
@@ -158,8 +164,29 @@ namespace NuGet.Server.Core.Infrastructure
                 packageDerivedData.PackageHash = reader.ReadToEnd().Trim();
             }
 
+            _logger.Log(
+                LogLevel.Info,
+                "[{0} {1}] Package type is: {2}",
+                package.Id,
+                package.Version,
+                package.GetType().FullName);
+            _logger.Log(
+                LogLevel.Info,
+                "[{0} {1}] File system type is: {2}",
+                package.Id,
+                package.Version,
+                _fileSystem.GetType().FullName);
+
             // Read package info
             var localPackage = package as LocalPackage;
+
+            _logger.Log(
+                LogLevel.Info,
+                "[{0} {1}] Local package is null? {2}",
+                package.Id,
+                package.Version,
+                localPackage == null);
+
             if (_fileSystem is PhysicalFileSystem physicalFileSystem)
             {
                 // Read package info from file system
@@ -171,14 +198,42 @@ namespace NuGet.Server.Core.Infrastructure
                 packageDerivedData.Created = _fileSystem.GetCreated(packageFileName);
                 packageDerivedData.FullPath = fullPath;
 
+                _logger.Log(
+                    LogLevel.Info,
+                    "[{0} {1}] Reading from physical file system with enableDelisting = {2}",
+                    package.Id,
+                    package.Version,
+                    enableDelisting);
+
                 if (enableDelisting && localPackage != null)
                 {
+                    _logger.Log(
+                        LogLevel.Info,
+                        "[{0} {1}] Checking listed status against file attributes: {2}",
+                        package.Id,
+                        package.Version,
+                        fileInfo.Attributes);
+
                     // hidden packages are considered delisted
                     localPackage.Listed = !fileInfo.Attributes.HasFlag(FileAttributes.Hidden);
+
+                    _logger.Log(
+                        LogLevel.Info,
+                        "[{0} {1}] listed = {2}",
+                        package.Id,
+                        package.Version,
+                        localPackage.Listed);
                 }
             }
             else
             {
+                _logger.Log(
+                    LogLevel.Info,
+                    "[{0} {1}] Reading from file system type: {2}",
+                    package.Id,
+                    package.Version,
+                    _fileSystem.GetType().FullName);
+
                 // Read package info from package (slower)
                 using (var stream = package.GetStream())
                 {
