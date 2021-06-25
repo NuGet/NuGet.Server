@@ -209,11 +209,9 @@ src/NuGet.Server/packages/*.bin
 *.cache.bin
 AssemblyInfo.g.cs
 tools
-.nuget/CredentialProvider.VSS.exe
-.nuget/CredentialProviderBundle.zip
-.nuget/EULA_Microsoft Visual Studio Team Services Credential Provider.docx
-.nuget/NuGet.exe
-.nuget/ThirdPartyNotices.txt
+.nuget/credprovider
+.nuget/.marker.v*
+nuget.exe
 Results.*.xml
 !**/TestData/*.nupkg
 .vs

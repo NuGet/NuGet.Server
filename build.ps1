@@ -79,6 +79,11 @@ Invoke-BuildStep 'Building solution' {
     } `
     -ev +BuildErrors
 
+Invoke-BuildStep 'Signing the binaries' {
+        Sign-Binaries -Configuration $Configuration -BuildNumber $BuildNumber -MSBuildVersion "15" `
+    } `
+    -ev +BuildErrors
+
 Invoke-BuildStep 'Creating artifacts' {
         $projects = `
             "src\NuGet.Server.Core\NuGet.Server.Core.csproj", `
