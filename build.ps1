@@ -9,7 +9,7 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = 'cb2b9e41b18cb77ee644a51951d8c8f24cde9adf'
+    [string]$BuildBranchCommit = 'ade39b693d49b266ec5cac5d939edac7dda2fd92'
 )
 
 $msBuildVersion = 15;
@@ -30,8 +30,8 @@ if (-not (Test-Path "$PSScriptRoot/build")) {
 # Enable TLS 1.2 since GitHub requires it.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
-. "$PSScriptRoot/build/init.ps1" -BuildBranch "$BuildBranch"
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranchCommit/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
+. "$PSScriptRoot/build/init.ps1" -BuildBranchCommit "$BuildBranchCommit"
 
 Write-Host ("`r`n" * 3)
 Trace-Log ('=' * 60)
@@ -76,6 +76,11 @@ Invoke-BuildStep 'Set version metadata in AssemblyInfo.cs' {
 Invoke-BuildStep 'Building solution' { 
         $SolutionPath = Join-Path $PSScriptRoot "NuGet.Server.sln"
         Build-Solution $Configuration $BuildNumber -MSBuildVersion "$msBuildVersion" $SolutionPath -SkipRestore:$SkipRestore `
+    } `
+    -ev +BuildErrors
+
+Invoke-BuildStep 'Signing the binaries' {
+        Sign-Binaries -Configuration $Configuration -BuildNumber $BuildNumber -MSBuildVersion "15" `
     } `
     -ev +BuildErrors
 
