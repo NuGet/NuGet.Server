@@ -9,7 +9,7 @@ param (
     [string]$SemanticVersion = '1.0.0-zlocal',
     [string]$Branch,
     [string]$CommitSHA,
-    [string]$BuildBranch = 'd298565f387e93995a179ef8ae6838f1be37904f'
+    [string]$BuildBranchCommit = 'ade39b693d49b266ec5cac5d939edac7dda2fd92'
 )
 
 $msBuildVersion = 15;
@@ -30,8 +30,8 @@ if (-not (Test-Path "$PSScriptRoot/build")) {
 # Enable TLS 1.2 since GitHub requires it.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranch/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
-. "$PSScriptRoot/build/init.ps1" -BuildBranch "$BuildBranch"
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/NuGet/ServerCommon/$BuildBranchCommit/build/init.ps1" -OutFile "$PSScriptRoot/build/init.ps1"
+. "$PSScriptRoot/build/init.ps1" -BuildBranchCommit "$BuildBranchCommit"
 
 Write-Host ("`r`n" * 3)
 Trace-Log ('=' * 60)
