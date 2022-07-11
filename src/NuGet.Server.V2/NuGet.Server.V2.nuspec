@@ -16,7 +16,7 @@
     <dependencies>
       <group targetFramework="net46">
         <dependency id="Microsoft.Web.Xdt" version="2.1.1" />
-        <dependency id="Newtonsoft.Json" version="9.0.1" />
+        <dependency id="Newtonsoft.Json" version="13.0.1" />
         <dependency id="NuGet.Core" version="2.14.0" />
         <dependency id="NuGet.Server.Core" version="$version$" />
 
