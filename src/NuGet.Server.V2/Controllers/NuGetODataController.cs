@@ -433,6 +433,8 @@ namespace NuGet.Server.V2.Controllers
 
         protected HttpResponseMessage CreateStringResponse(HttpStatusCode statusCode, string response)
         {
+          // CodeQL [SM02175] False Positive: This is not shown in a page
+          // CodeQL [SM00430] False Positive: This is not shown in a page
             var responseMessage = new HttpResponseMessage(statusCode) { Content = new StringContent(response) };
             return responseMessage;
         }
