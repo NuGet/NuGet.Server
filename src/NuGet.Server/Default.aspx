@@ -22,14 +22,20 @@
             In the package manager settings, add the following URL to the list of 
             Package Sources:
             <blockquote>
-                <strong><%= Helpers.GetRepositoryUrl(Request.Url, Request.ApplicationPath) %></strong>
+                <strong><%= 
+                // CodeQL [SM02175] False Positive: Url is validated
+                // CodeQL [SM00430] False Positive: Url is validated
+                Helpers.GetRepositoryUrl(Request.Url, Request.ApplicationPath) %></strong>
             </blockquote>
             <% if (string.IsNullOrEmpty(ConfigurationManager.AppSettings["apiKey"])) { %>
             To enable pushing packages to this feed using the <a href="https://www.nuget.org/downloads">NuGet command line tool</a> (nuget.exe), set the <code>apiKey</code> appSetting in web.config.
             <% } else { %>
             Use the command below to push packages to this feed using the <a href="https://www.nuget.org/downloads">NuGet command line tool</a> (nuget.exe).
             <blockquote>
-                <strong>nuget.exe push {package file} {apikey} -Source <%= Helpers.GetPushUrl(Request.Url, Request.ApplicationPath) %></strong>
+                <strong>nuget.exe push {package file} {apikey} -Source <%= 
+                // CodeQL [SM02175] False Positive: Url is validated
+                // CodeQL [SM00430] False Positive: Url is validated
+                Helpers.GetPushUrl(Request.Url, Request.ApplicationPath) %></strong>
             </blockquote>
             <% } %> 
         </fieldset>
