@@ -215,3 +215,4 @@ nuget.exe
 Results.*.xml
 !**/TestData/*.nupkg
 .vs
+artifacts/*
