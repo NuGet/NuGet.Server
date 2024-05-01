@@ -23,10 +23,6 @@ variables:
   value: -$(NuGetServerBranch)-$(Build.BuildId)
 - name: SimplePackageVersion
   value: 1.0.0
-- name: UsePrivateRepo
-  value: false
-- name: PrivateRepoBranch
-  value: main
 - name: NuGetServerDirectory
   value: ns
 - name: NuGetServerPath
