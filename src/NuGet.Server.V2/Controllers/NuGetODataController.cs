@@ -383,52 +383,64 @@ namespace NuGet.Server.V2.Controllers
 
             var apiKey = GetApiKeyFromHeader();
 
+            // Authenticate before doing any expensive package processing (disk I/O, ZIP/XML parsing).
+            // This prevents unauthenticated callers from driving resource-exhausting work.
+            if (!_authenticationService.IsAuthenticated(User, apiKey, null))
+            {
+                return CreateStringResponse(HttpStatusCode.Forbidden, "Access denied.");
+            }
+
             // Copy the package to a temporary file
             var temporaryFile = Path.GetTempFileName();
-            using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            try
             {
-                if (Request.Content.IsMimeMultipartContent())
+                using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                 {
-                    var multipartContents = await Request.Content.ReadAsMultipartAsync();
-                    await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
+                    if (Request.Content.IsMimeMultipartContent())
+                    {
+                        var multipartContents = await Request.Content.ReadAsMultipartAsync();
+                        await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
+                    }
+                    else
+                    {
+                        await Request.Content.CopyToAsync(temporaryFileStream);
+                    }
+                }
+
+                var package = PackageFactory.Open(temporaryFile);
+
+                HttpResponseMessage retValue;
+                if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
+                {
+                    try
+                    {
+                        await _serverRepository.AddPackageAsync(package, token);
+                        retValue = Request.CreateResponse(HttpStatusCode.Created);
+                    }
+                    catch (DuplicatePackageException ex)
+                    {
+                        retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
+                    }
                 }
                 else
                 {
-                    await Request.Content.CopyToAsync(temporaryFileStream);
+                    retValue = CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
                 }
+
+                package = null;
+                return retValue;
             }
-
-            var package = PackageFactory.Open(temporaryFile);
-
-            HttpResponseMessage retValue;
-            if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
+            finally
             {
                 try
                 {
-                    await _serverRepository.AddPackageAsync(package, token);
-                    retValue = Request.CreateResponse(HttpStatusCode.Created);
+                    File.Delete(temporaryFile);
                 }
-                catch (DuplicatePackageException ex)
+                catch (Exception)
                 {
-                    retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
+                    // Best-effort cleanup
                 }
             }
-            else
-            {
-                retValue = CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
-            }
-
-            package = null;
-            try
-            {
-                File.Delete(temporaryFile);
-            }
-            catch (Exception)
-            {
-                retValue = CreateStringResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
-            }
-
-            return retValue;
         }
 
         protected HttpResponseMessage CreateStringResponse(HttpStatusCode statusCode, string response)

@@ -11,5 +11,12 @@ namespace NuGet.Server.V2.Tests
             :base(serverPackageRepository, null)
         {
         }
+
+        public TestableNuGetODataController(
+            IServerPackageRepository serverPackageRepository,
+            IPackageAuthenticationService authenticationService)
+            : base(serverPackageRepository, authenticationService)
+        {
+        }
     }
 }
