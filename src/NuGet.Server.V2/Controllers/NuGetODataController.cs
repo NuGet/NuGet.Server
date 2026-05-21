@@ -410,21 +410,14 @@ namespace NuGet.Server.V2.Controllers
                 var package = PackageFactory.Open(temporaryFile);
 
                 HttpResponseMessage retValue;
-                if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
+                try
                 {
-                    try
-                    {
-                        await _serverRepository.AddPackageAsync(package, token);
-                        retValue = Request.CreateResponse(HttpStatusCode.Created);
-                    }
-                    catch (DuplicatePackageException ex)
-                    {
-                        retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
-                    }
+                    await _serverRepository.AddPackageAsync(package, token);
+                    retValue = Request.CreateResponse(HttpStatusCode.Created);
                 }
-                else
+                catch (DuplicatePackageException ex)
                 {
-                    retValue = CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
+                    retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
                 }
 
                 package = null;
