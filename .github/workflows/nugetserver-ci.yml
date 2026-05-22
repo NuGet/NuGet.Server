@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 1
 
       - name: Build
-        shell: pwsh
+        shell: powershell
         run: |
           $buildNumber = "${{ github.run_number }}"
           $branch = "${{ github.ref_name }}" -replace '[_/]', '-'
@@ -36,7 +36,7 @@ jobs:
             -CommitSHA "${{ github.sha }}"
 
       - name: Run tests
-        shell: pwsh
+        shell: powershell
         run: |
           .\test.ps1 `
             -Configuration $env:BuildConfiguration `
