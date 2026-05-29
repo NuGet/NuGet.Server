@@ -1,3 +1,6 @@
+> [!WARNING]
+> **NuGet.Server is deprecated and will no longer receive updates.** No new features, bug fixes, or security patches will be released. The [NuGet.Server package on NuGet.org](https://www.nuget.org/packages/NuGet.Server) has been marked as deprecated. Existing deployments will continue to function, but running deprecated and unpatched software in production poses a security risk. We encourage all users to migrate to an alternative solution such as [Azure Artifacts](https://azure.microsoft.com/en-us/products/devops/artifacts/) or [GitHub Packages](https://github.com/features/packages) as soon as possible.
+
 # NuGet.Server
 
 The home of the NuGet.server package, a lightweight standalone NuGet server
