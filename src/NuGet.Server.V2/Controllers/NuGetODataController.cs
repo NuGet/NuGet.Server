@@ -383,26 +383,33 @@ namespace NuGet.Server.V2.Controllers
 
             var apiKey = GetApiKeyFromHeader();
 
-            // Copy the package to a temporary file
-            var temporaryFile = Path.GetTempFileName();
-            using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            // Authenticate before doing any expensive package processing (disk I/O, ZIP/XML parsing).
+            // This prevents unauthenticated callers from driving resource-exhausting work.
+            if (!_authenticationService.IsAuthenticated(User, apiKey, null))
             {
-                if (Request.Content.IsMimeMultipartContent())
-                {
-                    var multipartContents = await Request.Content.ReadAsMultipartAsync();
-                    await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
-                }
-                else
-                {
-                    await Request.Content.CopyToAsync(temporaryFileStream);
-                }
+                return CreateStringResponse(HttpStatusCode.Forbidden, "Access denied.");
             }
 
-            var package = PackageFactory.Open(temporaryFile);
-
-            HttpResponseMessage retValue;
-            if (_authenticationService.IsAuthenticated(User, apiKey, package.Id))
+            // Copy the package to a temporary file
+            var temporaryFile = Path.GetTempFileName();
+            try
             {
+                using (var temporaryFileStream = File.Open(temporaryFile, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                {
+                    if (Request.Content.IsMimeMultipartContent())
+                    {
+                        var multipartContents = await Request.Content.ReadAsMultipartAsync();
+                        await multipartContents.Contents.First().CopyToAsync(temporaryFileStream);
+                    }
+                    else
+                    {
+                        await Request.Content.CopyToAsync(temporaryFileStream);
+                    }
+                }
+
+                var package = PackageFactory.Open(temporaryFile);
+
+                HttpResponseMessage retValue;
                 try
                 {
                     await _serverRepository.AddPackageAsync(package, token);
@@ -412,23 +419,21 @@ namespace NuGet.Server.V2.Controllers
                 {
                     retValue = CreateStringResponse(HttpStatusCode.Conflict, ex.Message);
                 }
-            }
-            else
-            {
-                retValue = CreateStringResponse(HttpStatusCode.Forbidden, string.Format("Access denied for package '{0}'.", package.Id));
-            }
 
-            package = null;
-            try
-            {
-                File.Delete(temporaryFile);
+                package = null;
+                return retValue;
             }
-            catch (Exception)
+            finally
             {
-                retValue = CreateStringResponse(HttpStatusCode.InternalServerError, "Could not remove temporary upload file.");
+                try
+                {
+                    File.Delete(temporaryFile);
+                }
+                catch (Exception)
+                {
+                    // Best-effort cleanup
+                }
             }
-
-            return retValue;
         }
 
         protected HttpResponseMessage CreateStringResponse(HttpStatusCode statusCode, string response)
